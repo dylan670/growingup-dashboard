@@ -737,12 +737,16 @@ def render_ad_overview(
 
             with col_info:
                 st.markdown(f"### {CHANNEL_LABELS[ch]}")
-                m1, m2 = st.columns(2)
-                m1.metric("광고비", f"{spend:,}원")
-                m2.metric("매출", f"{rev:,}원")
-                m1.metric("ROAS", f"{roas:.0f}%",
-                          delta=f"목표 {target:.0f}% 대비 {roas - target:+.0f}%p")
-                m2.metric("구매전환", f"{conv:,}건")
+                # 광고비·매출은 자릿수가 길어 col_info 전폭 사용 (세로 스택)
+                st.metric("광고비", f"{spend:,}원")
+                st.metric("매출", f"{rev:,}원")
+                # ROAS/전환 은 짧아서 가로 분할 OK
+                mc1, mc2 = st.columns(2)
+                mc1.metric(
+                    "ROAS", f"{roas:.0f}%",
+                    delta=f"목표 {target:.0f}% 대비 {roas - target:+.0f}%p",
+                )
+                mc2.metric("구매전환", f"{conv:,}건")
                 if ctr > 0 or cvr > 0:
                     st.caption(f"CTR **{ctr:.2f}%** · CVR **{cvr:.2f}%**")
 

@@ -21,7 +21,9 @@ from api.coupang_ads_csv import (  # noqa: E402
     parse_to_campaigns_daily,
 )
 from utils.data import ADS_FILE  # noqa: E402
-from utils.precomputed import save_precomputed_parquet  # noqa: E402
+from utils.precomputed import (  # noqa: E402
+    save_precomputed_parquet, load_precomputed_parquet, PRECOMP_DIR,
+)
 
 
 UPLOAD_DIR = ROOT / "data" / "coupang_ads_upload"
@@ -141,25 +143,74 @@ def main() -> int:
         log(f"병합 실패: {type(e).__name__}: {e}")
         return 4
 
+    # ----- 캠페인 × 일자 parquet: 누적 병합 (중복 날짜만 새 데이터로 교체) -----
     try:
-        camp_df = parse_to_campaigns(raw)
-        if not camp_df.empty:
-            save_precomputed_parquet(camp_df, "coupang_campaigns.parquet")
-            log(f"캠페인 집계 저장: {len(camp_df)} 캠페인")
-    except Exception as e:
-        log(f"캠페인 집계 실패: {type(e).__name__}: {e}")
+        import pandas as pd
 
-    try:
-        daily_df = parse_to_campaigns_daily(raw)
-        if not daily_df.empty:
-            save_precomputed_parquet(daily_df, "coupang_campaigns_daily.parquet")
+        new_daily = parse_to_campaigns_daily(raw)
+        if new_daily.empty:
+            log("일자 단위 파싱 결과 0건 (skip)")
+        else:
+            new_daily["date"] = new_daily["date"].astype(str)
+            new_dates = set(new_daily["date"])
+
+            existing_path = PRECOMP_DIR / "coupang_campaigns_daily.parquet"
+            if existing_path.exists():
+                existing = pd.read_parquet(existing_path)
+                existing["date"] = existing["date"].astype(str)
+                # 새 파일 날짜 범위에 해당하는 기존 행 제거 → 신규로 덮어쓰기
+                # (그 외 날짜의 기존 데이터는 보존)
+                overlap_mask = existing["date"].isin(new_dates)
+                removed = int(overlap_mask.sum())
+                kept = existing[~overlap_mask]
+            else:
+                kept = pd.DataFrame()
+                removed = 0
+
+            merged = pd.concat([kept, new_daily], ignore_index=True)
+            merged = merged.sort_values(["date", "campaign_name"]).reset_index(drop=True)
+            save_precomputed_parquet(merged, "coupang_campaigns_daily.parquet")
+
             log(
-                f"캠페인 × 일자 저장: {len(daily_df)} 행 "
-                f"({daily_df['campaign_name'].nunique()} 캠페인 × "
-                f"{daily_df['date'].nunique()} 일)"
+                f"일자 parquet 누적 병합: 보존 {len(kept)}행 + 신규 {len(new_daily)}행 "
+                f"(중복 {removed}행 교체) → 총 {len(merged)}행 "
+                f"({merged['campaign_name'].nunique()} 캠페인 × "
+                f"{merged['date'].nunique()} 일, "
+                f"{merged['date'].min()} ~ {merged['date'].max()})"
             )
+
+            # ----- legacy 전체 합계 parquet: 누적된 daily 에서 재계산 -----
+            agg = (
+                merged.groupby("campaign_name")
+                .agg(
+                    spend=("spend", "sum"),
+                    impressions=("impressions", "sum"),
+                    clicks=("clicks", "sum"),
+                    conversions=("conversions", "sum"),
+                    revenue=("revenue", "sum"),
+                )
+                .reset_index()
+            )
+            from utils.products import classify_coupang_ad_to_brand
+            agg["brand"] = agg["campaign_name"].astype(str).map(classify_coupang_ad_to_brand)
+            agg["ctr_pct"] = (
+                agg["clicks"] / agg["impressions"].replace(0, pd.NA) * 100
+            ).round(2).fillna(0)
+            agg["cpc"] = (
+                agg["spend"] / agg["clicks"].replace(0, pd.NA)
+            ).round(0).fillna(0).astype(int)
+            agg["roas_pct"] = (
+                agg["revenue"] / agg["spend"].replace(0, pd.NA) * 100
+            ).round(0).fillna(0).astype(int)
+            agg = agg.sort_values("spend", ascending=False).reset_index(drop=True)
+            save_precomputed_parquet(agg, "coupang_campaigns.parquet")
+            log(f"legacy 집계 parquet 재계산: {len(agg)} 캠페인 "
+                f"(총 광고비 {int(agg['spend'].sum()):,}원, "
+                f"매출 {int(agg['revenue'].sum()):,}원)")
     except Exception as e:
-        log(f"캠페인 × 일자 집계 실패: {type(e).__name__}: {e}")
+        import traceback
+        log(f"캠페인 병합 실패: {type(e).__name__}: {e}")
+        log(traceback.format_exc())
 
     log("동기화 성공.")
     return 0
