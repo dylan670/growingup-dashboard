@@ -64,6 +64,14 @@ else:
 orders_max = _all_dates.max().date() if not _all_dates.empty else today_real
 orders_min = _all_dates.min().date() if not _all_dates.empty else _today_func(today_real.year - 1, 1, 1)
 
+# 입고 예정일(미래)이 포함되면 date_input max_value(today_real)와 충돌 →
+# orders_max 를 오늘 이하로 제한
+if orders_max > today_real:
+    orders_max = today_real
+# orders_min 은 오늘 이후일 수 없음 (방어)
+if orders_min > today_real:
+    orders_min = _today_func(today_real.year - 1, 1, 1)
+
 # ==========================================================
 # 기간 선택
 # ==========================================================
