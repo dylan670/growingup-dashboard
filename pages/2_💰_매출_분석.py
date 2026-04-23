@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 from utils.data import load_orders
@@ -462,6 +463,130 @@ def render_sales_overview(
                         st.info(body)
                     else:
                         st.caption(body)
+
+    # ---------- 시트 전용 채널 카드 (주문 API 없는 채널) ----------
+    # 롤라루: 쿠팡 로켓배송, 무신사, 오프라인, 이지웰, 오늘의집
+    # 똑똑연구소: 시트상 채널 모두 orders.csv 에 포함 (Wing API) → 추가 카드 없음
+    sheet_only_channels_by_brand: dict[str, list[tuple[str, str]]] = {
+        "롤라루": [
+            ("쿠팡 로켓배송", "쿠팡 벤더 풀필먼트 (제품별 판매 API 미공개 — 시트 직접 기입)"),
+            ("무신사",        "무신사 입점 (API 미연동 — 시트 기반)"),
+            ("오프라인",      "오프라인 판매 (시트 기반)"),
+            ("이지웰",        "복지몰 이지웰 (시트 기반)"),
+            ("오늘의집",      "오늘의집 입점 (시트 기반)"),
+        ],
+    }
+    if brand in sheet_only_channels_by_brand:
+        try:
+            sheet_df = _cached_sheet_sales()
+        except Exception:
+            sheet_df = pd.DataFrame()
+
+        if not sheet_df.empty:
+            rendered_any = False
+            for ch_name, sub in sheet_only_channels_by_brand[brand]:
+                sub_df = sheet_df[
+                    (sheet_df["brand"] == brand)
+                    & (sheet_df["channel"] == ch_name)
+                    & (sheet_df["date"] >= start)
+                    & (sheet_df["date"] <= end)
+                ]
+                if sub_df.empty or int(sub_df["actual"].sum()) == 0:
+                    continue
+                if not rendered_any:
+                    st.markdown(
+                        "##### 📋 시트 기반 채널 (API 미연동)"
+                    )
+                    rendered_any = True
+                _render_sheet_only_channel_card(sub_df, ch_name, sub, brand)
+
+
+def _render_sheet_only_channel_card(
+    sub_df: pd.DataFrame, channel: str, sub: str, brand: str,
+):
+    """시트 전용 채널 카드 (쿠팡 로켓배송/무신사/오프라인 등)."""
+    total_actual = int(sub_df["actual"].sum())
+    total_target = int(sub_df["target"].sum())
+    pct = (total_actual / total_target * 100) if total_target else 0
+    days_with_data = int((sub_df["actual"] > 0).sum())
+
+    with st.container(border=True):
+        col_info, col_chart, col_action = st.columns([2, 2, 3])
+        with col_info:
+            st.markdown(f"### {channel}")
+            st.caption(sub)
+            st.metric("이번 기간 매출", f"{total_actual:,}원")
+            mc1, mc2 = st.columns(2)
+            mc1.metric("목표", f"{total_target:,}원" if total_target else "—")
+            mc2.metric(
+                "달성률",
+                f"{pct:.0f}%" if total_target else "—",
+                delta=(
+                    f"{pct - 100:+.0f}%p vs 목표"
+                    if total_target else None
+                ),
+            )
+            st.caption(f"기록 일수 {days_with_data}/{len(sub_df)}일")
+
+        with col_chart:
+            st.markdown("**일별 매출·목표 추이**")
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=sub_df["date"], y=sub_df["actual"],
+                mode="lines+markers",
+                line=dict(color="#2563eb", width=2),
+                marker=dict(size=5),
+                name="실적",
+                hovertemplate="%{x|%m/%d}<br>%{y:,.0f}원<extra></extra>",
+            ))
+            if total_target:
+                fig.add_trace(go.Scatter(
+                    x=sub_df["date"], y=sub_df["target"],
+                    mode="lines",
+                    line=dict(color="#dc2626", width=1.5, dash="dash"),
+                    name="목표",
+                    hovertemplate="%{x|%m/%d}<br>목표 %{y:,.0f}원<extra></extra>",
+                ))
+            fig.update_layout(
+                height=200, margin=dict(l=10, r=10, t=10, b=10),
+                showlegend=True,
+                legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center",
+                            font=dict(size=10)),
+                plot_bgcolor="white",
+                xaxis=dict(showgrid=False, tickformat="%m/%d"),
+                yaxis=dict(gridcolor="#f1f5f9", tickformat=","),
+            )
+            st.plotly_chart(
+                fig, width="stretch",
+                key=f"sheet_ch_{brand}_{channel}",
+            )
+
+        with col_action:
+            st.markdown("**요약**")
+            note_lines = [
+                f"📊 **구글 시트 기반 집계** — 팀 직접 입력",
+                f"• 매출: **{total_actual:,}원** / 목표: {total_target:,}원",
+                f"• 달성률: **{pct:.0f}%**",
+            ]
+            if total_target:
+                gap = total_target - total_actual
+                if pct >= 100:
+                    st.success(
+                        f"✨ **목표 초과 달성** ({pct:.0f}%)\n\n"
+                        f"잔여 기간 동력 유지 — 재고/마케팅 점검"
+                    )
+                elif pct >= 70:
+                    st.info(
+                        f"📈 **목표 근접 중** ({pct:.0f}%)\n\n"
+                        f"목표까지 {gap:,}원 · 남은 기간 속도 조정"
+                    )
+                else:
+                    st.warning(
+                        f"⚠️ **목표 미달 우려** ({pct:.0f}%)\n\n"
+                        f"목표까지 {gap:,}원 부족 · 프로모션/노출 강화 필요"
+                    )
+            else:
+                st.caption("\n\n".join(note_lines))
 
 
 # ==========================================================

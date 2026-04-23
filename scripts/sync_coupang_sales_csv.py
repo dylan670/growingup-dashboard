@@ -26,6 +26,7 @@ sys.path.insert(0, str(ROOT))
 
 from api.coupang_sales_csv import (  # noqa: E402
     read_coupang_sales_file, parse_to_orders,
+    _is_po_format, parse_po_files_to_orders,
 )
 
 
@@ -118,13 +119,40 @@ def main() -> int:
             return 0
         log(f"업로드 폴더 전체 파일 {len(target_files)}개 순차 처리 시작")
 
-    # 모든 파일 파싱 → 하나로 합치기
+    # 파일 형식 판별 — PO (발주서) 양식 vs 일반 CSV/Excel 리포트
+    po_files = [f for f in target_files if _is_po_format(f)]
+    generic_files = [f for f in target_files if not _is_po_format(f)]
+    log(
+        f"파일 형식 분류: PO(발주서) {len(po_files)}개 / "
+        f"일반 리포트 {len(generic_files)}개"
+    )
+
     all_orders: list = []
     total_raw = 0
-    total_blocked = 0
     failed_files: list[tuple[str, str]] = []
 
-    for tf in target_files:
+    # ---------- 1. PO(발주서) 일괄 파싱 ----------
+    if po_files:
+        log(f"발주서 {len(po_files)}개 파싱 시작...")
+        po_orders = parse_po_files_to_orders(po_files)
+        po_failed = po_orders.attrs.get("failed", []) if hasattr(po_orders, "attrs") else []
+        po_blocked = po_orders.attrs.get("blocked", 0) if hasattr(po_orders, "attrs") else 0
+        po_count = po_orders.attrs.get("po_count", 0) if hasattr(po_orders, "attrs") else 0
+        if po_failed:
+            failed_files.extend(po_failed)
+        if po_blocked:
+            log(f"  차단(오즈키즈 등): {po_blocked}행 제외")
+        if not po_orders.empty:
+            log(
+                f"  발주서 {po_count}건 파싱 성공 → {len(po_orders)}행 "
+                f"(매출 {int(po_orders['revenue'].sum()):,}원)"
+            )
+            all_orders.append(po_orders)
+        else:
+            log("  발주서 파싱 결과 0건")
+
+    # ---------- 2. 일반 CSV/Excel 리포트 파싱 ----------
+    for tf in generic_files:
         try:
             raw = read_coupang_sales_file(tf)
             total_raw += len(raw)
@@ -140,12 +168,8 @@ def main() -> int:
             failed_files.append((tf.name, f"매핑 실패: {e}"))
             continue
 
-        # 차단된 행 수 로깅 (오즈키즈 등)
-        # parse_to_orders 가 attrs 에 정보 넣어주면 사용 — 아니면 passno log
-        blocked_n = 0  # 각 파일별 추적은 복잡해서 생략, 총합만 표시
         if orders_df.empty:
-            log(f"[{tf.name}] 원본 {len(raw)}행 → 파싱 결과 0건 "
-                f"(전량 차단 또는 매칭 실패)")
+            log(f"[{tf.name}] 원본 {len(raw)}행 → 파싱 결과 0건")
             continue
 
         log(

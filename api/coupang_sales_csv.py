@@ -131,6 +131,280 @@ def read_coupang_sales_file(path: Path) -> pd.DataFrame:
     raise RuntimeError(f"CSV 인코딩 탐지 실패: {last_err}")
 
 
+# ==========================================================
+# 쿠팡 Supplier Hub 개별 발주서(PO) 전용 파서
+# 파일 형식: 다중 섹션 (거래처/발주/상품/메시지/회송)
+# ==========================================================
+def _is_po_format(path: Path) -> bool:
+    """파일이 개별 발주서 양식인지 판별 — 첫 행에 '발주서 No.' 패턴."""
+    try:
+        df = pd.read_excel(path, header=None, nrows=5)
+        if df.empty:
+            return False
+        first_val = str(df.iloc[0, 0]) if pd.notna(df.iloc[0, 0]) else ""
+        return "발주서" in first_val and "No" in first_val
+    except Exception:
+        return False
+
+
+def parse_po_file(path: Path) -> pd.DataFrame:
+    """개별 발주서 Excel → (date, product, quantity, revenue) DF.
+
+    발주서 구조:
+      row 0: 발주서 No.XXXX
+      row 2: 1. 거래처정보
+      row 7: 2. 발주정보
+        row 11-12: 입고예정일시 / 물류센터 / ...
+      row 17: 3. 상품정보
+        row 19: 헤더 (No, 상품코드, 상품명, ..., 발주수량, ..., 발주금액, ...)
+        row 21+: 상품 행
+        row 23: 합계 (무시)
+    """
+    import re
+
+    raw = pd.read_excel(path, header=None)
+    if raw.empty:
+        return pd.DataFrame()
+
+    # ---- 발주번호 ----
+    po_no = ""
+    first_val = str(raw.iloc[0, 0]) if pd.notna(raw.iloc[0, 0]) else ""
+    m = re.search(r"No\.?\s*(\d+)", first_val)
+    if m:
+        po_no = m.group(1)
+
+    # ---- 입고예정일시 / 발주일 찾기 ----
+    po_date = None
+    # 모든 셀 순회하면서 YYYY/MM/DD 또는 YYYY-MM-DD 패턴 찾기
+    # (입고예정일시 컬럼 먼저 찾고 바로 다음/같은 행의 날짜 값 사용)
+    for i in range(len(raw)):
+        row = raw.iloc[i]
+        header_row_has_inbound = any(
+            "입고예정일시" in str(v) for v in row if pd.notna(v)
+        )
+        if header_row_has_inbound:
+            # 다음 행에 날짜 값
+            for search_row in [i + 1, i + 2]:
+                if search_row >= len(raw):
+                    break
+                for val in raw.iloc[search_row]:
+                    if pd.notna(val):
+                        s = str(val)
+                        m = re.search(
+                            r"(\d{4})[./\-](\d{1,2})[./\-](\d{1,2})", s,
+                        )
+                        if m:
+                            po_date = (
+                                f"{m.group(1)}-"
+                                f"{int(m.group(2)):02d}-"
+                                f"{int(m.group(3)):02d}"
+                            )
+                            break
+                if po_date:
+                    break
+            if po_date:
+                break
+
+    if po_date is None:
+        # fallback — 파일 내 아무 날짜 패턴 찾기
+        for i in range(len(raw)):
+            for val in raw.iloc[i]:
+                if pd.notna(val):
+                    s = str(val)
+                    m = re.search(
+                        r"(\d{4})[./\-](\d{1,2})[./\-](\d{1,2})", s,
+                    )
+                    if m:
+                        po_date = (
+                            f"{m.group(1)}-"
+                            f"{int(m.group(2)):02d}-"
+                            f"{int(m.group(3)):02d}"
+                        )
+                        break
+            if po_date:
+                break
+
+    # ---- '3. 상품정보' 섹션 위치 찾기 ----
+    product_section_start = None
+    for i in range(len(raw)):
+        row_str = " ".join(str(x) for x in raw.iloc[i] if pd.notna(x))
+        if "3. 상품정보" in row_str or "상품정보" == row_str.strip():
+            product_section_start = i
+            break
+    if product_section_start is None:
+        return pd.DataFrame()
+
+    # ---- 헤더 행 찾기 (상품 테이블 헤더) ----
+    header_idx = None
+    for i in range(product_section_start + 1,
+                   min(product_section_start + 8, len(raw))):
+        row_vals = [str(x) for x in raw.iloc[i] if pd.notna(x)]
+        joined = " ".join(row_vals)
+        if "상품" in joined and ("발주수량" in joined or "수량" in joined):
+            header_idx = i
+            break
+    if header_idx is None:
+        return pd.DataFrame()
+
+    header = raw.iloc[header_idx].tolist()
+
+    # 컬럼 위치 찾기
+    col_product = None
+    col_qty = None
+    col_amount = None
+    for idx, h in enumerate(header):
+        hs = str(h) if pd.notna(h) else ""
+        if col_product is None and "상품명" in hs:
+            col_product = idx
+        if col_qty is None and ("발주수량" == hs or "발주 수량" == hs):
+            col_qty = idx
+        if col_amount is None and ("발주금액" == hs or "발주 금액" == hs):
+            col_amount = idx
+    # fallback — 부분 매칭
+    if col_qty is None:
+        for idx, h in enumerate(header):
+            hs = str(h) if pd.notna(h) else ""
+            if "발주" in hs and "수량" in hs:
+                col_qty = idx
+                break
+    if col_amount is None:
+        for idx, h in enumerate(header):
+            hs = str(h) if pd.notna(h) else ""
+            if "발주" in hs and "금액" in hs:
+                col_amount = idx
+                break
+
+    if col_product is None or col_amount is None:
+        return pd.DataFrame()
+
+    # ---- 데이터 행 추출 (헤더 이후, 합계/다음 섹션 전) ----
+    rows = []
+    for i in range(header_idx + 1, len(raw)):
+        row = raw.iloc[i]
+        first = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""
+        first = first.strip()
+
+        # 다음 섹션 시작 또는 합계 — 종료
+        if first.startswith("4.") or first.startswith("5.") or first == "합계":
+            break
+
+        # 상품 행: 첫 컬럼이 숫자 No.
+        if not first.isdigit():
+            continue
+
+        product = (
+            str(row.iloc[col_product]).strip()
+            if pd.notna(row.iloc[col_product]) else ""
+        )
+        if not product:
+            continue
+
+        qty = _clean_int(row.iloc[col_qty]) if col_qty is not None else 0
+        amount = _clean_int(row.iloc[col_amount])
+
+        rows.append({
+            "date": po_date,
+            "product": product,
+            "quantity": qty,
+            "revenue": amount,
+            "po_number": po_no,
+        })
+
+    return pd.DataFrame(rows)
+
+
+def parse_po_files_to_orders(file_paths: list[Path]) -> pd.DataFrame:
+    """여러 발주서 파일을 순회하며 orders 스키마로 변환.
+
+    - 오즈키즈 등 차단 키워드 필터
+    - 제품명 기반 브랜드 자동 분류 → 쿠팡_*_벤더 store 매핑
+    """
+    all_po_rows: list[pd.DataFrame] = []
+    failed: list[tuple[str, str]] = []
+
+    for path in file_paths:
+        try:
+            po_df = parse_po_file(path)
+            if not po_df.empty:
+                all_po_rows.append(po_df)
+        except Exception as e:
+            failed.append((path.name, f"{type(e).__name__}: {e}"))
+
+    if not all_po_rows:
+        df = pd.DataFrame()
+        df.attrs["failed"] = failed
+        return df
+
+    combined = pd.concat(all_po_rows, ignore_index=True)
+
+    # 차단 제품 (오즈키즈 등) 필터
+    before = len(combined)
+    combined = combined[~combined["product"].map(is_blocked_product)].copy()
+    blocked = before - len(combined)
+
+    if combined.empty:
+        df = pd.DataFrame()
+        df.attrs["blocked"] = blocked
+        df.attrs["failed"] = failed
+        return df
+
+    # 브랜드 분류 + store 매핑
+    from utils.products import classify_product
+    def _brand(name: str) -> str:
+        _, umb = classify_product(name)
+        return umb if umb in ("똑똑연구소", "롤라루") else "공통"
+    combined["_brand"] = combined["product"].map(_brand)
+    combined["_store"] = combined["_brand"].map({
+        "똑똑연구소": "쿠팡_똑똑연구소_벤더",
+        "롤라루":     "쿠팡_롤라루_벤더",
+    }).fillna("쿠팡_벤더_기타")
+
+    # (date × store × product) 단위 집계 — 같은 제품이 여러 PO 에 있으면 합산
+    agg = (
+        combined.groupby(["date", "_store", "product"], as_index=False)
+        .agg(
+            quantity=("quantity", "sum"),
+            revenue=("revenue", "sum"),
+            po_count=("po_number", "nunique"),
+        )
+    )
+
+    # orders 스키마 변환 (고유 ID 생성)
+    def _make_order_id(date_s: str, store: str, product: str) -> str:
+        raw = f"CPVI-{date_s}-{store}-{product}"
+        return "CPVI-" + hashlib.md5(raw.encode("utf-8")).hexdigest()[:10].upper()
+
+    def _make_customer_id(date_s: str, product: str) -> str:
+        raw = f"CPVI-ANON-{date_s[:7]}-{product}"
+        return "CPVI-" + hashlib.md5(raw.encode("utf-8")).hexdigest()[:8].upper()
+
+    out = pd.DataFrame({
+        "date": agg["date"],
+        "order_id": agg.apply(
+            lambda r: _make_order_id(r["date"], r["_store"], r["product"]),
+            axis=1,
+        ),
+        "customer_id": agg.apply(
+            lambda r: _make_customer_id(r["date"], r["product"]),
+            axis=1,
+        ),
+        "channel": "쿠팡",
+        "store": agg["_store"],
+        "product": agg["product"],
+        "quantity": agg["quantity"].astype(int),
+        "revenue": agg["revenue"].astype(int),
+    })
+    out = out[[
+        "date", "order_id", "customer_id", "channel", "store",
+        "product", "quantity", "revenue",
+    ]].sort_values(["date", "store", "product"]).reset_index(drop=True)
+
+    out.attrs["blocked"] = blocked
+    out.attrs["failed"] = failed
+    out.attrs["po_count"] = combined["po_number"].nunique()
+    return out
+
+
 def _classify_coupang_product_to_brand(product_name: str) -> str:
     """쿠팡 판매 상품명 → 운영 브랜드.
 

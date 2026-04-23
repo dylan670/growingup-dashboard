@@ -285,7 +285,11 @@ def classify_adgroup(ag_name: str | None) -> tuple[str, str]:
 
 
 def classify_orders(orders_df: pd.DataFrame) -> pd.DataFrame:
-    """orders DataFrame에 brand, umbrella 컬럼 추가해서 반환."""
+    """orders DataFrame에 brand, umbrella 컬럼 추가해서 반환.
+
+    제품명 키워드 매칭 실패 시(기타/미분류), store 기반 fallback 적용:
+    롤라루 스토어의 '네임택 옵션' 등 제품명만 보고 분류 안 되는 경우.
+    """
     df = orders_df.copy()
     if "product" in df.columns:
         brand_series = df["product"].apply(classify_product)
@@ -294,6 +298,26 @@ def classify_orders(orders_df: pd.DataFrame) -> pd.DataFrame:
     else:
         df["brand"] = "미분류"
         df["umbrella"] = "미분류"
+
+    # ---- store → umbrella fallback ----
+    # 매칭 실패한 행에 대해 store 값으로 umbrella 유추
+    if "store" in df.columns:
+        # BRAND_ORDER_STORES 역방향 매핑 + 벤더 발주 store 추가
+        store_to_umbrella: dict[str, str] = {}
+        for umb, stores in BRAND_ORDER_STORES.items():
+            for s in stores:
+                store_to_umbrella[s] = umb
+        # 쿠팡 벤더 발주 store (BRAND_ORDER_STORES 에 없지만 브랜드 분류 필요)
+        store_to_umbrella["쿠팡_똑똑연구소_벤더"] = "똑똑연구소"
+        store_to_umbrella["쿠팡_롤라루_벤더"] = "롤라루"
+
+        mask = df["umbrella"].isin(["기타", "미분류", "공통"])
+        for idx in df[mask].index:
+            store = df.at[idx, "store"]
+            if store in store_to_umbrella:
+                df.at[idx, "umbrella"] = store_to_umbrella[store]
+                if df.at[idx, "brand"] in ["기타", "미분류", "공통"]:
+                    df.at[idx, "brand"] = f"{store_to_umbrella[store]} 옵션/기타"
     return df
 
 
