@@ -36,7 +36,7 @@ setup_page(
 )
 
 # 캐시 버전 — 제품명 정규화 규칙 바뀌면 bump 해서 기존 캐시 강제 무효화
-_ORDERS_CACHE_VER = "v4-normalize-name-more-rules"
+_ORDERS_CACHE_VER = "v5-normalize-image-cache"
 
 
 @st.cache_data(ttl=300, show_spinner="주문 + 쿠팡 벤더 발주 데이터 로드 중...")

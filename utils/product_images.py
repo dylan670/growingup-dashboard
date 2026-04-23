@@ -152,13 +152,25 @@ def refresh_all_image_cache(progress_cb=None) -> dict[str, int]:
 
 
 def load_image_cache() -> pd.DataFrame:
-    """저장된 이미지 캐시 로드. 없으면 빈 DataFrame."""
+    """저장된 이미지 캐시 로드. 없으면 빈 DataFrame.
+
+    이미지 캐시의 name 컬럼도 동일한 PRODUCT_NAME_RULES 로 정규화 →
+    orders 의 정규화된 제품명과 exact match 가능 (이미지 매칭률 급상승).
+    """
     if not IMAGES_CSV.exists():
         return pd.DataFrame(
             columns=["store", "origin_product_no", "channel_product_no",
                      "name", "image_url", "sale_price", "category"]
         )
-    return pd.read_csv(IMAGES_CSV)
+    df = pd.read_csv(IMAGES_CSV)
+    # orders 측 제품명 정규화와 동일 규칙 적용
+    if "name" in df.columns:
+        try:
+            from utils.products import normalize_product_name
+            df["name"] = df["name"].apply(normalize_product_name)
+        except Exception:
+            pass
+    return df
 
 
 def _similarity(a: str, b: str) -> float:
