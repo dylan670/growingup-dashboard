@@ -30,8 +30,10 @@ setup_page(
 # 데이터 로드 + 기간 선택
 # ==========================================================
 ads = load_ads()
-max_date = ads["date"].max().date()
-min_date = ads["date"].min().date()
+from datetime import date as _today_func
+today_real = _today_func.today()
+ads_max = ads["date"].max().date() if not ads.empty else today_real
+ads_min = ads["date"].min().date() if not ads.empty else _today_func(today_real.year - 1, 1, 1)
 
 c1, c2, _ = st.columns([1, 1, 2])
 with c1:
@@ -41,8 +43,9 @@ with c1:
     )
 with c2:
     end_date = st.date_input(
-        "종료일", value=max_date,
-        min_value=min_date, max_value=max_date,
+        "종료일", value=ads_max,
+        min_value=ads_min, max_value=today_real,
+        help="실제 오늘까지 선택 가능.",
     )
 
 days = {"최근 7일": 7, "최근 14일": 14, "최근 30일": 30}[period]

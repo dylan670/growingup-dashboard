@@ -34,8 +34,10 @@ setup_page(
 )
 
 orders = load_orders()
-max_date = orders["date"].max().date()
-min_date = orders["date"].min().date()
+from datetime import date as _today_func
+today_real = _today_func.today()
+orders_max = orders["date"].max().date() if not orders.empty else today_real
+orders_min = orders["date"].min().date() if not orders.empty else _today_func(today_real.year - 1, 1, 1)
 
 # ==========================================================
 # 기간 선택
@@ -47,8 +49,9 @@ with c1:
     )
 with c2:
     end_date = st.date_input(
-        "종료일", value=max_date,
-        min_value=min_date, max_value=max_date,
+        "종료일", value=orders_max,
+        min_value=orders_min, max_value=today_real,
+        help="실제 오늘까지 선택 가능.",
     )
 
 days = {"최근 7일": 7, "최근 14일": 14,

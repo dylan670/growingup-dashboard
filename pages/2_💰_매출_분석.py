@@ -28,8 +28,16 @@ setup_page(
 )
 
 orders = load_orders()
-max_date = orders["date"].max().date()
-min_date = orders["date"].min().date()
+# orders 범위는 데이터 있는 구간
+orders_min = orders["date"].min().date() if not orders.empty else None
+orders_max = orders["date"].max().date() if not orders.empty else None
+# 실제 오늘 (데이터 없어도 선택 가능)
+from datetime import date as _today_func
+today_real = _today_func.today()
+# min 은 orders 첫날 or 작년 시작
+min_allowed = orders_min if orders_min else _today_func(today_real.year - 1, 1, 1)
+# max 는 실제 오늘 (데이터 없어도 선택 가능)
+max_allowed = today_real
 
 # ==========================================================
 # 기간 선택
@@ -41,9 +49,12 @@ with c1:
         ["최근 7일", "최근 14일", "최근 30일", "최근 90일"], index=2,
     )
 with c2:
+    # 기본값: orders 최신일 (없으면 오늘). max 는 실제 오늘.
+    default_end = orders_max if orders_max else today_real
     end_date = st.date_input(
-        "종료일", value=max_date,
-        min_value=min_date, max_value=max_date,
+        "종료일", value=default_end,
+        min_value=min_allowed, max_value=max_allowed,
+        help="실제 오늘까지 선택 가능. 매일 10시 자동 sync 로 갱신됨.",
     )
 
 days_map = {"최근 7일": 7, "최근 14일": 14, "최근 30일": 30, "최근 90일": 90}

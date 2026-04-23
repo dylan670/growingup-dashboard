@@ -15,7 +15,7 @@
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -100,12 +100,28 @@ with st.sidebar:
     # 기간 옵션 (V팀 참고)
     period = st.selectbox(
         "조회 기간",
-        ["이번 달", "지난 7일", "지난 14일", "지난 30일", "지난 90일", "올해 누적"],
+        ["이번 달", "지난 7일", "지난 14일", "지난 30일", "지난 90일", "올해 누적", "사용자 지정"],
         index=0,
     )
 
-    # orders.csv 의 최신 날짜를 "오늘" 기준으로 사용
-    today = orders["date"].max().date()
+    # "오늘" = 실제 오늘 날짜 (orders 최신일 아님)
+    today_real = date.today()
+    # orders 최신 날짜 (기본값 기준)
+    orders_max = orders["date"].max().date() if not orders.empty else today_real
+
+    # 종료일 선택기 — 실제 오늘까지 가능
+    # min_date 는 orders 첫날 or 올해 1월 1일 중 더 이른 날
+    orders_min = orders["date"].min().date() if not orders.empty else date(today_real.year, 1, 1)
+    min_allowed = min(orders_min, date(today_real.year, 1, 1))
+
+    end_date_picked = st.date_input(
+        "종료일",
+        value=orders_max,
+        min_value=min_allowed,
+        max_value=today_real,
+        help="실제 오늘까지 선택 가능. 매일 10시 자동 sync 후 업데이트.",
+    )
+    today = end_date_picked  # 이후 로직은 '오늘' 을 종료일로 사용
 
     if period == "이번 달":
         start_date = pd.Timestamp(today.replace(day=1))
@@ -113,6 +129,17 @@ with st.sidebar:
         days = (end_date - start_date).days + 1
     elif period == "올해 누적":
         start_date = pd.Timestamp(date(today.year, 1, 1))
+        end_date = pd.Timestamp(today)
+        days = (end_date - start_date).days + 1
+    elif period == "사용자 지정":
+        # 시작일도 직접 선택
+        start_date_picked = st.date_input(
+            "시작일",
+            value=today - timedelta(days=6),
+            min_value=min_allowed,
+            max_value=today,
+        )
+        start_date = pd.Timestamp(start_date_picked)
         end_date = pd.Timestamp(today)
         days = (end_date - start_date).days + 1
     else:
