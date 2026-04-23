@@ -294,13 +294,14 @@ def _render_daily_product_chart(
         delta=f"일평균 {avg_daily_qty:.1f}개",
     )
 
-    # 이중축 차트: 수량(막대, 파랑) + 매출(선, 빨강)
+    # 이중축 차트 — 통일 METRIC_COLORS 팔레트
+    #   수량(막대) = clicks 색 (하늘) · 매출(선) = revenue 색 (파랑)
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(
         go.Bar(
             x=daily["date"], y=daily["quantity"],
             name="판매 수량",
-            marker_color="#3b82f6",
+            marker_color=METRIC_COLORS["clicks"],
             opacity=0.75,
             hovertemplate="%{x|%m/%d}<br>%{y:,}개<extra></extra>",
         ),
@@ -311,8 +312,8 @@ def _render_daily_product_chart(
             x=daily["date"], y=daily["revenue"],
             name="매출",
             mode="lines+markers",
-            line=dict(color="#dc2626", width=2.5),
-            marker=dict(size=6, color="#dc2626"),
+            line=dict(color=METRIC_COLORS["revenue"], width=2.5),
+            marker=dict(size=6, color=METRIC_COLORS["revenue"]),
             hovertemplate="%{x|%m/%d}<br>%{y:,.0f}원<extra></extra>",
         ),
         secondary_y=True,

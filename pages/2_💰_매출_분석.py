@@ -363,7 +363,17 @@ def render_sales_overview(
     display_stores = [s for s in _ORDER_RANK if s in existing_stores]
 
     if not display_stores:
-        st.info(f"{brand_label}: 해당 기간 주문 데이터 없음.")
+        from utils.ui import render_empty_state
+        render_empty_state(
+            title=f"{brand_label}: 해당 기간 주문 데이터 없음",
+            description=(
+                f"선택된 기간 ({start.date()} ~ {end.date()}) 에 "
+                f"{brand_label} 스토어의 주문이 한 건도 없습니다. "
+                f"기간을 넓혀보거나 상단 종료일을 조정해보세요."
+            ),
+            icon="📭",
+            action_label="기간 필터 조정 or 다른 브랜드 탭 확인",
+        )
         return
 
     # 쿠팡 벤더 발주 데이터 (로켓배송 B2B) — 쿠팡 카드에 합산 표시용
@@ -631,8 +641,12 @@ def _render_channel_comparison_chart(
     orders_cnt = [c[1]["orders"] for c in sorted_channels]
     customers_cnt = [len(c[1]["customers"]) for c in sorted_channels]
     is_sheet = [c[1].get("sheet_only", False) for c in sorted_channels]
-    # 시트 전용은 주문/고객 N/A 로 표시
-    colors = ["#94a3b8" if sh else "#2563eb" for sh in is_sheet]
+
+    # 통일 팔레트 적용 — METRIC_COLORS (revenue/orders/customers) 기준
+    # 시트 전용 채널은 회색 톤 (데이터 불완전 명시)
+    rev_colors = ["#cbd5e1" if sh else METRIC_COLORS["revenue"] for sh in is_sheet]
+    ord_colors = ["#cbd5e1" if sh else METRIC_COLORS["orders"] for sh in is_sheet]
+    cus_colors = ["#cbd5e1" if sh else METRIC_COLORS["customers"] for sh in is_sheet]
 
     st.divider()
     st.markdown(f"##### 📊 {brand} 채널별 성과 비교 (매출 · 주문 · 고객)")
@@ -647,7 +661,7 @@ def _render_channel_comparison_chart(
     )
     fig.add_trace(
         go.Bar(
-            x=labels, y=revenues, marker_color=colors, name="매출",
+            x=labels, y=revenues, marker_color=rev_colors, name="매출",
             text=[f"{v:,}" for v in revenues], textposition="outside",
             hovertemplate="<b>%{x}</b><br>매출 %{y:,}원<extra></extra>",
         ),
@@ -655,9 +669,7 @@ def _render_channel_comparison_chart(
     )
     fig.add_trace(
         go.Bar(
-            x=labels, y=orders_cnt,
-            marker_color=["#cbd5e1" if sh else "#16a34a" for sh in is_sheet],
-            name="주문",
+            x=labels, y=orders_cnt, marker_color=ord_colors, name="주문",
             text=[f"{v:,}" if v > 0 else "—" for v in orders_cnt],
             textposition="outside",
             hovertemplate="<b>%{x}</b><br>주문 %{y:,}건<extra></extra>",
@@ -666,9 +678,7 @@ def _render_channel_comparison_chart(
     )
     fig.add_trace(
         go.Bar(
-            x=labels, y=customers_cnt,
-            marker_color=["#cbd5e1" if sh else "#f59e0b" for sh in is_sheet],
-            name="고객",
+            x=labels, y=customers_cnt, marker_color=cus_colors, name="고객",
             text=[f"{v:,}" if v > 0 else "—" for v in customers_cnt],
             textposition="outside",
             hovertemplate="<b>%{x}</b><br>고객 %{y:,}명<extra></extra>",
@@ -676,13 +686,17 @@ def _render_channel_comparison_chart(
         row=1, col=3,
     )
     fig.update_layout(
-        height=350,
+        height=360,
         margin=dict(l=10, r=10, t=50, b=40),
         showlegend=False,
         plot_bgcolor="white",
+        font=dict(family="Pretendard, -apple-system, sans-serif", size=12),
     )
     fig.update_xaxes(tickangle=-20, tickfont=dict(size=10))
     fig.update_yaxes(gridcolor="#f1f5f9", tickformat=",")
+    # Subplot 제목 폰트 통일
+    for ann in fig.layout.annotations:
+        ann.font = dict(size=13, color=TEXT_MAIN)
     st.plotly_chart(
         fig, width="stretch",
         key=f"channel_compare_{brand}",
