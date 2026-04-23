@@ -1,12 +1,17 @@
-"""쿠팡 Wing 상품별 판매 CSV/Excel → orders.csv 자동 병합 CLI.
+"""쿠팡 Supplier Hub 상품별 판매 CSV/Excel → orders.csv 자동 병합 CLI.
 
-쿠팡 로켓배송(벤더 풀필먼트) 주문은 Open API 미제공 → Wing 매출 리포트 CSV
-수동 다운로드 → 이 스크립트로 파싱 → orders.csv 누적 병합.
+쿠팡 로켓배송(벤더 풀필먼트) 주문은 판매자 Open API 미제공 →
+Supplier Hub (supplier.coupang.com) 매출 리포트 CSV 를 수동 다운로드 →
+이 스크립트로 파싱 → orders.csv 누적 병합.
 
 사용법:
-    1. 쿠팡 Wing → 판매 관리 → 상품별 판매 리포트 / 통계 → CSV 다운로드
+    1. https://supplier.coupang.com/ → 애널리틱스 → 판매 분석
+       → 일별 × 상품별 리포트 CSV 다운로드
     2. data/coupang_sales_upload/ 폴더에 드롭
     3. 실행: .venv\\Scripts\\python.exe scripts\\sync_coupang_sales_csv.py
+
+주의: wing.coupang.com (판매자 Wing, 업체배송·로켓그로스용) 아니라
+      supplier.coupang.com (벤더 Supplier Hub, 로켓배송용).
 """
 from __future__ import annotations
 

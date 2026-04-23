@@ -32,7 +32,7 @@ setup_page(
     page_title="제품 분석",
     page_icon="📦",
     header_title="📦 제품 분석",
-    header_subtitle="제품·브랜드 단위 매출·광고 통합 (네이버 광고비 자동 브랜드 할당)",
+    header_subtitle="제품·브랜드 단위 매출·광고 통합",
 )
 
 @st.cache_data(ttl=300, show_spinner="주문 데이터 로드 중...")

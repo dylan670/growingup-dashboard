@@ -1,11 +1,14 @@
-"""쿠팡 Wing 상품별 판매 리포트 CSV/Excel → orders.csv 병합 파서.
+"""쿠팡 Supplier Hub 상품별 판매 리포트 CSV/Excel → orders.csv 병합 파서.
 
-쿠팡 로켓배송 (벤더 풀필먼트) 주문은 판매자 API 로 조회 불가 →
-Wing 매출 리포트 CSV 를 수동 다운로드해서 업로드하는 방식.
+쿠팡 로켓배송(벤더 풀필먼트) 주문은 판매자 Wing API 로 조회 불가 →
+Supplier Hub (supplier.coupang.com) 에서 매출 리포트 CSV 수동 다운로드.
 
-다운로드 경로 (쿠팡 Wing):
-    https://wing.coupang.com → 판매 관리 → 통계 또는 매출 리포트
-    → 상품별 일별 판매 현황 / 매출 리포트 (CSV/Excel)
+다운로드 경로 (쿠팡 Supplier Hub):
+    https://supplier.coupang.com → 애널리틱스 → 판매 분석
+    → 일별 × 상품별 리포트 (CSV/Excel)
+
+    ⚠ wing.coupang.com (Wing) 이 아니라 supplier.coupang.com (Supplier Hub)
+    ⚠ 물류 → 발주리스트(PO)는 쿠팡 → 벤더 발주이므로 매출 아님
 
 기대 컬럼 (다양한 형태 자동 매칭):
     날짜 / 일자 / 기간
