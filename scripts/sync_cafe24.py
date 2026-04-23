@@ -18,6 +18,17 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
+# Streamlit Cloud / GitHub Actions 대응:
+# CAFE24_TOKENS_JSON 환경변수가 있으면 파일로 덤프 (OAuth 토큰 복원)
+import os  # noqa: E402
+_tokens_env = os.getenv("CAFE24_TOKENS_JSON", "").strip()
+if _tokens_env:
+    _tokens_file = ROOT / "data" / "cafe24_tokens.json"
+    _tokens_file.parent.mkdir(exist_ok=True)
+    if not _tokens_file.exists():
+        _tokens_file.write_text(_tokens_env, encoding="utf-8")
+        print(f"[cafe24] CAFE24_TOKENS_JSON → {_tokens_file} 덤프 완료")
+
 from api.cafe24 import load_all_cafe24_clients  # noqa: E402
 from utils.data import merge_store_orders  # noqa: E402
 
