@@ -78,8 +78,9 @@ STORE_SUBTITLES = {
     "똑똑연구소":         "네이버 스마트스토어",
     "롤라루":             "네이버 스마트스토어",
     "쿠팡":               "쿠팡 (브랜드 분류 전)",
-    "쿠팡_똑똑연구소":    "쿠팡 로켓그로스 (Wing)",
-    "쿠팡_롤라루":        "쿠팡 판매자 판매 (Wing)",      # 로켓배송 아님
+    # Wing Open API 가 업체배송(판매자 판매) + 로켓그로스 주문 모두 수집
+    "쿠팡_똑똑연구소":    "쿠팡 판매자 판매 · 로켓그로스 (Wing)",
+    "쿠팡_롤라루":        "쿠팡 판매자 판매 · 로켓그로스 (Wing)",
     "자사몰_똑똑연구소":  "Cafe24 자사몰",
     "자사몰_롤라루":      "Cafe24 자사몰",
 }
@@ -418,7 +419,15 @@ def render_sales_overview(
             col_info, col_prod, col_action = st.columns([2, 2, 3])
 
             with col_info:
-                st.markdown(f"### {label}")
+                # 좁은 col_info (2/7 너비) 에서 '네이버 스마트스토어 (똑똑)' 등 긴 타이틀이
+                # 두 줄로 잘리는 문제 해결 — 폰트 축소 + 한 줄 강제 + 초과 시 ellipsis
+                st.markdown(
+                    f"<h3 style='margin:0 0 2px 0; font-size:1.15rem; "
+                    f"font-weight:700; color:#0f172a; "
+                    f"white-space:nowrap; overflow:hidden; "
+                    f"text-overflow:ellipsis;' title='{label}'>{label}</h3>",
+                    unsafe_allow_html=True,
+                )
                 if sublabel:
                     st.caption(sublabel)
 
@@ -500,6 +509,135 @@ def render_sales_overview(
                     rendered_any = True
                 _render_sheet_only_channel_card(sub_df, ch_name, sub, brand)
 
+    # ---------- 채널별 성과 비교 그래프 (매출 · 주문 · 고객) ----------
+    # 브랜드 탭에서만 (전체 탭은 스토어/브랜드 섞여 비교 의미 희박)
+    if brand and brand in ("똑똑연구소", "롤라루", "루티니스트"):
+        _render_channel_comparison_chart(
+            curr, brand, start, end, sheet_only_channels_by_brand.get(brand, []),
+        )
+
+
+def _render_channel_comparison_chart(
+    curr: pd.DataFrame,
+    brand: str,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    sheet_only: list[tuple[str, str]],
+) -> None:
+    """채널별 매출·주문·고객 비교 — grouped bar chart (3 subplot).
+
+    - orders.csv 기반 채널 (자사몰/네이버/쿠팡 판매자판매)
+    - 시트 기반 채널 (쿠팡 로켓배송/무신사/오프라인/이지웰/오늘의집)
+      → 매출만 (주문/고객 없음)
+    """
+    from plotly.subplots import make_subplots
+
+    # ---- orders.csv 기반 채널 집계 (store 단위 → 간결한 채널명으로 그룹) ----
+    channel_data: dict[str, dict] = {}
+
+    if not curr.empty:
+        for store in curr["store"].dropna().unique():
+            sdf = curr[curr["store"] == store]
+            label = store_display_name(store, brand_context=brand)
+            if label not in channel_data:
+                channel_data[label] = {"revenue": 0, "orders": 0,
+                                       "customers": set()}
+            channel_data[label]["revenue"] += int(sdf["revenue"].sum())
+            channel_data[label]["orders"] += len(sdf)
+            channel_data[label]["customers"].update(
+                sdf["customer_id"].dropna().unique()
+            )
+
+    # ---- 시트 기반 채널 매출 추가 (주문/고객 없음) ----
+    if sheet_only:
+        try:
+            sheet_df = _cached_sheet_sales()
+        except Exception:
+            sheet_df = pd.DataFrame()
+        if not sheet_df.empty:
+            for ch_name, _sub in sheet_only:
+                sub = sheet_df[
+                    (sheet_df["brand"] == brand)
+                    & (sheet_df["channel"] == ch_name)
+                    & (sheet_df["date"] >= start)
+                    & (sheet_df["date"] <= end)
+                ]
+                rev = int(sub["actual"].sum()) if not sub.empty else 0
+                if rev > 0:
+                    channel_data[ch_name] = {
+                        "revenue": rev, "orders": 0, "customers": set(),
+                        "sheet_only": True,
+                    }
+
+    if not channel_data:
+        return
+
+    # 정렬 — 매출순
+    sorted_channels = sorted(
+        channel_data.items(), key=lambda x: x[1]["revenue"], reverse=True,
+    )
+    labels = [c[0] for c in sorted_channels]
+    revenues = [c[1]["revenue"] for c in sorted_channels]
+    orders_cnt = [c[1]["orders"] for c in sorted_channels]
+    customers_cnt = [len(c[1]["customers"]) for c in sorted_channels]
+    is_sheet = [c[1].get("sheet_only", False) for c in sorted_channels]
+    # 시트 전용은 주문/고객 N/A 로 표시
+    colors = ["#94a3b8" if sh else "#2563eb" for sh in is_sheet]
+
+    st.divider()
+    st.markdown(f"##### 📊 {brand} 채널별 성과 비교 (매출 · 주문 · 고객)")
+    st.caption(
+        "시트 기반 채널(회색)은 API 미연동으로 매출만 집계되며 주문/고객 수치는 0 으로 표시."
+    )
+
+    fig = make_subplots(
+        rows=1, cols=3,
+        subplot_titles=("매출 (원)", "주문 (건)", "고객 (명)"),
+        horizontal_spacing=0.08,
+    )
+    fig.add_trace(
+        go.Bar(
+            x=labels, y=revenues, marker_color=colors, name="매출",
+            text=[f"{v:,}" for v in revenues], textposition="outside",
+            hovertemplate="<b>%{x}</b><br>매출 %{y:,}원<extra></extra>",
+        ),
+        row=1, col=1,
+    )
+    fig.add_trace(
+        go.Bar(
+            x=labels, y=orders_cnt,
+            marker_color=["#cbd5e1" if sh else "#16a34a" for sh in is_sheet],
+            name="주문",
+            text=[f"{v:,}" if v > 0 else "—" for v in orders_cnt],
+            textposition="outside",
+            hovertemplate="<b>%{x}</b><br>주문 %{y:,}건<extra></extra>",
+        ),
+        row=1, col=2,
+    )
+    fig.add_trace(
+        go.Bar(
+            x=labels, y=customers_cnt,
+            marker_color=["#cbd5e1" if sh else "#f59e0b" for sh in is_sheet],
+            name="고객",
+            text=[f"{v:,}" if v > 0 else "—" for v in customers_cnt],
+            textposition="outside",
+            hovertemplate="<b>%{x}</b><br>고객 %{y:,}명<extra></extra>",
+        ),
+        row=1, col=3,
+    )
+    fig.update_layout(
+        height=350,
+        margin=dict(l=10, r=10, t=50, b=40),
+        showlegend=False,
+        plot_bgcolor="white",
+    )
+    fig.update_xaxes(tickangle=-20, tickfont=dict(size=10))
+    fig.update_yaxes(gridcolor="#f1f5f9", tickformat=",")
+    st.plotly_chart(
+        fig, width="stretch",
+        key=f"channel_compare_{brand}",
+    )
+
 
 def _render_sheet_only_channel_card(
     sub_df: pd.DataFrame, channel: str, sub: str, brand: str,
@@ -513,7 +651,13 @@ def _render_sheet_only_channel_card(
     with st.container(border=True):
         col_info, col_chart, col_action = st.columns([2, 2, 3])
         with col_info:
-            st.markdown(f"### {channel}")
+            st.markdown(
+                f"<h3 style='margin:0 0 2px 0; font-size:1.15rem; "
+                f"font-weight:700; color:#0f172a; "
+                f"white-space:nowrap; overflow:hidden; "
+                f"text-overflow:ellipsis;' title='{channel}'>{channel}</h3>",
+                unsafe_allow_html=True,
+            )
             st.caption(sub)
             st.metric("이번 기간 매출", f"{total_actual:,}원")
             mc1, mc2 = st.columns(2)
