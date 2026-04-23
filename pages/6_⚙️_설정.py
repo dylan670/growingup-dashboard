@@ -200,6 +200,243 @@ if st.button("샘플 재생성"):
 
 st.divider()
 
+# ==========================================================
+# 🏷️ 제품명 정규화 규칙 편집 UI
+# ==========================================================
+st.subheader("🏷️ 제품명 정규화 규칙")
+st.caption(
+    "상품명이 길거나 채널별로 variant 가 많을 때 → 모델명으로 통일. "
+    "여기서 수정하면 전체 대시보드에 즉시 반영됩니다 (매출/제품/CRM 등)."
+)
+
+from pathlib import Path as _Path
+import pandas as _pd
+from utils.products import PRODUCT_NAME_RULES
+
+_RULES_OVERRIDE_FILE = _Path(__file__).parent.parent / "data" / "product_name_rules_override.csv"
+
+
+def _load_override_rules() -> _pd.DataFrame:
+    """사용자 추가 규칙 로드 (override CSV)."""
+    if not _RULES_OVERRIDE_FILE.exists():
+        return _pd.DataFrame(columns=["pattern", "canonical"])
+    try:
+        return _pd.read_csv(_RULES_OVERRIDE_FILE)
+    except Exception:
+        return _pd.DataFrame(columns=["pattern", "canonical"])
+
+
+def _save_override_rules(df: _pd.DataFrame) -> None:
+    _RULES_OVERRIDE_FILE.parent.mkdir(exist_ok=True)
+    df.to_csv(_RULES_OVERRIDE_FILE, index=False, encoding="utf-8-sig")
+
+
+with st.expander("📋 기본 규칙 (코드 내장 — utils/products.py)", expanded=False):
+    st.caption(
+        f"총 {len(PRODUCT_NAME_RULES)}개 규칙이 코드에 내장되어 있습니다. "
+        "아래 표로 확인하고, 필요하면 'Override 규칙' 에서 덮어쓸 수 있습니다."
+    )
+    builtin_df = _pd.DataFrame(
+        PRODUCT_NAME_RULES, columns=["원본 패턴 (substring)", "정규화 결과"]
+    )
+    st.dataframe(builtin_df, width="stretch", hide_index=True, height=300)
+
+
+st.markdown("##### ✏️ 내 추가 규칙 (Override)")
+st.caption(
+    "이 표에 규칙을 추가하면 기본 규칙 **앞에** 우선 적용됩니다. "
+    "pattern 이 상품명에 포함되면 canonical 로 치환. 저장 후 하드 리프레시."
+)
+
+override_df = _load_override_rules()
+edited = st.data_editor(
+    override_df if not override_df.empty else _pd.DataFrame(
+        {"pattern": [""], "canonical": [""]}
+    ),
+    num_rows="dynamic",
+    width="stretch",
+    key="product_rules_editor",
+    column_config={
+        "pattern": st.column_config.TextColumn(
+            "원본 패턴 (substring)",
+            help="상품명에 이 문자열이 포함되면 매칭",
+            width="large",
+            required=False,
+        ),
+        "canonical": st.column_config.TextColumn(
+            "정규화 결과",
+            help="대시보드에서 이 이름으로 표시됨",
+            width="medium",
+            required=False,
+        ),
+    },
+)
+
+rc1, rc2 = st.columns([1, 3])
+if rc1.button("💾 규칙 저장", type="primary", width="stretch"):
+    # 빈 행 제거
+    clean = edited.dropna(subset=["pattern", "canonical"]).copy()
+    clean = clean[
+        clean["pattern"].astype(str).str.strip() != ""
+    ].reset_index(drop=True)
+    _save_override_rules(clean)
+    st.cache_data.clear()   # 관련 캐시 전체 무효화
+    st.success(
+        f"✅ 규칙 {len(clean)}개 저장 완료. "
+        "대시보드 하드 리프레시(Ctrl+Shift+R) 후 반영 확인."
+    )
+    st.rerun()
+
+rc2.caption(
+    "💡 팁: 긴 제품명을 모델명으로 통일 (예: '롤라루 오프너 확장형 다크그린 20' → '오프너'). "
+    "덜 구체적인 규칙은 아래쪽에, 더 구체적인 규칙은 위쪽에 두세요 (위에서부터 매칭)."
+)
+
+# ==========================================================
+# 💰 월 매출 목표 편집 UI
+# ==========================================================
+st.divider()
+st.subheader("💰 월 매출 목표 편집")
+st.caption("브랜드 × 스토어별 월 매출 목표 — 시트에 덮어쓰는 수동 값.")
+
+from utils.products import BRAND_STORE_MONTHLY_TARGETS, BRAND_MONTHLY_TARGETS
+
+_TARGETS_OVERRIDE_FILE = _Path(__file__).parent.parent / "data" / "monthly_targets_override.csv"
+
+
+def _load_targets_override() -> dict:
+    if not _TARGETS_OVERRIDE_FILE.exists():
+        return {}
+    try:
+        df = _pd.read_csv(_TARGETS_OVERRIDE_FILE)
+        return {
+            (r["brand"], r["store"]): int(r["target"])
+            for _, r in df.iterrows()
+        }
+    except Exception:
+        return {}
+
+
+def _save_targets_override(rows: list[dict]) -> None:
+    _TARGETS_OVERRIDE_FILE.parent.mkdir(exist_ok=True)
+    _pd.DataFrame(rows).to_csv(
+        _TARGETS_OVERRIDE_FILE, index=False, encoding="utf-8-sig"
+    )
+
+
+override_targets = _load_targets_override()
+
+target_rows: list[dict] = []
+for brand, stores in BRAND_STORE_MONTHLY_TARGETS.items():
+    for store, default_target in stores.items():
+        current = override_targets.get((brand, store), default_target)
+        target_rows.append({
+            "브랜드": brand,
+            "스토어": store,
+            "목표 (원)": current,
+            "기본값": default_target,
+        })
+
+targets_df = _pd.DataFrame(target_rows)
+edited_targets = st.data_editor(
+    targets_df,
+    width="stretch",
+    hide_index=True,
+    disabled=["브랜드", "스토어", "기본값"],
+    column_config={
+        "목표 (원)": st.column_config.NumberColumn(
+            "월 목표 (원)", format="%d",
+            min_value=0, step=100000,
+        ),
+        "기본값": st.column_config.NumberColumn(
+            "기본값 (원)", format="%d",
+            help="코드 내장 기본값 (참고용)",
+        ),
+    },
+    key="targets_editor",
+)
+
+tc1, tc2 = st.columns([1, 3])
+if tc1.button("💾 목표 저장", type="primary", width="stretch",
+              key="save_targets"):
+    rows_to_save = [
+        {
+            "brand": r["브랜드"],
+            "store": r["스토어"],
+            "target": int(r["목표 (원)"]),
+        }
+        for _, r in edited_targets.iterrows()
+        if int(r["목표 (원)"]) != int(r["기본값"])
+    ]
+    _save_targets_override(rows_to_save)
+    st.cache_data.clear()
+    st.success(f"✅ 변경된 목표 {len(rows_to_save)}개 저장.")
+    st.rerun()
+
+tc2.caption(
+    "💡 기본값 컬럼은 utils/products.py 내장값입니다. "
+    "저장하면 이 값들이 우선 적용됩니다."
+)
+
+# ==========================================================
+# 🚫 제품 차단 키워드 편집
+# ==========================================================
+st.divider()
+st.subheader("🚫 차단 제품 키워드 (타 브랜드 제외)")
+st.caption(
+    "쿠팡 CSV 업로드 시 이 키워드가 포함된 상품은 자동 제외됩니다. "
+    "현재 '오즈키즈' 등이 코드에 설정되어 있습니다."
+)
+
+from utils.products import PRODUCT_BLOCKLIST_KEYWORDS
+
+_BLOCKLIST_OVERRIDE_FILE = _Path(__file__).parent.parent / "data" / "product_blocklist_override.csv"
+
+
+def _load_blocklist_override() -> list[str]:
+    if not _BLOCKLIST_OVERRIDE_FILE.exists():
+        return []
+    try:
+        df = _pd.read_csv(_BLOCKLIST_OVERRIDE_FILE)
+        return df["keyword"].dropna().astype(str).tolist()
+    except Exception:
+        return []
+
+
+def _save_blocklist_override(keywords: list[str]) -> None:
+    _BLOCKLIST_OVERRIDE_FILE.parent.mkdir(exist_ok=True)
+    _pd.DataFrame({"keyword": keywords}).to_csv(
+        _BLOCKLIST_OVERRIDE_FILE, index=False, encoding="utf-8-sig"
+    )
+
+
+current_blocklist = list(set(PRODUCT_BLOCKLIST_KEYWORDS + _load_blocklist_override()))
+
+blocklist_text = st.text_area(
+    "차단 키워드 (줄 단위 또는 쉼표 구분)",
+    value="\n".join(current_blocklist),
+    height=80,
+    help="각 줄 또는 쉼표로 구분된 키워드 중 하나라도 상품명에 포함되면 차단",
+)
+
+bc1, bc2 = st.columns([1, 3])
+if bc1.button("💾 차단 목록 저장", type="primary", width="stretch",
+              key="save_blocklist"):
+    # 줄/쉼표로 split
+    import re as _re
+    parts = _re.split(r"[\n,]+", blocklist_text)
+    clean = sorted({p.strip() for p in parts if p.strip()})
+    _save_blocklist_override(clean)
+    st.cache_data.clear()
+    st.success(f"✅ 차단 키워드 {len(clean)}개 저장.")
+    st.rerun()
+
+bc2.caption(
+    "💡 '오즈키즈' 등 타 브랜드 제품이 쿠팡 발주리스트에 섞여있을 때 사용."
+)
+
+st.divider()
+
 # ---------- 로드맵 ----------
 st.subheader("API 자동 연동 로드맵")
 st.markdown("""

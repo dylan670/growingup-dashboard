@@ -33,11 +33,15 @@ PRODUCT_BLOCKLIST_KEYWORDS: list[str] = [
 
 
 def is_blocked_product(name: str | None) -> bool:
-    """상품명이 blocklist 에 해당하면 True — 데이터 병합 시 스킵 용."""
+    """상품명이 blocklist 에 해당하면 True — 데이터 병합 시 스킵 용.
+
+    기본 PRODUCT_BLOCKLIST_KEYWORDS + 설정 페이지 Override 통합.
+    """
     n = (name or "").strip()
     if not n:
         return False
-    return any(kw in n for kw in PRODUCT_BLOCKLIST_KEYWORDS)
+    all_keywords = set(PRODUCT_BLOCKLIST_KEYWORDS) | set(_load_blocklist_override())
+    return any(kw in n for kw in all_keywords)
 
 
 # ==========================================================
@@ -93,14 +97,66 @@ PRODUCT_NAME_RULES: list[tuple[str, str]] = [
 ]
 
 
+# ==========================================================
+# Override 규칙 로드 — 설정 페이지에서 편집 가능
+# (data/product_name_rules_override.csv 가 있으면 PRODUCT_NAME_RULES 앞에 삽입)
+# ==========================================================
+_OVERRIDE_CACHE: dict = {"rules": None, "mtime": 0}
+
+
+def _load_override_rules() -> list[tuple[str, str]]:
+    """사용자가 설정 페이지에서 저장한 규칙 로드 (CSV 기반).
+
+    mtime 기반 간이 캐시 — 파일 수정 시 자동 재로드.
+    """
+    from pathlib import Path as _Path
+    p = _Path(__file__).parent.parent / "data" / "product_name_rules_override.csv"
+    if not p.exists():
+        return []
+    try:
+        mtime = p.stat().st_mtime
+        if _OVERRIDE_CACHE["mtime"] == mtime and _OVERRIDE_CACHE["rules"] is not None:
+            return _OVERRIDE_CACHE["rules"]
+        df = pd.read_csv(p)
+        rules = []
+        for _, r in df.iterrows():
+            pat = str(r.get("pattern", "")).strip()
+            can = str(r.get("canonical", "")).strip()
+            if pat and can:
+                rules.append((pat, can))
+        _OVERRIDE_CACHE["rules"] = rules
+        _OVERRIDE_CACHE["mtime"] = mtime
+        return rules
+    except Exception:
+        return []
+
+
+def _load_blocklist_override() -> list[str]:
+    """설정 페이지에서 저장한 차단 키워드 로드."""
+    from pathlib import Path as _Path
+    p = _Path(__file__).parent.parent / "data" / "product_blocklist_override.csv"
+    if not p.exists():
+        return []
+    try:
+        df = pd.read_csv(p)
+        return [str(k).strip() for k in df["keyword"].dropna().tolist() if str(k).strip()]
+    except Exception:
+        return []
+
+
 def normalize_product_name(name: str | None) -> str:
-    """상품명 정규화 — PRODUCT_NAME_RULES 의 첫 매칭 패턴으로 치환.
+    """상품명 정규화 — Override 규칙 → 기본 규칙 순서로 매칭.
 
     매칭되지 않으면 원본 반환 (빈 문자열/None 은 그대로).
     """
     if not name:
         return name or ""
     s = str(name)
+    # 1) 사용자 Override 규칙 우선 (설정 페이지에서 편집)
+    for pattern, canonical in _load_override_rules():
+        if pattern in s:
+            return canonical
+    # 2) 코드 내장 기본 규칙
     for pattern, canonical in PRODUCT_NAME_RULES:
         if pattern in s:
             return canonical

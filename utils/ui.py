@@ -452,7 +452,7 @@ def render_sidebar_brand() -> None:
 <div style="width:44px; height:44px; flex-shrink:0; border-radius:12px; background: linear-gradient(135deg, {BRAND_PRIMARY} 0%, #7c3aed 100%); display:flex; align-items:center; justify-content:center; color:white; font-size:1.3rem; font-weight:800; box-shadow: 0 2px 6px rgba(37,99,235,0.25);">G</div>
 <div style="min-width:0;">
 <div style="font-weight:700; font-size:0.95rem; color:{TEXT_MAIN}; line-height:1.2;">그로잉업팀 대시보드</div>
-<div style="font-size:0.7rem; color:{TEXT_MUTED}; margin-top:3px;">OZKIZ · Marketing Analytics</div>
+<div style="font-size:0.7rem; color:{TEXT_MUTED}; margin-top:3px;">OPENHAN · Marketing Analytics</div>
 </div>
 </div>
 """
@@ -1117,6 +1117,49 @@ def render_period_picker(
 # ==========================================================
 # 비교 모드 토글 — 전주/전월/전년 델타 계산 기준
 # ==========================================================
+# ==========================================================
+# 엑셀/CSV 내보내기 버튼 — 전 페이지 통일 UI
+# ==========================================================
+def render_download_button(
+    df,
+    filename_base: str,
+    label: str = "📥 CSV 다운로드",
+    key: str = "",
+    include_index: bool = False,
+) -> None:
+    """DataFrame → CSV 다운로드 버튼 (UTF-8-sig, 한글 엑셀 호환).
+
+    Args:
+        df: pd.DataFrame
+        filename_base: 파일명 베이스 (날짜 자동 추가)
+        label: 버튼 레이블
+        key: streamlit key (중복 방지)
+        include_index: index 포함 여부
+    """
+    from datetime import datetime as _dt
+    import pandas as _pd
+
+    if df is None or (hasattr(df, "empty") and df.empty):
+        return
+
+    ts = _dt.now().strftime("%Y%m%d_%H%M")
+    filename = f"{filename_base}_{ts}.csv"
+    try:
+        csv_data = df.to_csv(index=include_index, encoding="utf-8-sig").encode("utf-8-sig")
+    except Exception:
+        # Fallback — string form
+        csv_data = df.to_csv(index=include_index).encode("utf-8-sig")
+
+    st.download_button(
+        label=label,
+        data=csv_data,
+        file_name=filename,
+        mime="text/csv",
+        key=key or f"dl_{filename_base}",
+        help=f"선택 기간 데이터를 CSV 파일로 저장 (엑셀 호환 UTF-8 BOM)",
+    )
+
+
 def render_comparison_toggle(
     key_prefix: str = "", current_end=None,
 ) -> dict:

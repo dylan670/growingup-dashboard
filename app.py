@@ -314,7 +314,74 @@ def _render_today_highlights() -> None:
     except Exception:
         pass
 
-    # 3) 데이터 신선도 — 마지막 sync 체크
+    # 3) 일일 매출 급락 탐지 — 최근 7일 평균 대비 어제 매출
+    try:
+        yesterday = pd.Timestamp(today) - pd.Timedelta(days=1)
+        last_7 = pd.Timestamp(today) - pd.Timedelta(days=7)
+        prev_7 = pd.Timestamp(today) - pd.Timedelta(days=14)
+        yesterday_sheet = sheet_df[sheet_df["date"] == yesterday]
+        prev_avg_sheet = sheet_df[
+            (sheet_df["date"] >= prev_7) & (sheet_df["date"] < last_7)
+        ]
+        yesterday_rev = int(yesterday_sheet["actual"].sum()) if not yesterday_sheet.empty else 0
+        prev_daily_avg = (
+            int(prev_avg_sheet.groupby("date")["actual"].sum().mean())
+            if not prev_avg_sheet.empty else 0
+        )
+        if prev_daily_avg > 0 and yesterday_rev > 0:
+            drop_pct = (prev_daily_avg - yesterday_rev) / prev_daily_avg * 100
+            if drop_pct >= 30 and len(highlights) < 3:
+                highlights.append(render_insight_card(
+                    severity="critical",
+                    title=f"어제 매출 {drop_pct:.0f}% 급락",
+                    detail=(
+                        f"어제 <b>{yesterday_rev:,}원</b> vs 직전 7일 평균 "
+                        f"{prev_daily_avg:,}원. 광고 오류/재고 문제/경쟁사 "
+                        f"프로모션 긴급 점검 필요."
+                    ),
+                    metric_value=f"-{drop_pct:.0f}%",
+                    metric_label="전주 평균 대비",
+                    action_hint="💰 매출 분석 → 일별 매출 확인",
+                ))
+    except Exception:
+        pass
+
+    # 4) 월 목표 소진 속도 체크 — 페이스 예측
+    try:
+        month_start = pd.Timestamp(today.replace(day=1))
+        month_end_full = pd.Timestamp(
+            today.replace(day=1) + pd.offsets.MonthEnd(0)
+        )
+        days_passed = (pd.Timestamp(today) - month_start).days + 1
+        days_total = (month_end_full - month_start).days + 1
+        month_df = sheet_df[
+            (sheet_df["date"] >= month_start) & (sheet_df["date"] <= pd.Timestamp(today))
+        ]
+        actual = int(month_df["actual"].sum())
+        target = int(month_df["target"].sum())
+        if target > 0 and days_passed > 3:
+            expected_pace = target * days_passed / days_total
+            if actual < expected_pace * 0.7 and len(highlights) < 3:
+                # 페이스 부족
+                projected = actual / days_passed * days_total if days_passed else 0
+                projected_pct = projected / target * 100 if target else 0
+                highlights.append(render_insight_card(
+                    severity="warning",
+                    title=f"월 목표 페이스 부족",
+                    detail=(
+                        f"{days_passed}/{days_total}일 경과 · 현재 "
+                        f"<b>{actual/expected_pace*100:.0f}%</b> 페이스. "
+                        f"이대로면 월말 <b>{projected_pct:.0f}%</b> 달성 예상 "
+                        f"(목표 {int(projected):,}원)."
+                    ),
+                    metric_value=f"{projected_pct:.0f}%",
+                    metric_label="월말 예상",
+                    action_hint="💰 매출 분석 → 일별 달성 확인",
+                ))
+    except Exception:
+        pass
+
+    # 5) 데이터 신선도 — 마지막 sync 체크
     try:
         from utils.precomputed import get_last_updated
         last = get_last_updated()
@@ -335,7 +402,7 @@ def _render_today_highlights() -> None:
     except Exception:
         pass
 
-    # 4) Fallback — 데이터 없을 때 전반 요약 제시
+    # 6) Fallback — 데이터 없을 때 전반 요약 제시
     if not highlights:
         highlights.append(render_insight_card(
             severity="info",

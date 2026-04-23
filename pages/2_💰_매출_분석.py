@@ -19,6 +19,7 @@ from utils.ui import (
     format_won_compact, kpi_card,
     render_period_picker, render_status_pill,
     render_comparison_toggle, compute_comparison_range,
+    render_download_button,
     METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN, TEXT_MUTED,
 )
 from api.google_sheets import load_sheet_daily_sales, get_brand_channels
@@ -396,6 +397,38 @@ def render_sales_overview(
             (inbound_all["date"] >= start) & (inbound_all["date"] <= end)
         ] if not inbound_all.empty else pd.DataFrame()
     )
+
+    # ---------- 📥 스토어별 집계 CSV 다운로드 ----------
+    _store_summary_rows = []
+    for _st_name in display_stores:
+        _sc = curr[curr["store"] == _st_name]
+        if _sc.empty:
+            continue
+        _sp = prev[prev["store"] == _st_name]
+        _rev = int(_sc["revenue"].sum())
+        _ord = len(_sc)
+        _cust = _sc["customer_id"].nunique()
+        _aov = int(_rev / _ord) if _ord else 0
+        _prev_ord = len(_sp)
+        _store_summary_rows.append({
+            "스토어": store_display_name(_st_name, brand_context=brand),
+            "매출": _rev,
+            "주문": _ord,
+            "고객": _cust,
+            "AOV": _aov,
+            "직전기간주문": _prev_ord,
+        })
+    if _store_summary_rows:
+        import pandas as _pd_dl
+        _dl_df = _pd_dl.DataFrame(_store_summary_rows)
+        dl_col, _ = st.columns([1, 4])
+        with dl_col:
+            render_download_button(
+                _dl_df,
+                filename_base=f"매출_스토어집계_{brand_label}_{start.date()}_{end.date()}",
+                label="📥 스토어 집계 CSV",
+                key=f"dl_store_sum_{brand_label}",
+            )
 
     for store in display_stores:
         store_curr = curr[curr["store"] == store]
