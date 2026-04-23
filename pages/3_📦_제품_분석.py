@@ -35,13 +35,19 @@ setup_page(
     header_subtitle="제품 브랜드 단위 분석",
 )
 
+# 캐시 버전 — 제품명 정규화 규칙 바뀌면 bump 해서 기존 캐시 강제 무효화
+_ORDERS_CACHE_VER = "v3-normalize-name"
+
+
 @st.cache_data(ttl=300, show_spinner="주문 + 쿠팡 벤더 발주 데이터 로드 중...")
-def _cached_orders_classified() -> pd.DataFrame:
+def _cached_orders_classified(
+    _cache_ver: str = _ORDERS_CACHE_VER,
+) -> pd.DataFrame:
     """주문 데이터 + 쿠팡 벤더 발주 병합 + 브랜드 분류 (5분 캐시).
 
     - orders.csv: 실 소비자 판매 (매출 분석/CRM 공유)
     - coupang_inbound.csv: 쿠팡 벤더 발주 (제품 분석 전용)
-    제품 분석에서는 두 소스를 concat 해서 집계.
+    - 제품명 정규화 자동 적용 (utils/products.py PRODUCT_NAME_RULES)
     """
     orders_df = load_orders()
     inbound_df = load_coupang_inbound()
