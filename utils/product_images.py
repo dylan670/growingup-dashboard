@@ -13,6 +13,7 @@ import pandas as pd
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 IMAGES_CSV = DATA_DIR / "product_images.csv"
+MANUAL_IMAGES_CSV = DATA_DIR / "product_images_manual.csv"
 
 
 def extract_image_rows(products: list[dict], store: str) -> list[dict]:
@@ -170,10 +171,60 @@ def _normalize(s: str) -> str:
     return re.sub(r"[\s\-_·,/()\[\]]+", "", (s or "").lower())
 
 
+def load_manual_image_overrides() -> pd.DataFrame:
+    """수동 이미지 매핑 CSV 로드 — 자사몰/Cafe24 처럼 API 수집 불가 제품용.
+
+    CSV 컬럼: store, name_keyword, image_url
+    name_keyword 가 주문 product 이름에 포함되면 image_url 사용 (substring match).
+    """
+    if not MANUAL_IMAGES_CSV.exists():
+        return pd.DataFrame(columns=["store", "name_keyword", "image_url"])
+    try:
+        return pd.read_csv(MANUAL_IMAGES_CSV)
+    except Exception:
+        return pd.DataFrame(columns=["store", "name_keyword", "image_url"])
+
+
+# SKU 구별 키워드 — 강/약 2단계
+# 강: 공통되면 큰 보너스, 주문에만 있고 캐시에 없으면 큰 감점
+# 약: 공통되면 작은 보너스, 강한 공통 매치가 없을 때만 감점 적용
+_STRONG_SKU_TOKENS = [
+    # 똑똑연구소 SKU 핵심 식별자 ("도시락김" 대신 "도시락" 사용 — 변형 흡수)
+    "모양김", "미니", "도시락",
+    # 롤라루 SKU 핵심 식별자 (모델명)
+    "인딥", "플렉스", "이지프레스", "큐보이드", "스파클링",
+    "오프너", "스마트", "트래블",
+]
+_WEAK_SKU_TOKENS = [
+    "세트", "저염", "30g", "20g", "4봉", "1봉", "봉",
+    "20인치", "24인치", "26인치", "28인치", "32인치", "36인치",
+    "기내용", "수화물", "확장형", "백팩",
+]
+
+
 def find_image(order_product_name: str,
                cache_df: pd.DataFrame,
-               min_ratio: float = 0.4) -> str | None:
-    """주문 product 이름 ↔ 이미지 캐시에서 최적 매칭 이미지 URL 찾기."""
+               min_ratio: float = 0.4,
+               store_hint: str | None = None) -> str | None:
+    """주문 product 이름 ↔ 이미지 캐시에서 최적 매칭 이미지 URL 찾기.
+
+    우선순위:
+      1. 수동 매핑 CSV (product_images_manual.csv) — store + keyword 일치
+      2. 캐시 fuzzy match (SequenceMatcher + 구별 키워드 보정)
+    """
+    # ---- 1. 수동 매핑 우선 ----
+    manual = load_manual_image_overrides()
+    if not manual.empty and order_product_name:
+        candidates = manual
+        if store_hint:
+            candidates = candidates[candidates["store"] == store_hint]
+        for _, mrow in candidates.iterrows():
+            kw = str(mrow.get("name_keyword", "")).strip()
+            url = str(mrow.get("image_url", "")).strip()
+            if kw and url and kw in order_product_name:
+                return url
+
+    # ---- 2. fuzzy 매칭 ----
     if cache_df.empty or not order_product_name:
         return None
 
@@ -184,9 +235,13 @@ def find_image(order_product_name: str,
     best_ratio = 0.0
     best_url = None
 
-    # 핵심 키워드가 들어있으면 우선 순위 높임 (김똑똑 / 떡뻥 / 롤라루 등)
+    # 핵심 브랜드 키워드 보너스
     KEYWORDS = ["김똑똑", "똑똑떡뻥", "떡뻥", "롤라루", "캐리어", "백팩"]
     target_keywords = {k for k in KEYWORDS if k in order_product_name}
+
+    # SKU 구별 키워드 — 주문 상품에 포함된 것
+    target_strong = {k for k in _STRONG_SKU_TOKENS if k in order_product_name}
+    target_weak = {k for k in _WEAK_SKU_TOKENS if k in order_product_name}
 
     for _, row in cache_df.iterrows():
         cache_name = str(row.get("name", ""))
@@ -195,11 +250,30 @@ def find_image(order_product_name: str,
 
         ratio = _similarity(_normalize(cache_name), normalized_target)
 
-        # 공통 키워드가 있으면 +0.15 보너스
+        # 공통 브랜드 키워드 보너스 +0.15
         if target_keywords:
             shared = target_keywords & {k for k in KEYWORDS if k in cache_name}
             if shared:
                 ratio += 0.15
+
+        # 강한 SKU 키워드 — 공통되면 큰 보너스, 차이나면 양방향 감점
+        cache_strong = {k for k in _STRONG_SKU_TOKENS if k in cache_name}
+        shared_strong = target_strong & cache_strong
+        missing_strong = target_strong - cache_strong       # 주문엔 있는데 캐시엔 없음
+        extra_strong = cache_strong - target_strong          # 캐시엔 있는데 주문엔 없음
+        if shared_strong:
+            ratio += 0.30 * len(shared_strong)
+        if missing_strong:
+            ratio -= 0.25 * len(missing_strong)
+        if extra_strong:
+            ratio -= 0.15 * len(extra_strong)    # 캐시 SKU 가 더 구체적 → false positive
+
+        # 약한 SKU 키워드 — 강한 공통 매치 없을 때만 경미한 감점
+        if not shared_strong:
+            cache_weak = {k for k in _WEAK_SKU_TOKENS if k in cache_name}
+            missing_weak = target_weak - cache_weak
+            if missing_weak:
+                ratio -= 0.05 * len(missing_weak)
 
         if ratio > best_ratio:
             best_ratio = ratio
@@ -265,5 +339,6 @@ def build_store_scoped_lookup(
         for p in products:
             lookup[(store, p)] = find_image(
                 str(p), store_cache, min_ratio=min_ratio,
+                store_hint=store,
             )
     return lookup

@@ -1,0 +1,16 @@
+store,name_keyword,image_url
+# 자사몰 (Cafe24) 제품 수동 이미지 매핑
+# - Cafe24 OAuth 토큰 만료 시 사용 (fuzzy 매칭이 부정확할 때)
+# - name_keyword 가 주문 product 이름에 포함되면 해당 image_url 사용
+# - 위에서부터 우선순위 (긴 키워드 먼저 넣어야 덜 구체적인 항목보다 먼저 매칭됨)
+#
+# 사용법:
+#   1. Cafe24 자사몰 상품 페이지 접속 → 대표 이미지 우클릭 → 이미지 주소 복사
+#   2. 아래에 (store, name_keyword, image_url) 추가
+#   3. 저장하면 대시보드에서 즉시 반영 (캐시 5분 TTL)
+#
+# 샘플 (실제 URL 은 사용자가 채워야 함):
+# 자사몰_똑똑연구소,모양김 세트,https://toktoklab1.cafe24.com/path/to/모양김-세트.jpg
+# 자사몰_똑똑연구소,미니 도시락김,https://toktoklab1.cafe24.com/path/to/도시락김.jpg
+# 자사몰_똑똑연구소,떡뻥 4봉,https://toktoklab1.cafe24.com/path/to/떡뻥-4봉.jpg
+# 자사몰_똑똑연구소,유기농 쌀과자 똑똑떡뻥,https://toktoklab1.cafe24.com/path/to/떡뻥.jpg

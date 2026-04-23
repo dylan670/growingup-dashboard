@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
+from plotly.subplots import make_subplots
 
 from api.naver_searchad import load_client_from_env
 from utils.data import load_orders
@@ -110,6 +112,107 @@ else:
 # 이미지 캐시
 # ==========================================================
 image_cache = load_image_cache()
+
+
+# ==========================================================
+# 제품별 일별 판매 추이 차트 (수량 막대 + 매출 선)
+# ==========================================================
+def _render_daily_product_chart(
+    product_name: str,
+    o_filt: pd.DataFrame,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    key: str,
+) -> None:
+    """선택 제품의 일별 판매량·매출 추이.
+
+    Args:
+        product_name: 제품명 (정확 일치)
+        o_filt: 기간 필터된 주문 DF (date, product, quantity, revenue, channel)
+        start, end: 기간 (x축 범위 고정)
+        key: plotly_chart key
+    """
+    prod_df = o_filt[o_filt["product"] == product_name].copy()
+    if prod_df.empty:
+        st.caption(":grey[선택 기간 내 판매 없음]")
+        return
+
+    prod_df["date"] = pd.to_datetime(prod_df["date"])
+    daily = (
+        prod_df.groupby(prod_df["date"].dt.date)
+        .agg(quantity=("quantity", "sum"),
+             revenue=("revenue", "sum"),
+             orders=("order_id", "count"))
+        .reset_index()
+        .rename(columns={"date": "date"})
+    )
+    daily["date"] = pd.to_datetime(daily["date"])
+
+    # 기간 전체 범위로 reindex (판매 없는 날은 0)
+    full_range = pd.date_range(start=start, end=end, freq="D")
+    daily = daily.set_index("date").reindex(full_range, fill_value=0).reset_index()
+    daily = daily.rename(columns={"index": "date"})
+
+    # 요약 지표
+    total_qty = int(daily["quantity"].sum())
+    total_rev = int(daily["revenue"].sum())
+    total_orders = int(daily["orders"].sum())
+    sold_days = int((daily["quantity"] > 0).sum())
+    avg_daily_qty = total_qty / len(daily) if len(daily) else 0
+
+    sc1, sc2, sc3, sc4 = st.columns(4)
+    sc1.metric("총 판매량", f"{total_qty:,}개")
+    sc2.metric("총 매출", f"{total_rev:,}원")
+    sc3.metric("총 주문", f"{total_orders:,}건")
+    sc4.metric(
+        "판매 발생일",
+        f"{sold_days}/{len(daily)}일",
+        delta=f"일평균 {avg_daily_qty:.1f}개",
+    )
+
+    # 이중축 차트: 수량(막대, 파랑) + 매출(선, 빨강)
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.add_trace(
+        go.Bar(
+            x=daily["date"], y=daily["quantity"],
+            name="판매 수량",
+            marker_color="#3b82f6",
+            opacity=0.75,
+            hovertemplate="%{x|%m/%d}<br>%{y:,}개<extra></extra>",
+        ),
+        secondary_y=False,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=daily["date"], y=daily["revenue"],
+            name="매출",
+            mode="lines+markers",
+            line=dict(color="#dc2626", width=2.5),
+            marker=dict(size=6, color="#dc2626"),
+            hovertemplate="%{x|%m/%d}<br>%{y:,.0f}원<extra></extra>",
+        ),
+        secondary_y=True,
+    )
+    fig.update_layout(
+        height=320,
+        margin=dict(l=10, r=10, t=20, b=10),
+        legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center"),
+        hovermode="x unified",
+        plot_bgcolor="white",
+        xaxis=dict(showgrid=False, tickformat="%m/%d",
+                   range=[start, end]),
+    )
+    fig.update_yaxes(
+        title_text="판매 수량 (개)", secondary_y=False,
+        showgrid=True, gridcolor="#f1f5f9",
+        rangemode="tozero",
+    )
+    fig.update_yaxes(
+        title_text="매출 (원)", secondary_y=True,
+        showgrid=False, tickformat=",",
+        rangemode="tozero",
+    )
+    st.plotly_chart(fig, width="stretch", key=key)
 
 
 # ==========================================================
@@ -290,6 +393,36 @@ def render_product_view(
         "text/csv", key=f"prod_dl_{brand_label}",
     )
 
+    # ---------- 제품별 일별 판매 추이 (선택형) ----------
+    st.markdown("##### 📈 제품별 일별 판매 추이")
+    st.caption(
+        f"제품을 선택하면 선택 기간({days}일) 내 일별 판매량·매출 추이를 "
+        "확인할 수 있습니다. (TOP 6 아래 카드에도 expander 로 바로 확인 가능)"
+    )
+    # 매출순 정렬된 제품 목록 — 전체 상세 테이블 기준
+    prod_list_for_select = (
+        prod_ch_agg.groupby("product")["revenue"].sum()
+        .sort_values(ascending=False).index.tolist()
+    )
+    if prod_list_for_select:
+        # 기본 선택 = TOP 1
+        selected_prod = st.selectbox(
+            "제품 선택",
+            options=prod_list_for_select,
+            index=0,
+            format_func=lambda p: (
+                p[:60] + ("…" if len(p) > 60 else "")
+                + f"  (매출 {int(prod_ch_agg[prod_ch_agg['product']==p]['revenue'].sum()):,}원)"
+            ),
+            key=f"prod_select_{brand_label}",
+        )
+        if selected_prod:
+            _render_daily_product_chart(
+                selected_prod, o_filt,
+                start_date, pd.Timestamp(end_date),
+                key=f"daily_chart_select_{brand_label}",
+            )
+
     # ---------- 상위 제품 TOP 6 카드 ----------
     prod_agg = prod_ch_agg.groupby(
         ["umbrella", "brand", "product"], dropna=False,
@@ -380,6 +513,15 @@ def render_product_view(
                         lines.append(f"· {dr['판매 채널']} {ch_rev:,}원 ({pct:.0f}%)")
                 if lines:
                     st.caption("\n".join(lines))
+
+                # 📈 일별 판매 추이 (expander — 이미지 클릭 대신)
+                with st.expander(f"📈 일별 판매 추이 ({days}일) 보기",
+                                 expanded=False):
+                    _render_daily_product_chart(
+                        prod_name, o_filt,
+                        start_date, pd.Timestamp(end_date),
+                        key=f"daily_chart_top6_{brand_label}_{idx}",
+                    )
 
     # ---------- 제품 × 채널 히트맵 ----------
     if brand is None and len(o_filt) > 0:
