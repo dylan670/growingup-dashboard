@@ -193,7 +193,8 @@ def render_product_view(
         roas = revenue / ad_spend * 100 if ad_spend else 0
 
         with st.container(border=True):
-            cc = st.columns([2, 1, 1, 1, 1, 2])
+            # 상단: 브랜드 정보 + 지표 4개 (숫자 컬럼 너비 확대해 짤림 방지)
+            cc = st.columns([2, 2, 1, 2, 1])
             cc[0].markdown(f"### {umbrella}")
             cc[0].caption(f"{products_n}종 상품 · {customers}명 고객")
             cc[1].metric("매출", f"{revenue:,}원")
@@ -205,14 +206,15 @@ def render_product_view(
                 help="네이버 광고비 대비 매출. 쿠팡/메타 광고비 별도.",
             )
 
+            # 하단: 채널별 매출 비중 (전폭 사용, 가로 나열)
             ch_rev = o_filt[o_filt["umbrella"] == umbrella].groupby("channel")["revenue"].sum()
             if len(ch_rev) > 0:
                 total = ch_rev.sum()
-                with cc[5]:
-                    st.caption("**채널별 매출 비중**")
-                    for ch, r in ch_rev.sort_values(ascending=False).items():
-                        pct = r / total * 100 if total else 0
-                        st.caption(f"{ch} · {int(r):,}원 ({pct:.0f}%)")
+                parts = []
+                for ch, r in ch_rev.sort_values(ascending=False).items():
+                    pct = r / total * 100 if total else 0
+                    parts.append(f"**{ch}** {int(r):,}원 ({pct:.0f}%)")
+                st.caption("📊 채널별 매출 비중 · " + "   |   ".join(parts))
 
     # ---------- 제품 × 판매채널 상세 ----------
     st.divider()

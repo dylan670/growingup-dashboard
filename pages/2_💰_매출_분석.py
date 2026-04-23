@@ -197,8 +197,24 @@ def _render_daily_achievement(
         unsafe_allow_html=True,
     )
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("기간 목표", f"{sum_target:,}원")
-    m2.metric("기간 달성", f"{sum_actual:,}원")
+    # kpi_card: compact 메인 + 전체 숫자 sub — 짤림 없이 가독성 확보
+    m1.markdown(
+        kpi_card(
+            "기간 목표",
+            format_won_compact(sum_target),
+            sub=f"{sum_target:,}원",
+        ),
+        unsafe_allow_html=True,
+    )
+    m2.markdown(
+        kpi_card(
+            "기간 달성",
+            format_won_compact(sum_actual),
+            sub=f"{sum_actual:,}원",
+            value_color="#2563eb",
+        ),
+        unsafe_allow_html=True,
+    )
     m3.metric(
         "기간 달성률",
         f"{sum_pct:.0f}%",
@@ -405,17 +421,18 @@ def render_sales_overview(
                 if sublabel:
                     st.caption(sublabel)
 
-                m1, m2 = st.columns(2)
-                m1.metric(
+                # 매출·AOV 는 자릿수 길어서 전폭 사용 (col_info = 2/7 너비 좁음)
+                st.metric(
                     "매출", f"{revenue:,}원",
                     delta=(
                         f"{((orders_n - prev_orders_n) / prev_orders_n * 100):+.0f}% 주문"
                         if prev_orders_n else None
                     ),
                 )
-                m2.metric("주문", f"{orders_n:,}건")
-                m1.metric("고객", f"{customers_n:,}명")
-                m2.metric("AOV", f"{aov:,}원")
+                mc1, mc2 = st.columns(2)
+                mc1.metric("주문", f"{orders_n:,}건")
+                mc2.metric("고객", f"{customers_n:,}명")
+                st.metric("AOV", f"{aov:,}원")
                 st.caption(f"재구매율 (전 기간) **{rep_rate:.1f}%**")
 
             with col_prod:
