@@ -22,6 +22,13 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).parent.parent
 load_dotenv(ROOT / ".env", override=False)
 
+# Streamlit Cloud 대응 — st.secrets → os.environ 즉시 승격
+try:
+    from utils.env_bootstrap import bootstrap_env
+    bootstrap_env()
+except Exception:
+    pass
+
 
 # ==========================================================
 # 브랜드별 채널 컬럼 매핑

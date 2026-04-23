@@ -99,8 +99,20 @@ def _pct_color(pct: float) -> str:
 
 @st.cache_data(ttl=300, show_spinner="구글 시트에서 매출 데이터 가져오는 중…")
 def _cached_sheet_sales() -> pd.DataFrame:
-    """시트 데이터 5분 캐싱."""
-    return load_sheet_daily_sales()
+    """시트 데이터 5분 캐싱. 실패 시 올바른 dtype 의 빈 DF 반환."""
+    try:
+        df = load_sheet_daily_sales()
+        if not df.empty and "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"])
+        return df
+    except Exception:
+        return pd.DataFrame({
+            "date": pd.Series([], dtype="datetime64[ns]"),
+            "brand": pd.Series([], dtype="object"),
+            "channel": pd.Series([], dtype="object"),
+            "target": pd.Series([], dtype="int64"),
+            "actual": pd.Series([], dtype="int64"),
+        })
 
 
 def _render_daily_achievement(

@@ -71,10 +71,21 @@ reviews = load_reviews()
 @st.cache_data(ttl=300, show_spinner="구글 시트 매출 로드 중…")
 def _cached_sheet() -> pd.DataFrame:
     try:
-        return load_sheet_daily_sales()
+        df = load_sheet_daily_sales()
+        # date 컬럼 datetime 보장
+        if not df.empty and "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"])
+        return df
     except Exception as e:
         st.warning(f"시트 로드 실패: {e}")
-        return pd.DataFrame(columns=["date", "brand", "channel", "target", "actual"])
+        # 빈 DF 도 올바른 dtype 으로 생성 (.dt accessor 에러 방지)
+        return pd.DataFrame({
+            "date": pd.Series([], dtype="datetime64[ns]"),
+            "brand": pd.Series([], dtype="object"),
+            "channel": pd.Series([], dtype="object"),
+            "target": pd.Series([], dtype="int64"),
+            "actual": pd.Series([], dtype="int64"),
+        })
 
 
 sheet_df = _cached_sheet()

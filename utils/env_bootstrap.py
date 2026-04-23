@@ -22,18 +22,32 @@ def bootstrap_env() -> None:
     except ImportError:
         return
 
+    # st.secrets 의 모든 key/value 를 안전하게 순회
     try:
-        # st.secrets 접근 — Streamlit Cloud 나 로컬 secrets.toml 있을 때만 존재
-        secrets = st.secrets
-    except Exception:
-        return
+        # Streamlit 1.x 의 secrets 는 Mapping 인터페이스 지원
+        items = []
+        try:
+            items = list(st.secrets.items())
+        except Exception:
+            # 일부 버전에서는 to_dict() 필요
+            try:
+                items = list(dict(st.secrets).items())
+            except Exception:
+                return
 
-    try:
-        for key in secrets:
-            value = secrets[key]
-            # 이미 .env 등으로 설정된 값은 보존
-            if key not in os.environ and isinstance(value, (str, int, float)):
-                os.environ[key] = str(value)
+        for key, value in items:
+            # nested section 은 dict-like — top-level primitive 만 승격
+            if isinstance(value, (str, int, float, bool)):
+                if key not in os.environ:
+                    os.environ[key] = str(value)
     except Exception:
-        # secrets 접근 실패 (로컬에 파일 없음) → 조용히 스킵
+        # secrets 접근 자체 실패 (로컬에 파일 없음) → 조용히 스킵
         pass
+
+
+# ==========================================================
+# 자동 실행 — import 즉시 env 승격
+# 이렇게 하면 api/* 모듈들이 top-level 에서 os.getenv 호출해도
+# 이미 값이 세팅돼 있음.
+# ==========================================================
+bootstrap_env()
