@@ -1,0 +1,100 @@
+name: 🔄 Daily Data Sync
+
+on:
+  schedule:
+    # UTC 01:00 = KST 10:00 매일 (한국 시간 오전 10시)
+    - cron: '0 1 * * *'
+  workflow_dispatch:   # 수동 실행 버튼 활성화
+    inputs:
+      days:
+        description: "동기화할 과거 일수"
+        required: false
+        default: "3"
+
+permissions:
+  contents: write   # data/ 폴더 커밋용
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 📦 Install deps
+        run: pip install -r requirements.txt
+
+      - name: 🔑 Export secrets → env
+        env:
+          NAVER_SEARCHAD_API_KEY: ${{ secrets.NAVER_SEARCHAD_API_KEY }}
+          NAVER_SEARCHAD_SECRET_KEY: ${{ secrets.NAVER_SEARCHAD_SECRET_KEY }}
+          NAVER_SEARCHAD_CUSTOMER_ID: ${{ secrets.NAVER_SEARCHAD_CUSTOMER_ID }}
+          NAVER_COMMERCE_CLIENT_ID_DDOK: ${{ secrets.NAVER_COMMERCE_CLIENT_ID_DDOK }}
+          NAVER_COMMERCE_CLIENT_SECRET_DDOK: ${{ secrets.NAVER_COMMERCE_CLIENT_SECRET_DDOK }}
+          NAVER_COMMERCE_CLIENT_ID_ROLLA: ${{ secrets.NAVER_COMMERCE_CLIENT_ID_ROLLA }}
+          NAVER_COMMERCE_CLIENT_SECRET_ROLLA: ${{ secrets.NAVER_COMMERCE_CLIENT_SECRET_ROLLA }}
+          COUPANG_ACCESS_KEY: ${{ secrets.COUPANG_ACCESS_KEY }}
+          COUPANG_SECRET_KEY: ${{ secrets.COUPANG_SECRET_KEY }}
+          COUPANG_VENDOR_ID: ${{ secrets.COUPANG_VENDOR_ID }}
+          CAFE24_CLIENT_ID_DDOK: ${{ secrets.CAFE24_CLIENT_ID_DDOK }}
+          CAFE24_CLIENT_SECRET_DDOK: ${{ secrets.CAFE24_CLIENT_SECRET_DDOK }}
+          CAFE24_MALL_ID_DDOK: ${{ secrets.CAFE24_MALL_ID_DDOK }}
+          CAFE24_CLIENT_ID_ROLLA: ${{ secrets.CAFE24_CLIENT_ID_ROLLA }}
+          CAFE24_CLIENT_SECRET_ROLLA: ${{ secrets.CAFE24_CLIENT_SECRET_ROLLA }}
+          CAFE24_MALL_ID_ROLLA: ${{ secrets.CAFE24_MALL_ID_ROLLA }}
+          META_ACCESS_TOKEN_DDOK: ${{ secrets.META_ACCESS_TOKEN_DDOK }}
+          META_AD_ACCOUNT_ID_DDOK: ${{ secrets.META_AD_ACCOUNT_ID_DDOK }}
+          META_ACCESS_TOKEN_ROLLA: ${{ secrets.META_ACCESS_TOKEN_ROLLA }}
+          META_AD_ACCOUNT_ID_ROLLA: ${{ secrets.META_AD_ACCOUNT_ID_ROLLA }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SHEET_GID: ${{ secrets.GOOGLE_SHEET_GID }}
+          DAYS: ${{ github.event.inputs.days || '3' }}
+        run: |
+          mkdir -p data
+          echo "📈 네이버 검색광고 sync..."
+          python scripts/sync_naver_ads.py --days $DAYS || echo "::warning::naver ads failed"
+
+          echo "🛒 네이버 커머스 sync..."
+          python scripts/sync_naver_commerce.py --days $DAYS || echo "::warning::naver commerce failed"
+
+          echo "📦 쿠팡 sync..."
+          python scripts/sync_coupang.py --days $DAYS || echo "::warning::coupang failed"
+
+          echo "🏪 Cafe24 sync..."
+          python scripts/sync_cafe24.py --days $DAYS || echo "::warning::cafe24 failed"
+
+          echo "📣 Meta 광고 sync..."
+          python scripts/sync_meta_ads.py --days $DAYS || echo "::warning::meta failed"
+
+          echo "⚡ Precompute..."
+          python scripts/precompute.py || echo "::warning::precompute failed"
+
+      - name: 💾 Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "🔄 Daily data sync $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
+
+      - name: 📋 Upload sync log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-log-${{ github.run_id }}
+          path: data/sync_log.txt
+          retention-days: 14

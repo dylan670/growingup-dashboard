@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# 민감 데이터 (고객 개인정보 포함)
+data/orders.csv
+data/reviews.csv
+data/cafe24_tokens.json
+# 구버전 주문 파일들 (레거시)
+data/*_orders.csv
+data/ddokddok_orders.csv
+data/rollaru_orders.csv
+
+# 자동 생성 파일
+data/sync_log.txt
+data/gh_auth.log
+data/gh_auth.log.err
+data/*.log
+
+# 광고 데이터는 공개 가능 (개인정보 없음)
+# data/ads.csv
+
+# 이미지 캐시는 커밋됨 (이미지 URL 만 포함)
+# data/product_images.csv
+
+# 프리컴퓨트 캐시 — GitHub Actions 가 재생성
+data/precomputed/
+
+# 업로드 폴더
+data/ezadmin_upload/
+data/uploads/
+
+# 편집기
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Streamlit 로컬 설정
+.streamlit/config.toml.local
