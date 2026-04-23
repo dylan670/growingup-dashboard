@@ -302,22 +302,42 @@ def inject_global_css() -> None:
             font-weight: 500 !important;
         }}
 
-        /* ========== 📱 모바일 반응형 ========== */
-        @media (max-width: 768px) {{
-            /* 페이지 패딩 축소 */
+        /* ========== 📱 태블릿 (1024px 이하) ========== */
+        @media (max-width: 1024px) {{
             .block-container {{
-                padding: 1rem 0.8rem 2rem 0.8rem !important;
+                padding-left: 1.2rem !important;
+                padding-right: 1.2rem !important;
+                max-width: 100% !important;
             }}
-            /* KPI 카드 여백 축소 */
+            /* 탭 간격 축소 */
+            button[data-baseweb="tab"] {{
+                padding: 8px 14px !important;
+                font-size: 0.92rem !important;
+            }}
+        }}
+
+        /* ========== 📱 모바일 (768px 이하) ========== */
+        @media (max-width: 768px) {{
+            /* 페이지 패딩 — 모바일 여백 최소화 */
+            .block-container {{
+                padding: 1.2rem 0.7rem 2rem 0.7rem !important;
+                max-width: 100% !important;
+            }}
+            /* KPI 카드 */
             div[data-testid="stMetric"] {{
-                padding: 14px 16px !important;
+                padding: 12px 14px !important;
+                border-radius: 10px !important;
             }}
             div[data-testid="stMetricValue"] {{
-                font-size: 1.4rem !important;
+                font-size: 1.35rem !important;
+                line-height: 1.15;
             }}
-            /* 큰 커스텀 카드 숫자 축소 */
+            div[data-testid="stMetric"] label {{
+                font-size: 0.72rem !important;
+            }}
+            /* 커스텀 카드 숫자 스케일 */
             .stApp div[style*="font-size:2.6rem"] {{
-                font-size: 2rem !important;
+                font-size: 1.9rem !important;
             }}
             .stApp div[style*="font-size:1.9rem"] {{
                 font-size: 1.5rem !important;
@@ -325,37 +345,95 @@ def inject_global_css() -> None:
             .stApp div[style*="font-size:1.75rem"] {{
                 font-size: 1.4rem !important;
             }}
-            /* h1/h2 축소 */
-            h1 {{ font-size: 1.6rem !important; }}
-            h2 {{ font-size: 1.3rem !important; }}
-            h3 {{ font-size: 1.1rem !important; }}
-            /* 탭 라벨 작게 */
-            button[data-baseweb="tab"] {{
-                font-size: 0.85rem !important;
-                padding: 8px 12px !important;
+            .stApp div[style*="font-size:1.7rem"] {{
+                font-size: 1.35rem !important;
             }}
-            /* 테이블 가로 스크롤 */
+            .stApp div[style*="font-size:1.5rem"] {{
+                font-size: 1.25rem !important;
+            }}
+            /* 제목 계층 */
+            h1 {{ font-size: 1.5rem !important; letter-spacing: -0.02em; }}
+            h2 {{ font-size: 1.25rem !important; }}
+            h3 {{ font-size: 1.05rem !important; }}
+            h4 {{ font-size: 0.95rem !important; }}
+            /* 탭 */
+            button[data-baseweb="tab"] {{
+                font-size: 0.82rem !important;
+                padding: 8px 10px !important;
+            }}
+            /* 테이블 가로 스크롤 + 최소 너비 */
             div[data-testid="stDataFrame"] {{
                 overflow-x: auto !important;
             }}
-            /* 사이드바 기본 접힘 (모바일에서) — Streamlit 자동 처리 */
-        }}
-
-        /* 작은 화면 전용 (480px 이하) */
-        @media (max-width: 480px) {{
-            .block-container {{
-                padding: 0.8rem 0.5rem 2rem 0.5rem !important;
+            /* 컨테이너 간격 */
+            div[data-testid="stVerticalBlockBorderWrapper"] {{
+                margin-bottom: 10px;
+                padding: 12px !important;
             }}
-            /* KPI 한 줄에 2개만 (Streamlit columns 강제 재배치는 한계 있음) */
-            div[data-testid="stMetric"] {{
+            /* Plotly 차트 높이 축소 */
+            .js-plotly-plot {{
+                max-height: 280px;
+            }}
+            /* 사이드바 — 모바일에서 호버 시 그림자 */
+            section[data-testid="stSidebar"] {{
+                box-shadow: 2px 0 8px rgba(0,0,0,0.08);
+            }}
+            /* 페이지 헤더 컬럼 세로 적층 (모바일) */
+            div[data-testid="stHorizontalBlock"]:first-of-type {{
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }}
+            /* Alert/info 박스 패딩 축소 */
+            div[data-testid="stAlert"] {{
                 padding: 10px 12px !important;
             }}
-            div[data-testid="stMetricValue"] {{
-                font-size: 1.2rem !important;
+            /* 버튼 모바일 터치 최적화 */
+            button[kind="primary"], button[kind="secondary"] {{
+                min-height: 40px !important;
+                font-size: 0.88rem !important;
             }}
-            /* 브랜드 진도 카드 축소 */
+        }}
+
+        /* ========== 📱 소형 모바일 (480px 이하) ========== */
+        @media (max-width: 480px) {{
+            .block-container {{
+                padding: 1rem 0.5rem 2rem 0.5rem !important;
+            }}
+            /* KPI 한 줄에 2개만 */
+            div[data-testid="stMetric"] {{
+                padding: 8px 10px !important;
+            }}
+            div[data-testid="stMetricValue"] {{
+                font-size: 1.15rem !important;
+            }}
+            div[data-testid="stMetric"] label {{
+                font-size: 0.68rem !important;
+            }}
+            /* 큰 숫자 축소 */
             .stApp div[style*="font-size:2.6rem"] {{
-                font-size: 1.8rem !important;
+                font-size: 1.6rem !important;
+            }}
+            .stApp div[style*="font-size:1.9rem"] {{
+                font-size: 1.25rem !important;
+            }}
+            .stApp div[style*="font-size:1.7rem"] {{
+                font-size: 1.15rem !important;
+            }}
+            /* 브랜드 배너 패딩 축소 */
+            .stApp div[style*="padding: 14px 20px"] {{
+                padding: 10px 14px !important;
+            }}
+            /* 캡션 더 작게 */
+            div[data-testid="stCaptionContainer"] p {{
+                font-size: 0.72rem !important;
+            }}
+            /* 제목 */
+            h1 {{ font-size: 1.3rem !important; }}
+            h2 {{ font-size: 1.15rem !important; }}
+            h3 {{ font-size: 1rem !important; }}
+            /* Plotly 차트 */
+            .js-plotly-plot {{
+                max-height: 240px;
             }}
         }}
         </style>
@@ -710,7 +788,8 @@ def setup_page(
         page_title=page_title,
         page_icon=page_icon,
         layout=layout,
-        initial_sidebar_state="expanded",
+        # "auto" = 모바일에서 자동 접힘, 데스크톱에서 열림
+        initial_sidebar_state="auto",
     )
     inject_global_css()
     # 다크모드 ON 이면 오버라이드 CSS
@@ -1033,6 +1112,73 @@ def render_period_picker(
         "end_date": end_ts,
         "days": days,
     }
+
+
+# ==========================================================
+# 비교 모드 토글 — 전주/전월/전년 델타 계산 기준
+# ==========================================================
+def render_comparison_toggle(
+    key_prefix: str = "", current_end=None,
+) -> dict:
+    """비교 기준 선택 UI — segmented button 스타일.
+
+    Returns:
+        dict with keys: mode, prev_start, prev_end, label
+    """
+    import pandas as _pd
+    from datetime import timedelta as _td, date as _date
+
+    options = ["직전 기간", "전주 동기", "전월 동기", "전년 동기"]
+    help_text = (
+        "직전 기간: 이번 기간 바로 이전 같은 일수\n"
+        "전주 동기: 1주일 전 같은 요일 구간\n"
+        "전월 동기: 1개월 전 같은 일자 구간\n"
+        "전년 동기: 1년 전 같은 일자 구간"
+    )
+    mode = st.radio(
+        "🔀 비교 기준",
+        options, index=0, horizontal=True,
+        key=f"{key_prefix}_cmp_mode",
+        help=help_text,
+    )
+    return {"mode": mode}
+
+
+def compute_comparison_range(
+    start, end, mode: str,
+):
+    """비교 기간 범위 계산.
+
+    Args:
+        start, end: 이번 기간 (pd.Timestamp)
+        mode: '직전 기간' / '전주 동기' / '전월 동기' / '전년 동기'
+    Returns:
+        (prev_start, prev_end) — pd.Timestamp
+    """
+    import pandas as _pd
+    from datetime import timedelta as _td
+
+    days = (end - start).days + 1
+    if mode == "직전 기간":
+        prev_end = start - _pd.Timedelta(days=1)
+        prev_start = prev_end - _pd.Timedelta(days=days - 1)
+    elif mode == "전주 동기":
+        prev_start = start - _pd.Timedelta(days=7)
+        prev_end = end - _pd.Timedelta(days=7)
+    elif mode == "전월 동기":
+        # 단순 30일 shift (월별 일수 복잡성 회피)
+        prev_start = start - _pd.Timedelta(days=30)
+        prev_end = end - _pd.Timedelta(days=30)
+    elif mode == "전년 동기":
+        prev_start = start - _pd.DateOffset(years=1)
+        prev_end = end - _pd.DateOffset(years=1)
+        # 결과를 Timestamp 로 확실히
+        prev_start = _pd.Timestamp(prev_start)
+        prev_end = _pd.Timestamp(prev_end)
+    else:
+        prev_end = start - _pd.Timedelta(days=1)
+        prev_start = prev_end - _pd.Timedelta(days=days - 1)
+    return prev_start, prev_end
 
 
 # ==========================================================

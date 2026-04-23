@@ -18,6 +18,7 @@ from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card,
     render_period_picker, render_status_pill,
+    render_comparison_toggle, compute_comparison_range,
     METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN, TEXT_MUTED,
 )
 from api.google_sheets import load_sheet_daily_sales, get_brand_channels
@@ -55,8 +56,20 @@ period = _pp["period"]
 start_date = _pp["start_date"]
 end_date = _pp["end_date"].date()
 days = _pp["days"]
-prev_start = start_date - pd.Timedelta(days=days)
-prev_end = start_date - pd.Timedelta(days=1)
+
+# 비교 기준 토글 (직전 기간 / 전주 / 전월 / 전년)
+_cmp = render_comparison_toggle(key_prefix="sales",
+                                current_end=pd.Timestamp(end_date))
+prev_start, prev_end = compute_comparison_range(
+    start_date, pd.Timestamp(end_date), _cmp["mode"],
+)
+# 비교 범위 안내 캡션
+st.markdown(
+    f"<div style='color:{TEXT_MUTED}; font-size:0.78rem; "
+    f"margin:-8px 0 12px 0;'>🔀 비교: <b>{_cmp['mode']}</b> · "
+    f"{prev_start.date()} ~ {prev_end.date()}</div>",
+    unsafe_allow_html=True,
+)
 
 
 # ==========================================================

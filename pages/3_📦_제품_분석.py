@@ -25,8 +25,9 @@ from utils.product_images import (
 from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card,
-    render_period_picker,
-    METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN, TEXT_MUTED,
+    render_period_picker, render_empty_state, render_status_pill,
+    METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN, TEXT_MUTED, TEXT_FAINT,
+    BORDER_SUBTLE, BG_SUBTLE,
 )
 
 
@@ -38,7 +39,7 @@ setup_page(
 )
 
 # 캐시 버전 — 제품명 정규화 규칙 바뀌면 bump 해서 기존 캐시 강제 무효화
-_ORDERS_CACHE_VER = "v6-unify-60bong"
+_ORDERS_CACHE_VER = "v7-p4-features"
 
 
 @st.cache_data(ttl=300, show_spinner="주문 + 쿠팡 벤더 발주 데이터 로드 중...")
@@ -239,6 +240,171 @@ full_image_lookup = _cached_full_image_lookup(_orders_fp, _cache_fp)
 
 
 # ==========================================================
+# 제품 상세 모달 (딥 다이브) — st.dialog 기반
+# ==========================================================
+@st.dialog("📦 제품 상세 딥 다이브", width="large")
+def show_product_detail(
+    product_name: str,
+    orders_df: pd.DataFrame,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    image_url: str | None = None,
+):
+    """제품 하나의 모든 정보 — 이미지, 판매 추이, 채널 분포, 요약 지표."""
+    prod_df = orders_df[orders_df["product"] == product_name].copy()
+    if prod_df.empty:
+        st.info("선택 기간 내 해당 제품의 판매 기록 없음.")
+        return
+
+    prod_df["date"] = pd.to_datetime(prod_df["date"])
+    period_df = prod_df[
+        (prod_df["date"] >= start) & (prod_df["date"] <= end)
+    ]
+
+    # 헤더 (이미지 + 이름)
+    hc1, hc2 = st.columns([1, 3])
+    with hc1:
+        if image_url and isinstance(image_url, str) and image_url.startswith("http"):
+            st.markdown(
+                f"<div style='width:100%; aspect-ratio:1/1; background:#f8fafc; "
+                f"border-radius:14px; overflow:hidden;'>"
+                f"<img src='{image_url}' style='width:100%; height:100%; object-fit:cover;' />"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f"<div style='width:100%; aspect-ratio:1/1; "
+                f"background:linear-gradient(135deg, #e2e8f0, #f1f5f9); "
+                f"border-radius:14px; display:flex; align-items:center; "
+                f"justify-content:center; color:#94a3b8; font-size:2rem;'>📦</div>",
+                unsafe_allow_html=True,
+            )
+    with hc2:
+        st.markdown(
+            f"<div style='font-size:1.25rem; font-weight:700; color:{TEXT_MAIN}; "
+            f"line-height:1.3; margin-bottom:6px;'>{product_name}</div>",
+            unsafe_allow_html=True,
+        )
+        umbrella = period_df["umbrella"].iloc[0] if "umbrella" in period_df and not period_df.empty else "-"
+        brand = period_df["brand"].iloc[0] if "brand" in period_df and not period_df.empty else "-"
+        st.caption(f"{umbrella} · {brand}")
+        # 기간 요약 KPI
+        total_rev = int(period_df["revenue"].sum())
+        total_qty = int(period_df["quantity"].sum()) if "quantity" in period_df else 0
+        total_ord = len(period_df)
+        uniq_cust = period_df["customer_id"].nunique() if "customer_id" in period_df else 0
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("매출", f"{total_rev:,}원")
+        k2.metric("수량", f"{total_qty:,}개")
+        k3.metric("주문", f"{total_ord:,}건")
+        k4.metric("고객", f"{uniq_cust:,}명")
+
+    st.divider()
+
+    # 채널별 분포
+    if "판매 채널" in period_df.columns:
+        ch_col = "판매 채널"
+    else:
+        ch_col = "store"
+    ch_dist = (
+        period_df.groupby(ch_col).agg(
+            rev=("revenue", "sum"),
+            ord=("order_id", "count"),
+        ).reset_index().sort_values("rev", ascending=False)
+    )
+
+    dc1, dc2 = st.columns([1, 1])
+    with dc1:
+        st.markdown(
+            f"<div style='font-weight:700; color:{TEXT_MAIN}; "
+            f"font-size:0.95rem; margin-bottom:8px;'>🛒 채널별 매출 비중</div>",
+            unsafe_allow_html=True,
+        )
+        if not ch_dist.empty:
+            total_r = ch_dist["rev"].sum()
+            fig_pie = go.Figure(go.Pie(
+                labels=ch_dist[ch_col].tolist(),
+                values=ch_dist["rev"].tolist(),
+                hole=0.55,
+                marker=dict(colors=[
+                    CHANNEL_COLORS.get(c, "#94a3b8") for c in ch_dist[ch_col]
+                ]),
+                textinfo="label+percent",
+                hovertemplate="<b>%{label}</b><br>매출 %{value:,}원<br>%{percent}<extra></extra>",
+            ))
+            fig_pie.update_layout(
+                height=260, margin=dict(l=10, r=10, t=10, b=10),
+                showlegend=False,
+                annotations=[dict(
+                    text=f"<b>총매출</b><br>{total_r:,}",
+                    x=0.5, y=0.5, showarrow=False,
+                    font=dict(size=12, color=TEXT_MAIN),
+                )],
+            )
+            st.plotly_chart(fig_pie, width="stretch",
+                            key=f"dlg_pie_{product_name}")
+
+    with dc2:
+        st.markdown(
+            f"<div style='font-weight:700; color:{TEXT_MAIN}; "
+            f"font-size:0.95rem; margin-bottom:8px;'>📈 일별 판매 추이</div>",
+            unsafe_allow_html=True,
+        )
+        daily = (
+            period_df.groupby(period_df["date"].dt.date)
+            .agg(qty=("quantity", "sum"), rev=("revenue", "sum"))
+            .reset_index()
+            .rename(columns={"date": "date"})
+        )
+        daily["date"] = pd.to_datetime(daily["date"])
+        full_range = pd.date_range(start=start, end=end, freq="D")
+        daily = daily.set_index("date").reindex(full_range, fill_value=0).reset_index()
+        daily = daily.rename(columns={"index": "date"})
+        fig_line = make_subplots(specs=[[{"secondary_y": True}]])
+        fig_line.add_trace(go.Bar(
+            x=daily["date"], y=daily["qty"],
+            name="수량",
+            marker_color=METRIC_COLORS["clicks"], opacity=0.7,
+        ), secondary_y=False)
+        fig_line.add_trace(go.Scatter(
+            x=daily["date"], y=daily["rev"],
+            name="매출", mode="lines+markers",
+            line=dict(color=METRIC_COLORS["revenue"], width=2.5),
+        ), secondary_y=True)
+        fig_line.update_layout(
+            height=260, margin=dict(l=10, r=10, t=10, b=10),
+            showlegend=False, plot_bgcolor="white",
+            xaxis=dict(tickformat="%m/%d"),
+        )
+        st.plotly_chart(fig_line, width="stretch",
+                        key=f"dlg_line_{product_name}")
+
+    st.divider()
+    # 채널별 상세 표
+    st.markdown(
+        f"<div style='font-weight:700; color:{TEXT_MAIN}; "
+        f"font-size:0.95rem; margin-bottom:6px;'>📋 채널별 상세</div>",
+        unsafe_allow_html=True,
+    )
+    if not ch_dist.empty:
+        ch_dist["비중(%)"] = (ch_dist["rev"] / ch_dist["rev"].sum() * 100).round(1)
+        ch_dist_display = ch_dist.rename(columns={
+            ch_col: "채널", "rev": "매출", "ord": "주문",
+        })
+        st.dataframe(
+            ch_dist_display,
+            width="stretch", hide_index=True,
+            column_config={
+                "매출": st.column_config.NumberColumn("매출", format="%d원"),
+                "비중(%)": st.column_config.ProgressColumn(
+                    "비중(%)", format="%.1f%%", min_value=0, max_value=100,
+                ),
+            },
+        )
+
+
+# ==========================================================
 # 제품별 일별 판매 추이 차트 (수량 막대 + 매출 선)
 # ==========================================================
 def _render_daily_product_chart(
@@ -399,7 +565,16 @@ def render_product_view(
     )
 
     if o_filt.empty:
-        st.info(f"{brand_label}: 해당 기간 주문 데이터 없음.")
+        render_empty_state(
+            title=f"{brand_label}: 해당 기간 주문 데이터 없음",
+            description=(
+                f"선택된 기간 내에 {brand_label} 주문이 없습니다. "
+                f"상단의 기간을 넓혀보거나 쿠팡 판매/벤더 발주 CSV 가 "
+                f"업로드되어 있는지 확인해보세요."
+            ),
+            icon="📭",
+            action_label="기간 필터 조정 · CSV 업로드 확인",
+        )
         return
 
     # ---------- 운영 브랜드 카드 (전체 탭에서만, 또는 단일 브랜드 요약) ----------
@@ -445,7 +620,7 @@ def render_product_view(
         lambda s: store_display_name(s, brand_context=brand)
     )
 
-    prod_ch_agg = o_filt.groupby(
+    prod_ch_agg_full = o_filt.groupby(
         ["umbrella", "brand", "판매 채널", "store", "channel", "product"],
         dropna=False,
     ).agg(
@@ -455,7 +630,65 @@ def render_product_view(
         customers=("customer_id", "nunique"),
     ).reset_index().sort_values("revenue", ascending=False)
 
+    if prod_ch_agg_full.empty:
+        render_empty_state(
+            title="제품별 상세 데이터 없음",
+            description="해당 기간의 제품 단위 집계 결과가 비어있습니다.",
+            icon="📦",
+        )
+        return
+
+    # ---------- 🔍 검색 + 필터 ----------
+    with st.container(border=False):
+        fc1, fc2, fc3 = st.columns([2, 1.3, 1.3])
+        with fc1:
+            search_q = st.text_input(
+                "🔍 제품명 검색",
+                value="",
+                placeholder="예: 오프너, 김똑똑, 떡뻥 — 한 단어 또는 공백 구분 여러 단어",
+                key=f"prod_search_{brand_label}",
+            )
+        with fc2:
+            channel_options = sorted(prod_ch_agg_full["판매 채널"].dropna().unique().tolist())
+            selected_channels = st.multiselect(
+                "🏪 판매 채널",
+                options=channel_options,
+                default=channel_options,
+                key=f"prod_ch_filter_{brand_label}",
+            )
+        with fc3:
+            rev_max = int(prod_ch_agg_full["revenue"].max())
+            min_rev = st.number_input(
+                "💰 최소 매출 (원)",
+                min_value=0, max_value=rev_max,
+                value=0, step=10000,
+                key=f"prod_min_rev_{brand_label}",
+                help="이 값 이상의 제품만 표시",
+            )
+
+    # 필터 적용
+    prod_ch_agg = prod_ch_agg_full.copy()
+    if search_q.strip():
+        terms = [t.lower() for t in search_q.strip().split() if t]
+        mask = prod_ch_agg["product"].astype(str).str.lower().apply(
+            lambda s: all(t in s for t in terms)
+        )
+        prod_ch_agg = prod_ch_agg[mask]
+    if selected_channels:
+        prod_ch_agg = prod_ch_agg[prod_ch_agg["판매 채널"].isin(selected_channels)]
+    if min_rev > 0:
+        prod_ch_agg = prod_ch_agg[prod_ch_agg["revenue"] >= min_rev]
+
     if prod_ch_agg.empty:
+        render_empty_state(
+            title="필터 조건에 맞는 제품 없음",
+            description=(
+                f"검색어 '{search_q}' 및 설정된 필터에 매칭되는 제품이 없습니다. "
+                f"검색어를 줄이거나 채널/최소 매출 필터를 완화해보세요."
+            ),
+            icon="🔍",
+            action_label="검색어 지우기 · 모든 채널 선택",
+        )
         return
 
     # 이미지 매칭 — 전역 lookup 재사용 (퍼지 매칭 재계산 X)
@@ -629,16 +862,27 @@ def render_product_view(
                 if lines:
                     st.caption("\n".join(lines))
 
+                # 🔍 제품 상세 딥 다이브 모달 트리거
+                btn_c1, btn_c2 = st.columns(2)
+                if btn_c1.button(
+                    "🔍 상세 보기",
+                    key=f"btn_detail_{brand_label}_{idx}",
+                    width="stretch",
+                    help="제품 딥 다이브 모달 — 채널 분포, 일별 추이 통합 확인",
+                ):
+                    show_product_detail(
+                        prod_name, o_filt,
+                        start_date, pd.Timestamp(end_date),
+                        image_url=img if (img and pd.notna(img)) else None,
+                    )
+
                 # 📈 일별 판매 추이 — lazy render (버튼 클릭 시에만 차트 생성)
                 chart_toggle_key = f"show_chart_top6_{brand_label}_{idx}"
                 if chart_toggle_key not in st.session_state:
                     st.session_state[chart_toggle_key] = False
-                btn_label = (
-                    f"📈 일별 판매 추이 ({days}일) 닫기"
-                    if st.session_state[chart_toggle_key]
-                    else f"📈 일별 판매 추이 ({days}일) 보기"
-                )
-                if st.button(
+                btn_label = "📈 차트 닫기" \
+                    if st.session_state[chart_toggle_key] else "📈 일별 차트"
+                if btn_c2.button(
                     btn_label, width="stretch",
                     key=f"btn_{chart_toggle_key}",
                 ):
