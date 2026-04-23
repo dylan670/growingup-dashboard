@@ -170,6 +170,15 @@ def load_orders() -> pd.DataFrame:
     if "store" not in df.columns:
         df = _add_store_column(df)
         df.to_csv(ORDERS_FILE, index=False, encoding="utf-8-sig")
+
+    # 제품명 정규화 — 모든 페이지에서 일관된 제품명 표시 (긴 SKU 이름 → 모델명)
+    # 원본 CSV 는 그대로 두고, 메모리상 로드 시점에만 치환
+    if "product" in df.columns:
+        try:
+            from utils.products import normalize_product_name
+            df["product"] = df["product"].apply(normalize_product_name)
+        except Exception:
+            pass
     return df
 
 
@@ -203,6 +212,7 @@ def load_coupang_inbound() -> pd.DataFrame:
     컬럼: date, order_id, customer_id, channel, store, product,
           quantity, revenue (orders.csv 와 동일 스키마)
     store 는 '쿠팡_*_벤더' 형식으로 실 소비자 판매와 분리.
+    제품명 정규화 자동 적용 (load_orders 와 동일).
     """
     if not COUPANG_INBOUND_FILE.exists():
         return pd.DataFrame(columns=[
@@ -212,6 +222,13 @@ def load_coupang_inbound() -> pd.DataFrame:
     df = pd.read_csv(COUPANG_INBOUND_FILE)
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"])
+    # 제품명 정규화 (모든 페이지 일관성)
+    if "product" in df.columns:
+        try:
+            from utils.products import normalize_product_name
+            df["product"] = df["product"].apply(normalize_product_name)
+        except Exception:
+            pass
     return df
 
 
