@@ -25,6 +25,9 @@ REM 1. 5개 API 동기화 (한국 IP 에서 호출 — 403 회피)
 REM 2. 쿠팡 광고 CSV 파싱 (폴더에 업로드된 파일 있으면 처리, 없으면 스킵)
 ".venv\Scripts\python.exe" "scripts\sync_coupang_ads_csv.py"
 
+REM 2-1. 쿠팡 판매 CSV 파싱 (로켓배송 제품별 판매 — 수동 업로드)
+".venv\Scripts\python.exe" "scripts\sync_coupang_sales_csv.py"
+
 REM 3. Precompute
 ".venv\Scripts\python.exe" "scripts\precompute.py"
 

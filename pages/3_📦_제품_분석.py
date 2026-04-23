@@ -725,26 +725,8 @@ with tab_ruti:
 
 
 # ==========================================================
-# 네이버 광고그룹 매칭 디버그 + 매칭 규칙
+# 브랜드 매칭 규칙 참조 (debug 섹션은 제거 — 일반 사용자에게 불필요)
 # ==========================================================
-if ad_spend_debug is not None and not ad_spend_debug.empty:
-    with st.expander("네이버 광고그룹 → 브랜드 매칭 결과"):
-        st.dataframe(
-            ad_spend_debug.rename(columns={
-                "이름": "광고그룹",
-                "brand": "매칭된 제품 라인",
-                "umbrella": "매칭된 운영 브랜드",
-                "비용": "광고비",
-                "매출": "전환매출",
-                "ROAS(%)": "ROAS(%)",
-            }),
-            width="stretch", hide_index=True,
-        )
-        st.caption(
-            "'공통' 매칭 그룹은 키워드 미인식 케이스. "
-            "`utils/products.py` 의 `BRAND_RULES` 에 키워드 추가하면 자동 재분류."
-        )
-
 with st.expander("현재 브랜드 매칭 규칙"):
     rules_table = pd.DataFrame([
         {"키워드": ", ".join(kws), "제품 라인": b,

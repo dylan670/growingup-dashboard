@@ -54,6 +54,12 @@ data/coupang_ads_upload/*.xls
 data/coupang_ads_upload/*.csv
 !data/coupang_ads_upload/README.txt
 
+# 쿠팡 판매 원본 CSV/Excel — 파싱 후 orders.csv 에 병합, 원본은 로컬만
+data/coupang_sales_upload/*.xlsx
+data/coupang_sales_upload/*.xls
+data/coupang_sales_upload/*.csv
+!data/coupang_sales_upload/README.txt
+
 # 편집기
 .vscode/
 .idea/
