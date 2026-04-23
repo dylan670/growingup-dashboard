@@ -92,28 +92,22 @@ sheet_df = _cached_sheet()
 
 
 # ============================================================
-# 사이드바 — 기간 필터
+# 기간 필터 — 대시보드 제목 바로 아래 (인라인)
 # ============================================================
-with st.sidebar:
-    st.markdown("### 🗓️ 기간")
+today_real = date.today()
+orders_max = orders["date"].max().date() if not orders.empty else today_real
+orders_min = orders["date"].min().date() if not orders.empty else date(today_real.year, 1, 1)
+min_allowed = min(orders_min, date(today_real.year, 1, 1))
 
-    # 기간 옵션 (V팀 참고)
+hc1, hc2, hc3, _ = st.columns([1.3, 1.3, 1.3, 2])
+with hc1:
     period = st.selectbox(
-        "조회 기간",
-        ["이번 달", "지난 7일", "지난 14일", "지난 30일", "지난 90일", "올해 누적", "사용자 지정"],
+        "🗓️ 조회 기간",
+        ["이번 달", "지난 7일", "지난 14일", "지난 30일",
+         "지난 90일", "올해 누적", "사용자 지정"],
         index=0,
     )
-
-    # "오늘" = 실제 오늘 날짜 (orders 최신일 아님)
-    today_real = date.today()
-    # orders 최신 날짜 (기본값 기준)
-    orders_max = orders["date"].max().date() if not orders.empty else today_real
-
-    # 종료일 선택기 — 실제 오늘까지 가능
-    # min_date 는 orders 첫날 or 올해 1월 1일 중 더 이른 날
-    orders_min = orders["date"].min().date() if not orders.empty else date(today_real.year, 1, 1)
-    min_allowed = min(orders_min, date(today_real.year, 1, 1))
-
+with hc2:
     end_date_picked = st.date_input(
         "종료일",
         value=orders_max,
@@ -121,36 +115,37 @@ with st.sidebar:
         max_value=today_real,
         help="실제 오늘까지 선택 가능. 매일 10시 자동 sync 후 업데이트.",
     )
-    today = end_date_picked  # 이후 로직은 '오늘' 을 종료일로 사용
+today = end_date_picked
 
-    if period == "이번 달":
-        start_date = pd.Timestamp(today.replace(day=1))
-        end_date = pd.Timestamp(today)
-        days = (end_date - start_date).days + 1
-    elif period == "올해 누적":
-        start_date = pd.Timestamp(date(today.year, 1, 1))
-        end_date = pd.Timestamp(today)
-        days = (end_date - start_date).days + 1
-    elif period == "사용자 지정":
-        # 시작일도 직접 선택
+if period == "이번 달":
+    start_date = pd.Timestamp(today.replace(day=1))
+    end_date = pd.Timestamp(today)
+    days = (end_date - start_date).days + 1
+elif period == "올해 누적":
+    start_date = pd.Timestamp(date(today.year, 1, 1))
+    end_date = pd.Timestamp(today)
+    days = (end_date - start_date).days + 1
+elif period == "사용자 지정":
+    with hc3:
         start_date_picked = st.date_input(
             "시작일",
             value=today - timedelta(days=6),
             min_value=min_allowed,
             max_value=today,
         )
-        start_date = pd.Timestamp(start_date_picked)
-        end_date = pd.Timestamp(today)
-        days = (end_date - start_date).days + 1
-    else:
-        days_map = {"지난 7일": 7, "지난 14일": 14, "지난 30일": 30, "지난 90일": 90}
-        days = days_map[period]
-        end_date = pd.Timestamp(today)
-        start_date = end_date - pd.Timedelta(days=days - 1)
+    start_date = pd.Timestamp(start_date_picked)
+    end_date = pd.Timestamp(today)
+    days = (end_date - start_date).days + 1
+else:
+    days_map = {"지난 7일": 7, "지난 14일": 14, "지난 30일": 30, "지난 90일": 90}
+    days = days_map[period]
+    end_date = pd.Timestamp(today)
+    start_date = end_date - pd.Timedelta(days=days - 1)
 
-    st.caption(f"📅 {start_date.date()} ~ {end_date.date()} ({days}일)")
+st.caption(f"📅 **{start_date.date()} ~ {end_date.date()}** ({days}일)")
 
-    st.divider()
+# 사이드바 — 기준값 참조 (목표 ROAS / 월 매출 목표)
+with st.sidebar:
     st.markdown("### 🎯 목표 ROAS")
     for ch, val in TARGET_ROAS.items():
         st.caption(f"• **{ch}**: {val * 100:.0f}%")

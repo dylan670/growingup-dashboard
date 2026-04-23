@@ -44,9 +44,16 @@ def inject_global_css() -> None:
 
         /* ---------- 메인 영역 여백 ---------- */
         .block-container {{
-            padding-top: 1.5rem !important;
+            /* Streamlit 상단 툴바(Share/Star/GitHub/⋮ 버튼)가 sticky 로
+               1번째 요소를 덮는 문제 → 상단 여유 대폭 확대 */
+            padding-top: 3.5rem !important;
             padding-bottom: 3rem !important;
             max-width: 1400px;
+        }}
+        /* 상단 Streamlit 기본 header 영역 배경 투명화 (고정 바와 겹침 방지) */
+        [data-testid="stHeader"] {{
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(6px);
         }}
 
         /* ---------- KPI 카드 (st.metric) ---------- */

@@ -751,8 +751,8 @@ def render_ad_overview(
                     st.caption(f"CTR **{ctr:.2f}%** · CVR **{cvr:.2f}%**")
 
             with col_chart:
-                st.markdown("**일별 ROAS 추이 (최근 14일)**")
-                chart_data = daily.tail(14)
+                st.markdown(f"**일별 ROAS 추이 (최근 {days}일)**")
+                chart_data = daily.tail(days)
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(
                     x=chart_data["date"], y=chart_data["roas"],
