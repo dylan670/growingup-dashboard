@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from utils.data import load_orders
+from utils.data import load_orders, load_coupang_inbound
 from utils.actions import store_sales_actions, THRESHOLDS
 from utils.products import (
     filter_orders_by_brand,
@@ -377,28 +377,54 @@ def render_sales_overview(
         st.info(f"{brand_label}: 해당 기간 주문 데이터 없음.")
         return
 
+    # 쿠팡 벤더 발주 데이터 (로켓배송 B2B) — 쿠팡 카드에 합산 표시용
+    inbound_all = load_coupang_inbound()
+    inbound_curr = (
+        inbound_all[
+            (inbound_all["date"] >= start) & (inbound_all["date"] <= end)
+        ] if not inbound_all.empty else pd.DataFrame()
+    )
+
     for store in display_stores:
         store_curr = curr[curr["store"] == store]
         store_prev = prev[prev["store"] == store]
         store_all = orders_df[orders_df["store"] == store]
 
-        if store_curr.empty:
+        # ---- 쿠팡 카드 특수 처리: 벤더 발주 매출 합산 ----
+        is_coupang = store.startswith("쿠팡")
+        vendor_store = f"{store}_벤더" if is_coupang else None
+        vendor_curr = pd.DataFrame()
+        vendor_revenue = 0
+        if is_coupang and not inbound_curr.empty and vendor_store:
+            vendor_curr = inbound_curr[inbound_curr["store"] == vendor_store]
+            vendor_revenue = int(vendor_curr["revenue"].sum()) if not vendor_curr.empty else 0
+
+        # 판매자판매(Wing) + 로켓그로스 주문 없고 벤더 발주도 없으면 skip
+        if store_curr.empty and vendor_revenue == 0:
             continue
 
         orders_n = len(store_curr)
-        revenue = int(store_curr["revenue"].sum())
-        customers_n = store_curr["customer_id"].nunique()
-        aov = int(revenue / orders_n) if orders_n else 0
+        wing_revenue = int(store_curr["revenue"].sum()) if not store_curr.empty else 0
+        combined_revenue = wing_revenue + vendor_revenue   # 쿠팡은 합산
+        revenue = combined_revenue if is_coupang else wing_revenue
+        customers_n = store_curr["customer_id"].nunique() if not store_curr.empty else 0
+        aov = int(wing_revenue / orders_n) if orders_n else 0
 
-        cust_order_counts = store_all.groupby("customer_id").size()
+        cust_order_counts = store_all.groupby("customer_id").size() if not store_all.empty else pd.Series(dtype=int)
         rep_rate = (cust_order_counts >= 2).mean() * 100 if len(cust_order_counts) else 0
 
+        # 매출 상위 상품 — 쿠팡은 Wing + 벤더 합쳐서
+        if is_coupang and not vendor_curr.empty:
+            combined_for_top = pd.concat([store_curr, vendor_curr], ignore_index=True) \
+                if not store_curr.empty else vendor_curr
+        else:
+            combined_for_top = store_curr
         top_products = (
-            store_curr.groupby("product")
+            combined_for_top.groupby("product")
             .agg(qty=("quantity", "sum"), rev=("revenue", "sum"))
             .sort_values("rev", ascending=False)
             .head(3)
-        )
+        ) if not combined_for_top.empty else pd.DataFrame()
 
         prev_orders_n = len(store_prev)
 
@@ -431,19 +457,34 @@ def render_sales_overview(
                 if sublabel:
                     st.caption(sublabel)
 
-                # 매출·AOV 는 자릿수 길어서 전폭 사용 (col_info = 2/7 너비 좁음)
-                st.metric(
-                    "매출", f"{revenue:,}원",
-                    delta=(
-                        f"{((orders_n - prev_orders_n) / prev_orders_n * 100):+.0f}% 주문"
-                        if prev_orders_n else None
-                    ),
-                )
-                mc1, mc2 = st.columns(2)
-                mc1.metric("주문", f"{orders_n:,}건")
-                mc2.metric("고객", f"{customers_n:,}명")
-                st.metric("AOV", f"{aov:,}원")
-                st.caption(f"재구매율 (전 기간) **{rep_rate:.1f}%**")
+                if is_coupang:
+                    # 쿠팡: 합산 매출만 표시 (주문/고객/AOV 숨김 — 벤더 B2B 라 의미 상이)
+                    st.metric("매출 (합계)", f"{revenue:,}원")
+                    breakdown_lines = []
+                    if wing_revenue > 0:
+                        breakdown_lines.append(
+                            f"• 판매자 판매 · 로켓그로스 (Wing): **{wing_revenue:,}원**"
+                        )
+                    if vendor_revenue > 0:
+                        breakdown_lines.append(
+                            f"• 벤더 발주 · 로켓배송 (Supplier Hub): **{vendor_revenue:,}원**"
+                        )
+                    if breakdown_lines:
+                        st.caption("\n".join(breakdown_lines))
+                else:
+                    # 자사몰/네이버: 기존 매출/주문/고객/AOV/재구매율
+                    st.metric(
+                        "매출", f"{revenue:,}원",
+                        delta=(
+                            f"{((orders_n - prev_orders_n) / prev_orders_n * 100):+.0f}% 주문"
+                            if prev_orders_n else None
+                        ),
+                    )
+                    mc1, mc2 = st.columns(2)
+                    mc1.metric("주문", f"{orders_n:,}건")
+                    mc2.metric("고객", f"{customers_n:,}명")
+                    st.metric("AOV", f"{aov:,}원")
+                    st.caption(f"재구매율 (전 기간) **{rep_rate:.1f}%**")
 
             with col_prod:
                 st.markdown("**매출 상위 상품 (이번 기간)**")
@@ -476,9 +517,9 @@ def render_sales_overview(
     # ---------- 시트 전용 채널 카드 (주문 API 없는 채널) ----------
     # 롤라루: 쿠팡 로켓배송, 무신사, 오프라인, 이지웰, 오늘의집
     # 똑똑연구소: 시트상 채널 모두 orders.csv 에 포함 (Wing API) → 추가 카드 없음
+    # 쿠팡 로켓배송은 메인 쿠팡 카드(Wing + 벤더 발주)에 합산 표시되므로 여기 제외
     sheet_only_channels_by_brand: dict[str, list[tuple[str, str]]] = {
         "롤라루": [
-            ("쿠팡 로켓배송", "쿠팡 벤더 풀필먼트 (제품별 판매 API 미공개 — 시트 직접 기입)"),
             ("무신사",        "무신사 입점 (API 미연동 — 시트 기반)"),
             ("오프라인",      "오프라인 판매 (시트 기반)"),
             ("이지웰",        "복지몰 이지웰 (시트 기반)"),
@@ -547,6 +588,26 @@ def _render_channel_comparison_chart(
             channel_data[label]["customers"].update(
                 sdf["customer_id"].dropna().unique()
             )
+
+    # ---- 쿠팡 벤더 발주 매출 합산 (로켓배송 B2B) → '쿠팡' 라벨에 통합 ----
+    # 메인 쿠팡 카드와 동일한 방식으로 합산: 매출만 반영 (주문/고객 없음)
+    inbound_all = load_coupang_inbound()
+    if not inbound_all.empty:
+        inbound_sub = inbound_all[
+            (inbound_all["date"] >= start) & (inbound_all["date"] <= end)
+        ]
+        for store in inbound_sub["store"].dropna().unique():
+            # '쿠팡_롤라루_벤더' → '쿠팡_롤라루' 로 라벨 통합
+            base_store = store.replace("_벤더", "") if store.endswith("_벤더") else store
+            label = store_display_name(base_store, brand_context=brand)
+            sdf = inbound_sub[inbound_sub["store"] == store]
+            rev = int(sdf["revenue"].sum())
+            if rev <= 0:
+                continue
+            if label not in channel_data:
+                channel_data[label] = {"revenue": 0, "orders": 0,
+                                       "customers": set()}
+            channel_data[label]["revenue"] += rev
 
     # ---- 시트 기반 채널 매출 추가 (주문/고객 없음) ----
     if sheet_only:
