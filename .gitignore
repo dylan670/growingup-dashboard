@@ -18,14 +18,16 @@ Thumbs.db
 .streamlit/secrets.toml.*
 !.streamlit/secrets.toml.example
 
-# 민감 데이터 (고객 개인정보 포함)
-data/orders.csv
-data/reviews.csv
+# Cafe24 OAuth 토큰 (절대 공개 금지)
 data/cafe24_tokens.json
+
 # 구버전 주문 파일들 (레거시)
 data/*_orders.csv
 data/ddokddok_orders.csv
 data/rollaru_orders.csv
+
+# orders.csv / reviews.csv — 익명화된 customer_id 로 안전
+# git 에 포함하여 Streamlit Cloud 에 배포
 
 # 자동 생성 파일
 data/sync_log.txt
