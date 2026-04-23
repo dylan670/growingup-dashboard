@@ -48,6 +48,12 @@ data/*.log
 data/ezadmin_upload/
 data/uploads/
 
+# 쿠팡 광고 원본 CSV/Excel — 파싱 후 precomputed 에 저장됨, 원본은 로컬만
+data/coupang_ads_upload/*.xlsx
+data/coupang_ads_upload/*.xls
+data/coupang_ads_upload/*.csv
+!data/coupang_ads_upload/README.txt
+
 # 편집기
 .vscode/
 .idea/
