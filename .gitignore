@@ -15,6 +15,8 @@ Thumbs.db
 .env.*
 !.env.example
 .streamlit/secrets.toml
+.streamlit/secrets.toml.*
+!.streamlit/secrets.toml.example
 
 # 민감 데이터 (고객 개인정보 포함)
 data/orders.csv
