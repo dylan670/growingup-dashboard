@@ -64,7 +64,7 @@ CHANNEL_LABELS = {
 
 CHANNEL_STATUS = {
     "네이버": ("tracked", "실 API 연동 · 매일 자동 갱신"),
-    "쿠팡":   ("untracked", "쿠팡 광고비 **미집계** — 공식 API 미공개. advertising.coupang.com 에서 수동 확인"),
+    "쿠팡":   ("tracked", "CSV 업로드 기반 · 광고센터 리포트 주 1회 병합"),
     "자사몰": ("tracked", "Meta Marketing API 연동 · 매일 자동 갱신"),
 }
 
@@ -84,19 +84,75 @@ def render_untracked_card(ch_key: str, status_msg: str):
             )
 
 
+def _aggregate_daily_campaigns(
+    daily_df: pd.DataFrame, since_iso: str, until_iso: str,
+) -> pd.DataFrame:
+    """일자 단위 캠페인 parquet → 선택 기간 합산 + 파생 지표 계산."""
+    if daily_df is None or daily_df.empty:
+        return pd.DataFrame()
+
+    df = daily_df.copy()
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"])
+
+    since = pd.Timestamp(since_iso)
+    until = pd.Timestamp(until_iso)
+    mask = (df["date"] >= since) & (df["date"] <= until)
+    df = df[mask]
+    if df.empty:
+        return pd.DataFrame()
+
+    group_cols = ["campaign_id", "campaign_name"]
+    if "brand" in df.columns:
+        group_cols.append("brand")
+
+    agg = (
+        df.groupby(group_cols)
+        .agg(
+            spend=("spend", "sum"),
+            impressions=("impressions", "sum"),
+            clicks=("clicks", "sum"),
+            conversions=("conversions", "sum"),
+            revenue=("revenue", "sum"),
+        )
+        .reset_index()
+    )
+
+    agg["ctr_pct"] = (
+        agg["clicks"] / agg["impressions"].replace(0, pd.NA) * 100
+    ).round(2).fillna(0)
+    agg["cpc"] = (
+        agg["spend"] / agg["clicks"].replace(0, pd.NA)
+    ).round(0).fillna(0).astype(int)
+    agg["roas_pct"] = (
+        agg["revenue"] / agg["spend"].replace(0, pd.NA) * 100
+    ).round(0).fillna(0).astype(int)
+
+    agg = agg.sort_values("spend", ascending=False).reset_index(drop=True)
+    return agg
+
+
+# 캐시 버전 (loader 로직 바뀌면 증가시켜 기존 Streamlit 캐시 무효화)
+_CAMP_LOADER_VERSION = "v2-daily"
+
+
 @st.cache_data(ttl=600, show_spinner="🔍 Meta 캠페인 로드 중...")
-def _cached_meta_campaigns(brand: str, since_iso: str, until_iso: str):
-    """Meta 캠페인 — 프리컴퓨트 우선, 없으면 live API."""
-    # 프리컴퓨트 시도 (매일 10시 precompute.py 가 저장)
+def _cached_meta_campaigns(
+    brand: str, since_iso: str, until_iso: str,
+    _cache_ver: str = _CAMP_LOADER_VERSION,
+):
+    """Meta 캠페인 — 일자 단위 프리컴퓨트 읽어 기간 슬라이스 + 집계."""
+    from utils.precomputed import load_precomputed_parquet
+
+    # 1) 우선: 일자 단위 프리컴퓨트 (매일 10시 precompute.py 저장)
     try:
-        from utils.precomputed import load_precomputed_parquet
-        df = load_precomputed_parquet(f"meta_campaigns_{brand}.parquet")
-        if not df.empty:
-            return df
+        daily = load_precomputed_parquet(f"meta_campaigns_{brand}_daily.parquet")
+        if not daily.empty:
+            return _aggregate_daily_campaigns(daily, since_iso, until_iso)
     except Exception:
         pass
 
-    # Fallback: live API
+    # 2) Fallback: live API (Korean IP 필요 — Streamlit Cloud 에선 실패 가능)
     from datetime import date as _date
     client = load_meta_client(brand)
     if client is None:
@@ -108,16 +164,22 @@ def _cached_meta_campaigns(brand: str, since_iso: str, until_iso: str):
 
 
 @st.cache_data(ttl=600, show_spinner="🔍 네이버 캠페인 로드 중...")
-def _cached_naver_campaigns(since_iso: str, until_iso: str):
-    """네이버 검색광고 캠페인 — 프리컴퓨트 우선."""
+def _cached_naver_campaigns(
+    since_iso: str, until_iso: str,
+    _cache_ver: str = _CAMP_LOADER_VERSION,
+):
+    """네이버 검색광고 캠페인 — 일자 단위 프리컴퓨트 기반."""
+    from utils.precomputed import load_precomputed_parquet
+
+    # 1) 일자 단위 프리컴퓨트
     try:
-        from utils.precomputed import load_precomputed_parquet
-        df = load_precomputed_parquet("naver_campaigns.parquet")
-        if not df.empty:
-            return df
+        daily = load_precomputed_parquet("naver_campaigns_daily.parquet")
+        if not daily.empty:
+            return _aggregate_daily_campaigns(daily, since_iso, until_iso)
     except Exception:
         pass
 
+    # 2) Fallback: live API
     from datetime import date as _date
     client = load_naver_client()
     if client is None:
@@ -126,6 +188,221 @@ def _cached_naver_campaigns(since_iso: str, until_iso: str):
         _date.fromisoformat(since_iso),
         _date.fromisoformat(until_iso),
     )
+
+
+@st.cache_data(ttl=600, show_spinner="🔍 쿠팡 캠페인 로드 중...")
+def _cached_coupang_campaigns(
+    since_iso: str | None = None, until_iso: str | None = None,
+    _cache_ver: str = _CAMP_LOADER_VERSION,
+):
+    """쿠팡 광고 캠페인 — CSV 업로드 기반 (일자 단위 parquet 슬라이스)."""
+    from utils.precomputed import load_precomputed_parquet
+
+    if since_iso and until_iso:
+        try:
+            daily = load_precomputed_parquet("coupang_campaigns_daily.parquet")
+            if not daily.empty:
+                agg = _aggregate_daily_campaigns(daily, since_iso, until_iso)
+                if not agg.empty:
+                    return agg
+        except Exception:
+            pass
+
+    # Fallback: legacy 전체 합계 (아직 일자 parquet 없을 때)
+    try:
+        df = load_precomputed_parquet("coupang_campaigns.parquet")
+        if df is None or df.empty:
+            return None
+        return df
+    except Exception:
+        return None
+
+
+# ==========================================================
+# 캠페인 개별 진단 — ROAS/CTR/CPC/전환률 기반 규칙
+# ==========================================================
+def _diagnose_campaign(row: pd.Series, target_roas_pct: float, channel: str) -> dict:
+    """캠페인 1개 진단. 반환: {severity, title, detail}.
+
+    severity:
+        critical   — 즉시 조치 (🚨 낭비)
+        warning    — 주의 (⚠️ 부진/피로도)
+        opportunity — 기회 (✨ 우수/증액)
+        neutral    — 정상/정지
+    """
+    spend = int(row.get("spend", 0) or 0)
+    revenue = int(row.get("revenue", 0) or 0)
+    roas = float(row.get("roas_pct", 0) or 0)
+    ctr = float(row.get("ctr_pct", 0) or 0)
+    cpc = int(row.get("cpc", 0) or 0)
+    clicks = int(row.get("clicks", 0) or 0)
+    impressions = int(row.get("impressions", 0) or 0)
+    conversions = int(row.get("conversions", 0) or 0)
+    name = str(row.get("campaign_name", "") or "")
+
+    # 0. 정지
+    if spend == 0:
+        return {
+            "severity": "neutral",
+            "title": "⏸ 집행 중지",
+            "detail": "해당 기간 광고비 0원. 재시작 여부 전략 검토 필요.",
+        }
+
+    # 1. 즉시 조치 (대규모 낭비)
+    if spend >= 500_000 and roas < target_roas_pct * 0.5:
+        return {
+            "severity": "critical",
+            "title": "🚨 즉시 정지 검토",
+            "detail": (
+                f"광고비 {spend:,}원 집행 → 매출 {revenue:,}원 "
+                f"(ROAS {roas:.0f}% · 목표 {target_roas_pct:.0f}%의 절반 미만). "
+                "소재/랜딩/타겟 전면 재검토 또는 일시정지 권장."
+            ),
+        }
+
+    # 2. 클릭 대비 전환 0
+    if clicks >= 50 and conversions == 0:
+        return {
+            "severity": "critical",
+            "title": "⚠️ 클릭 대비 전환 0",
+            "detail": (
+                f"클릭 {clicks}회 · 광고비 {spend:,}원 투입했지만 전환 0건. "
+                "랜딩페이지 가격/후기/배송 정보 점검 및 A/B 테스트 우선."
+            ),
+        }
+
+    # 3. 우수 캠페인 (증액 기회)
+    if roas >= target_roas_pct * 1.3 and spend >= 100_000:
+        new_budget = int(spend * 1.5)
+        return {
+            "severity": "opportunity",
+            "title": "✨ 예산 증액 기회",
+            "detail": (
+                f"ROAS {roas:.0f}% (목표 {target_roas_pct:.0f}%의 1.3배 이상) "
+                f"· 광고비 {spend:,}원. 기간 예산 +50%(≈ {new_budget:,}원) "
+                "단계적 증액 검토."
+            ),
+        }
+
+    # 4. 성과 부진
+    if spend >= 100_000 and roas < target_roas_pct * 0.8:
+        return {
+            "severity": "warning",
+            "title": "⚠️ 성과 부진",
+            "detail": (
+                f"ROAS {roas:.0f}% (목표 {target_roas_pct:.0f}% 미달) · "
+                f"광고비 {spend:,}원. 소재 A/B 또는 키워드·타겟 재조정 필요."
+            ),
+        }
+
+    # 5. 소재 피로도 (노출 많은데 CTR 낮음) — 채널별 임계
+    ctr_threshold = {
+        "네이버": 1.0,    # 검색광고 일반 평균 1.5%+
+        "자사몰": 0.7,    # Meta 평균 0.8~1.2%
+        "쿠팡":   0.5,    # 쿠팡 광고 통상 0.6~1.0%
+    }.get(channel, 0.8)
+    if impressions >= 10_000 and ctr > 0 and ctr < ctr_threshold:
+        return {
+            "severity": "warning",
+            "title": "🖼 썸네일/카피 피로",
+            "detail": (
+                f"노출 {impressions:,}회 · CTR {ctr:.2f}% "
+                f"(평균 {ctr_threshold:.1f}% 이하). "
+                "썸네일/헤드라인/오퍼 재검토 — 신규 소재 2안 준비."
+            ),
+        }
+
+    # 6. CPC 과다 (검색광고 전용)
+    if channel == "네이버" and cpc >= 2000 and roas < target_roas_pct:
+        return {
+            "severity": "warning",
+            "title": "💰 CPC 과다",
+            "detail": (
+                f"CPC {cpc:,}원 · ROAS {roas:.0f}% (목표 {target_roas_pct:.0f}%). "
+                "입찰가 하향 또는 롱테일 키워드 중심 재편 검토."
+            ),
+        }
+
+    # 7. 저지출 (테스트 단계)
+    if spend < 50_000:
+        return {
+            "severity": "info",
+            "title": "🧪 테스트 집행",
+            "detail": (
+                f"광고비 {spend:,}원 · ROAS {roas:.0f}%. "
+                "판단 지표 부족 — 광고비 증액 후 재평가 또는 유지."
+            ),
+        }
+
+    # 8. 정상 범위
+    return {
+        "severity": "neutral",
+        "title": "✓ 정상 범위",
+        "detail": (
+            f"ROAS {roas:.0f}% · CTR {ctr:.2f}% · 광고비 {spend:,}원. "
+            "현 운영 유지."
+        ),
+    }
+
+
+def _render_campaign_diagnosis(
+    df: pd.DataFrame,
+    target_roas_pct: float,
+    channel: str,
+    max_items: int = 10,
+):
+    """캠페인별 진단 카드 렌더링 — 심각도 순 정렬 후 상위 N개."""
+    if df.empty:
+        return
+
+    # 진단 생성
+    severity_order = {"critical": 0, "warning": 1, "opportunity": 2, "info": 3, "neutral": 4}
+    diagnosed = []
+    for _, row in df.iterrows():
+        d = _diagnose_campaign(row, target_roas_pct, channel)
+        d["row"] = row
+        d["order"] = severity_order.get(d["severity"], 99)
+        diagnosed.append(d)
+
+    # 심각도 우선 → 심각도 같으면 광고비 큰 순
+    diagnosed.sort(
+        key=lambda x: (x["order"], -int(x["row"].get("spend", 0) or 0))
+    )
+
+    shown = diagnosed[:max_items]
+    hidden = len(diagnosed) - len(shown)
+
+    st.markdown(f"**🩺 캠페인별 진단 ({len(shown)}/{len(diagnosed)}개 표시)**")
+
+    for d in shown:
+        row = d["row"]
+        name = str(row.get("campaign_name", "") or "(이름 없음)")
+        spend = int(row.get("spend", 0) or 0)
+        roas = float(row.get("roas_pct", 0) or 0)
+        body = (
+            f"**{d['title']} · {name[:60]}**  \n"
+            f"{d['detail']}  \n"
+            f":grey[광고비 {spend:,}원 · ROAS {roas:.0f}%]"
+        )
+        sev = d["severity"]
+        if sev == "critical":
+            st.error(body)
+        elif sev == "warning":
+            st.warning(body)
+        elif sev == "opportunity":
+            st.success(body)
+        elif sev == "info":
+            st.info(body)
+        else:
+            st.markdown(
+                f"<div style='padding:8px 12px; background:#f8fafc; "
+                f"border-left:3px solid #94a3b8; border-radius:4px; "
+                f"margin-bottom:8px; font-size:0.9em;'>{body}</div>",
+                unsafe_allow_html=True,
+            )
+
+    if hidden > 0:
+        st.caption(f":grey[… 정상 범위 {hidden}개 캠페인 생략]")
 
 
 def _render_campaign_table(df: pd.DataFrame, target_roas_pct: float, key: str):
@@ -338,21 +615,20 @@ def render_ad_overview(
     # 이 브랜드에서 다룰 채널 — 전체면 3개 전부, 브랜드별이면 해당 store가 매핑되는 채널만
     if brand:
         brand_stores = set(BRAND_AD_STORES.get(brand, []))
-        # store→channel 매핑 (네이버 검색광고가 브랜드별로 분리된 후 갱신)
+        # store→channel 매핑 (네이버/자사몰/쿠팡 브랜드별로 분리된 후 갱신)
         store_to_channel = {
             "네이버":              "네이버",   # 구버전 호환
             "네이버_똑똑연구소":   "네이버",
             "네이버_롤라루":       "네이버",
             "자사몰_똑똑연구소":   "자사몰",
             "자사몰_롤라루":       "자사몰",
+            "쿠팡":                "쿠팡",     # 구버전 호환
+            "쿠팡_똑똑연구소":     "쿠팡",
+            "쿠팡_롤라루":         "쿠팡",
         }
         available_channels = sorted({
             store_to_channel[s] for s in brand_stores if s in store_to_channel
         })
-        # 쿠팡은 똑똑연구소에만 표시 (쿠팡 로켓그로스는 똑똑연구소 제품)
-        if brand == "똑똑연구소":
-            available_channels.append("쿠팡")
-            available_channels = sorted(set(available_channels))
     else:
         available_channels = ["네이버", "쿠팡", "자사몰"]
 
@@ -508,37 +784,27 @@ def render_ad_overview(
                     else:
                         st.caption(body)
 
-    # ---------- 캠페인 Drill-down ----------
-    if brand in ("똑똑연구소", "롤라루"):
+    # ---------- 캠페인별 상세 및 진단 ----------
+    if brand in ("똑똑연구소", "롤라루") or brand is None:
         st.divider()
-        st.markdown(f"#### 🔍 {brand_label} 캠페인 상세")
+        st.markdown(f"#### 🔍 {brand_label} 캠페인별 상세 및 진단")
         st.caption(
-            "캠페인 단위 광고비·매출·ROAS · 문제 캠페인 자동 감지 "
-            "(광고비 50만원+ & ROAS 목표의 50% 미만 → 🚨 낭비)"
+            "캠페인 단위 광고비·매출·ROAS · 자동 진단 "
+            "(🚨 즉시 조치 · ⚠️ 주의 · ✨ 증액 기회 · 🧪 테스트 · ✓ 정상)"
         )
 
         start_iso = str(start.date())
         end_iso = str(end.date())
+        target_naver = TARGET_ROAS.get("네이버", 4.0) * 100
+        target_meta = TARGET_ROAS.get("자사몰", 2.5) * 100
+        target_coupang = TARGET_ROAS.get("쿠팡", 5.0) * 100
 
-        # Meta 캠페인 (자사몰)
-        with st.expander(f"📣 Meta 광고 ({brand}) 캠페인 목록", expanded=False):
-            try:
-                meta_camp = _cached_meta_campaigns(brand, start_iso, end_iso)
-                if meta_camp is None:
-                    st.warning(f"Meta {brand} API 클라이언트 로드 실패 (자격증명 확인)")
-                elif meta_camp.empty:
-                    st.info("선택 기간 Meta 캠페인 데이터 없음.")
-                else:
-                    target_meta = TARGET_ROAS.get("자사몰", 2.5) * 100
-                    _render_campaign_table(
-                        meta_camp, target_meta,
-                        key=f"camp_meta_{brand}_{start_iso}",
-                    )
-            except Exception as e:
-                st.error(f"Meta 캠페인 조회 실패: {type(e).__name__}: {e}")
-
-        # 네이버 검색광고 (브랜드 필터 적용)
-        with st.expander(f"📣 네이버 검색광고 ({brand}) 캠페인 목록", expanded=False):
+        # ----- 네이버 검색광고 -----
+        naver_header = (
+            f"📣 네이버 검색광고 ({brand}) 캠페인"
+            if brand else "📣 네이버 검색광고 (전체) 캠페인"
+        )
+        with st.expander(naver_header, expanded=False):
             try:
                 naver_camp = _cached_naver_campaigns(start_iso, end_iso)
                 if naver_camp is None:
@@ -546,17 +812,107 @@ def render_ad_overview(
                 elif naver_camp.empty:
                     st.info("선택 기간 네이버 캠페인 데이터 없음.")
                 else:
-                    brand_camp = naver_camp[naver_camp["brand"] == brand]
-                    if brand_camp.empty:
-                        st.info(f"{brand} 소속 캠페인 없음.")
+                    if brand:
+                        filt_camp = naver_camp[naver_camp["brand"] == brand]
                     else:
-                        target_naver = TARGET_ROAS.get("네이버", 4.0) * 100
+                        filt_camp = naver_camp
+                    if filt_camp.empty:
+                        st.info(f"{brand_label} 소속 네이버 캠페인 없음.")
+                    else:
                         _render_campaign_table(
-                            brand_camp, target_naver,
-                            key=f"camp_naver_{brand}_{start_iso}",
+                            filt_camp, target_naver,
+                            key=f"camp_naver_{brand_label}_{start_iso}",
+                        )
+                        st.markdown("")
+                        _render_campaign_diagnosis(
+                            filt_camp, target_naver, "네이버",
                         )
             except Exception as e:
                 st.error(f"네이버 캠페인 조회 실패: {type(e).__name__}: {e}")
+
+        # ----- Meta 광고 -----
+        # 전체 탭은 브랜드별 Meta 를 합쳐서 보여주고, 브랜드 탭은 해당 브랜드만.
+        meta_header = (
+            f"📣 Meta 광고 ({brand}) 캠페인"
+            if brand else "📣 Meta 광고 (전체) 캠페인"
+        )
+        with st.expander(meta_header, expanded=False):
+            try:
+                if brand:
+                    meta_camp = _cached_meta_campaigns(brand, start_iso, end_iso)
+                    camps = [(brand, meta_camp)]
+                else:
+                    # 전체 — 똑똑연구소 + 롤라루 합산
+                    ddok_c = _cached_meta_campaigns("똑똑연구소", start_iso, end_iso)
+                    rolla_c = _cached_meta_campaigns("롤라루", start_iso, end_iso)
+                    parts = []
+                    if ddok_c is not None and not ddok_c.empty:
+                        ddok_c = ddok_c.copy()
+                        if "brand" not in ddok_c.columns:
+                            ddok_c["brand"] = "똑똑연구소"
+                        parts.append(ddok_c)
+                    if rolla_c is not None and not rolla_c.empty:
+                        rolla_c = rolla_c.copy()
+                        if "brand" not in rolla_c.columns:
+                            rolla_c["brand"] = "롤라루"
+                        parts.append(rolla_c)
+                    combined = pd.concat(parts, ignore_index=True) if parts else None
+                    camps = [("전체", combined)]
+
+                for _tag, meta_camp in camps:
+                    if meta_camp is None:
+                        st.warning(f"Meta {_tag} API 클라이언트 로드 실패 (자격증명 확인)")
+                        continue
+                    if meta_camp.empty:
+                        st.info(f"Meta {_tag} 캠페인 데이터 없음.")
+                        continue
+                    _render_campaign_table(
+                        meta_camp, target_meta,
+                        key=f"camp_meta_{_tag}_{start_iso}",
+                    )
+                    st.markdown("")
+                    _render_campaign_diagnosis(
+                        meta_camp, target_meta, "자사몰",
+                    )
+            except Exception as e:
+                st.error(f"Meta 캠페인 조회 실패: {type(e).__name__}: {e}")
+
+        # ----- 쿠팡 광고 (CSV 업로드 기반) -----
+        coupang_visible = brand in ("똑똑연구소", "롤라루") or brand is None
+        if coupang_visible:
+            coupang_header = (
+                f"📣 쿠팡 광고 ({brand}) 캠페인 — CSV 업로드"
+                if brand else "📣 쿠팡 광고 (전체) 캠페인 — CSV 업로드"
+            )
+            with st.expander(coupang_header, expanded=False):
+                try:
+                    coupang_camp = _cached_coupang_campaigns(start_iso, end_iso)
+                    if coupang_camp is None:
+                        st.info(
+                            "📥 **쿠팡 광고 데이터 없음**  \n"
+                            "쿠팡은 공식 광고 Open API 가 없어 수동 CSV 업로드로 집계합니다.  \n"
+                            "`data/coupang_ads_upload/` 폴더에 광고센터 CSV 를 드롭 후 "
+                            "`sync_coupang_ads_csv.py` 실행 (sync_all.bat 에 자동 포함)."
+                        )
+                    else:
+                        if brand:
+                            filt_camp = coupang_camp[coupang_camp["brand"] == brand]
+                        else:
+                            # 전체 — 분류된 브랜드만 포함 (공통 제외해도 되고 포함해도 됨)
+                            filt_camp = coupang_camp
+                        if filt_camp.empty:
+                            st.info(f"{brand_label} 소속 쿠팡 캠페인 없음.")
+                        else:
+                            _render_campaign_table(
+                                filt_camp, target_coupang,
+                                key=f"camp_coupang_{brand_label}_{start_iso}",
+                            )
+                            st.markdown("")
+                            _render_campaign_diagnosis(
+                                filt_camp, target_coupang, "쿠팡",
+                            )
+                except Exception as e:
+                    st.error(f"쿠팡 캠페인 조회 실패: {type(e).__name__}: {e}")
 
 
 # ==========================================================
@@ -570,13 +926,13 @@ tab_all, tab_ddok, tab_rolla, tab_ruti = st.tabs([
 ])
 
 with tab_all:
-    st.caption("전체 채널 광고 합산 (네이버 · Meta). 브랜드별 캠페인 상세는 각 브랜드 탭에서.")
+    st.caption("전체 채널 광고 합산 (네이버 · Meta · 쿠팡). 캠페인별 상세는 아래 expander 에서.")
     render_ad_overview(ads, start_date, pd.Timestamp(end_date), ads, brand=None)
 
 with tab_ddok:
     render_brand_banner(
         "똑똑연구소",
-        "네이버 검색광고 (김똑똑/떡뻥) · Meta 광고 · 쿠팡 광고(미집계)",
+        "네이버 검색광고 (김똑똑/떡뻥) · Meta 광고 · 쿠팡 광고 (CSV 업로드)",
     )
     ddok_ads = filter_ads_by_brand(ads, "똑똑연구소")
     render_ad_overview(
@@ -587,7 +943,7 @@ with tab_ddok:
 with tab_rolla:
     render_brand_banner(
         "롤라루",
-        "Meta 광고 · 네이버 검색광고 (롤라루 쇼핑검색)",
+        "Meta 광고 · 네이버 검색광고 (롤라루) · 쿠팡 AI 광고 (CSV 업로드)",
     )
     rolla_ads = filter_ads_by_brand(ads, "롤라루")
     render_ad_overview(

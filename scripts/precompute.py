@@ -60,7 +60,14 @@ def precompute_sheet() -> int:
 
 
 def precompute_campaigns(days: int = 90) -> dict:
-    """Meta/네이버 캠페인 기간 합계 (기본 90일) → Parquet."""
+    """Meta/네이버 캠페인 × 일자 단위 → Parquet (loader 기간별 슬라이스).
+
+    저장 파일:
+      meta_campaigns_{brand}_daily.parquet — 컬럼: date, campaign_id,
+        campaign_name, spend, impressions, clicks, conversions, revenue, brand
+      naver_campaigns_daily.parquet — 컬럼: date, campaign_id, campaign_name,
+        brand, spend, impressions, clicks, conversions, revenue
+    """
     from api.meta_ads import load_meta_client
     from api.naver_searchad import load_client_from_env
 
@@ -69,33 +76,38 @@ def precompute_campaigns(days: int = 90) -> dict:
 
     results = {}
 
-    # Meta — 브랜드별
+    # Meta — 브랜드별, 일자 단위
     for brand in ["똑똑연구소", "롤라루"]:
         try:
             client = load_meta_client(brand)
             if client is None:
                 log(f"Meta {brand}: 자격증명 없음 (skip)")
                 continue
-            df = client.fetch_campaigns_df(since, until)
-            df["brand"] = brand
-            save_precomputed_parquet(df, f"meta_campaigns_{brand}.parquet")
-            log(f"Meta {brand}: {len(df)} 캠페인 저장 "
-                f"(광고비 {int(df['spend'].sum()):,}원)")
-            results[f"meta_{brand}"] = len(df)
+            df = client.fetch_campaigns_daily_df(since, until)
+            if not df.empty:
+                df["brand"] = brand
+            save_precomputed_parquet(df, f"meta_campaigns_{brand}_daily.parquet")
+            log(f"Meta {brand}: {len(df)} 행 저장 "
+                f"(광고비 {int(df['spend'].sum()) if not df.empty else 0:,}원 "
+                f"/ {df['campaign_id'].nunique() if not df.empty else 0} 캠페인 × "
+                f"{df['date'].nunique() if not df.empty else 0} 일)")
+            results[f"meta_{brand}_daily"] = len(df)
         except Exception as e:
             log(f"Meta {brand} 실패: {type(e).__name__}: {e}")
 
-    # 네이버 검색광고 — 캠페인 단위 (느림: 최대 5분)
+    # 네이버 검색광고 — 캠페인 × 일자 (느림: 최대 10분)
     try:
         client = load_client_from_env()
         if client is None:
             log("네이버 검색광고 자격증명 없음 (skip)")
         else:
-            df = client.fetch_campaigns_df(since, until)
-            save_precomputed_parquet(df, "naver_campaigns.parquet")
-            log(f"네이버 검색광고: {len(df)} 캠페인 저장 "
-                f"(광고비 {int(df['spend'].sum()):,}원)")
-            results["naver"] = len(df)
+            df = client.fetch_campaigns_daily_df(since, until)
+            save_precomputed_parquet(df, "naver_campaigns_daily.parquet")
+            log(f"네이버 검색광고: {len(df)} 행 저장 "
+                f"(광고비 {int(df['spend'].sum()) if not df.empty else 0:,}원 "
+                f"/ {df['campaign_id'].nunique() if not df.empty else 0} 캠페인 × "
+                f"{df['date'].nunique() if not df.empty else 0} 일)")
+            results["naver_daily"] = len(df)
     except Exception as e:
         log(f"네이버 캠페인 실패: {type(e).__name__}: {e}")
 

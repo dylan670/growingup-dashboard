@@ -22,7 +22,10 @@ REM 1. 5개 API 동기화 (한국 IP 에서 호출 — 403 회피)
 ".venv\Scripts\python.exe" "scripts\sync_cafe24.py" --days 3
 ".venv\Scripts\python.exe" "scripts\sync_meta_ads.py" --days 3
 
-REM 2. Precompute
+REM 2. 쿠팡 광고 CSV 파싱 (폴더에 업로드된 파일 있으면 처리, 없으면 스킵)
+".venv\Scripts\python.exe" "scripts\sync_coupang_ads_csv.py"
+
+REM 3. Precompute
 ".venv\Scripts\python.exe" "scripts\precompute.py"
 
 REM 3. Git auto commit + push → Streamlit Cloud 자동 재배포

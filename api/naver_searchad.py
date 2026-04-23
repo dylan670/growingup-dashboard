@@ -403,6 +403,132 @@ class NaverSearchAdClient:
             df = df.sort_values("spend", ascending=False).reset_index(drop=True)
         return df
 
+    def fetch_campaigns_daily_df(
+        self, since: date, until: date, progress_cb=None,
+    ) -> pd.DataFrame:
+        """캠페인 × 일자 단위 성과 (프리컴퓨트 저장 용).
+
+        loader 가 선택 기간으로 슬라이스 후 합산하므로 파생 지표
+        (ctr_pct/cpc/roas_pct) 는 저장하지 않음 — 합산 시 부정확.
+
+        반환 컬럼: date, campaign_id, campaign_name, brand, spend,
+                  impressions, clicks, conversions, revenue
+        """
+        from utils.products import classify_naver_to_brand
+
+        campaigns = self.get_campaigns()
+        campaign_name_map = {
+            c.get("nccCampaignId"): c.get("name", "") for c in campaigns
+        }
+        adgroups = self.get_adgroups()
+        ag_to_campaign: dict[str, str] = {}
+        for ag in adgroups:
+            if not ag.get("deleted"):
+                ag_to_campaign[ag.get("nccAdgroupId")] = ag.get("nccCampaignId")
+
+        # 1) /stats 기간 루프 — (adgroup, date) 단위 보존
+        daily_agg: dict[tuple[str, str], dict] = {}  # (agid, date) → {spend,imp,clk}
+        current = since
+        while current <= until:
+            date_str = current.isoformat()
+            stats_list = self.get_stats(list(ag_to_campaign.keys()), date_str) \
+                if ag_to_campaign else []
+            for entry in stats_list:
+                agid = entry.get("id") or entry.get("adgroupId") or entry.get("keywordId")
+                if not agid:
+                    continue
+                key = (str(agid), date_str)
+                bucket = daily_agg.setdefault(
+                    key, {"spend": 0.0, "imp": 0.0, "clk": 0.0},
+                )
+                bucket["spend"] += float(entry.get("salesAmt", 0) or 0)
+                bucket["imp"] += float(entry.get("impCnt", 0) or 0)
+                bucket["clk"] += float(entry.get("clkCnt", 0) or 0)
+            current += timedelta(days=1)
+
+        # fallback — agid 누락 시 adgroup × 일자 개별 호출
+        if not daily_agg and ag_to_campaign:
+            for agid in list(ag_to_campaign.keys())[:200]:
+                current = since
+                while current <= until:
+                    date_str = current.isoformat()
+                    entries = self.get_stats([agid], date_str)
+                    for entry in entries:
+                        key = (str(agid), date_str)
+                        bucket = daily_agg.setdefault(
+                            key, {"spend": 0.0, "imp": 0.0, "clk": 0.0},
+                        )
+                        bucket["spend"] += float(entry.get("salesAmt", 0) or 0)
+                        bucket["imp"] += float(entry.get("impCnt", 0) or 0)
+                        bucket["clk"] += float(entry.get("clkCnt", 0) or 0)
+                    current += timedelta(days=1)
+
+        # 2) 캠페인 × 일자 집계
+        campaign_daily: dict[tuple[str, str], dict] = {}
+        for (agid, date_str), vals in daily_agg.items():
+            cmp_id = ag_to_campaign.get(agid, "")
+            if not cmp_id:
+                continue
+            key = (cmp_id, date_str)
+            bucket = campaign_daily.setdefault(
+                key, {"spend": 0.0, "imp": 0.0, "clk": 0.0, "conv": 0, "rev": 0.0},
+            )
+            bucket["spend"] += vals["spend"]
+            bucket["imp"] += vals["imp"]
+            bucket["clk"] += vals["clk"]
+
+        # 3) 구매완료 전환 — campaign × 일자 기준
+        try:
+            purchase_df = self.fetch_purchase_range(since, until, progress_cb=progress_cb)
+        except Exception:
+            purchase_df = pd.DataFrame()
+
+        if (
+            not purchase_df.empty
+            and "campaign_id" in purchase_df.columns
+            and "date" in purchase_df.columns
+        ):
+            # date 컬럼은 YYYY-MM-DD 또는 YYYYMMDD 문자열일 수 있음
+            purchase_df = purchase_df.copy()
+            purchase_df["date_norm"] = (
+                purchase_df["date"].astype(str).str.slice(0, 10)
+                .str.replace(r"(\d{4})(\d{2})(\d{2})", r"\1-\2-\3", regex=True)
+            )
+            conv_by = purchase_df.groupby(["campaign_id", "date_norm"]).agg(
+                conv=("conv_count", "sum"),
+                rev=("conv_amount", "sum"),
+            )
+            for (cmp_id, date_str), row in conv_by.iterrows():
+                key = (str(cmp_id), str(date_str))
+                bucket = campaign_daily.setdefault(
+                    key,
+                    {"spend": 0.0, "imp": 0.0, "clk": 0.0, "conv": 0, "rev": 0.0},
+                )
+                bucket["conv"] += int(row["conv"])
+                bucket["rev"] += float(row["rev"])
+
+        # 4) DataFrame 생성
+        rows: list[dict] = []
+        for (cmp_id, date_str), bucket in campaign_daily.items():
+            name = campaign_name_map.get(cmp_id, "(이름 없음)")
+            brand = classify_naver_to_brand(name)
+            rows.append({
+                "date": date_str,
+                "campaign_id": cmp_id,
+                "campaign_name": name,
+                "brand": brand,
+                "spend": int(round(bucket["spend"])),
+                "impressions": int(bucket["imp"]),
+                "clicks": int(bucket["clk"]),
+                "conversions": int(bucket["conv"]),
+                "revenue": int(round(bucket["rev"])),
+            })
+
+        return pd.DataFrame(rows, columns=[
+            "date", "campaign_id", "campaign_name", "brand",
+            "spend", "impressions", "clicks", "conversions", "revenue",
+        ])
+
     def get_daily_stats_by_brand_df(
         self, since: date, until: date, progress_cb=None,
     ) -> pd.DataFrame:

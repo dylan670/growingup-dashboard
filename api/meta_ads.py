@@ -183,10 +183,10 @@ class MetaAdsClient:
         ])
 
     def fetch_campaigns_df(self, since: date, until: date) -> pd.DataFrame:
-        """캠페인 단위 광고 성과.
+        """캠페인 단위 광고 성과 (기간 합계).
 
         반환 컬럼: campaign_id, campaign_name, spend, impressions, clicks,
-                  ctr, cpc, conversions, revenue, roas_pct, status_flag
+                  ctr_pct, cpc, conversions, revenue, roas_pct
         """
         raw = self.get_insights(
             since, until, level="campaign", time_increment="all_days",
@@ -238,6 +238,65 @@ class MetaAdsClient:
         if not df.empty:
             df = df.sort_values("spend", ascending=False).reset_index(drop=True)
         return df
+
+    def fetch_campaigns_daily_df(
+        self, since: date, until: date,
+    ) -> pd.DataFrame:
+        """캠페인 × 일자 단위 광고 성과 (프리컴퓨트 저장 용).
+
+        loader 에서 선택 기간으로 슬라이스 후 합산하므로 `ctr_pct`/`cpc`/
+        `roas_pct` 같은 파생 지표는 저장하지 않음 (합산 시 부정확).
+
+        반환 컬럼: date, campaign_id, campaign_name, spend, impressions,
+                  clicks, conversions, revenue
+        """
+        raw = self.get_insights(
+            since, until, level="campaign", time_increment=1,
+            fields=[
+                "campaign_id", "campaign_name",
+                "impressions", "clicks", "spend",
+                "actions", "action_values",
+            ],
+        )
+
+        rows: list[dict] = []
+        for entry in raw:
+            date_str = entry.get("date_start", "") or entry.get("date_stop", "")
+            if not date_str:
+                continue
+
+            spend = float(entry.get("spend") or 0)
+            impressions = int(float(entry.get("impressions") or 0))
+            clicks = int(float(entry.get("clicks") or 0))
+
+            conversions = 0
+            revenue = 0.0
+            for a in (entry.get("actions") or []):
+                if a.get("action_type") in (
+                    "purchase", "offsite_conversion.fb_pixel_purchase",
+                ):
+                    conversions += int(float(a.get("value") or 0))
+            for v in (entry.get("action_values") or []):
+                if v.get("action_type") in (
+                    "purchase", "offsite_conversion.fb_pixel_purchase",
+                ):
+                    revenue += float(v.get("value") or 0)
+
+            rows.append({
+                "date": date_str,
+                "campaign_id": entry.get("campaign_id", ""),
+                "campaign_name": entry.get("campaign_name", "?"),
+                "spend": int(round(spend)),
+                "impressions": impressions,
+                "clicks": clicks,
+                "conversions": conversions,
+                "revenue": int(round(revenue)),
+            })
+
+        return pd.DataFrame(rows, columns=[
+            "date", "campaign_id", "campaign_name", "spend",
+            "impressions", "clicks", "conversions", "revenue",
+        ])
 
 
 # ==========================================================
