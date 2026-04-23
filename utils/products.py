@@ -22,6 +22,23 @@ BRAND_RULES: list[tuple[list[str], str]] = [
     (["캐리어", "백팩", "여행"], "롤라루 여행용품"),
 ]
 
+
+# ==========================================================
+# 대시보드 집계에서 제외할 제품 키워드 (타 브랜드 제품 등)
+# 제품명에 이 중 하나라도 포함되면 orders.csv 병합 시 스킵
+# ==========================================================
+PRODUCT_BLOCKLIST_KEYWORDS: list[str] = [
+    "오즈키즈",      # OZKIZ — 그로잉업팀 운영 아닌 타 브랜드
+]
+
+
+def is_blocked_product(name: str | None) -> bool:
+    """상품명이 blocklist 에 해당하면 True — 데이터 병합 시 스킵 용."""
+    n = (name or "").strip()
+    if not n:
+        return False
+    return any(kw in n for kw in PRODUCT_BLOCKLIST_KEYWORDS)
+
 # 제품 라인 → 운영 브랜드(우산) 매핑
 UMBRELLA_BRANDS: dict[str, str] = {
     "김똑똑 (어린이김)": "똑똑연구소",
@@ -184,6 +201,9 @@ _STORE_DISPLAY_BRAND_SCOPED: dict[str, str] = {
     "쿠팡":                 "쿠팡",              # 구버전 호환
     "쿠팡_똑똑연구소":      "쿠팡",
     "쿠팡_롤라루":          "쿠팡",
+    # 쿠팡 벤더 발주 (로켓배송 B2B — 실제 소비자 판매 아님)
+    "쿠팡_똑똑연구소_벤더": "쿠팡 벤더 발주",
+    "쿠팡_롤라루_벤더":     "쿠팡 벤더 발주",
 }
 
 _STORE_DISPLAY_GLOBAL: dict[str, str] = {
@@ -195,6 +215,8 @@ _STORE_DISPLAY_GLOBAL: dict[str, str] = {
     "쿠팡":                 "쿠팡 (분류 전)",     # 구버전 호환
     "쿠팡_똑똑연구소":      "쿠팡 (똑똑)",
     "쿠팡_롤라루":          "쿠팡 (롤라루)",
+    "쿠팡_똑똑연구소_벤더": "쿠팡 벤더 발주 (똑똑)",
+    "쿠팡_롤라루_벤더":     "쿠팡 벤더 발주 (롤라루)",
 }
 
 

@@ -8,7 +8,7 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from api.naver_searchad import load_client_from_env
-from utils.data import load_orders
+from utils.data import load_orders, load_coupang_inbound
 from utils.products import (
     classify_orders,
     aggregate_by_umbrella,
@@ -35,18 +35,34 @@ setup_page(
     header_subtitle="제품 브랜드 단위 분석",
 )
 
-@st.cache_data(ttl=300, show_spinner="주문 데이터 로드 중...")
+@st.cache_data(ttl=300, show_spinner="주문 + 쿠팡 벤더 발주 데이터 로드 중...")
 def _cached_orders_classified() -> pd.DataFrame:
-    """주문 데이터 로드 + 브랜드 분류 (5분 캐시)."""
-    df = load_orders()
-    return classify_orders(df)
+    """주문 데이터 + 쿠팡 벤더 발주 병합 + 브랜드 분류 (5분 캐시).
+
+    - orders.csv: 실 소비자 판매 (매출 분석/CRM 공유)
+    - coupang_inbound.csv: 쿠팡 벤더 발주 (제품 분석 전용)
+    제품 분석에서는 두 소스를 concat 해서 집계.
+    """
+    orders_df = load_orders()
+    inbound_df = load_coupang_inbound()
+    if inbound_df.empty:
+        combined = orders_df
+    else:
+        combined = pd.concat([orders_df, inbound_df], ignore_index=True)
+    return classify_orders(combined)
 
 
 orders = load_orders()  # 날짜 range 계산용 (빠름)
+_inbound_raw = load_coupang_inbound()
 from datetime import date as _today_func
 today_real = _today_func.today()
-orders_max = orders["date"].max().date() if not orders.empty else today_real
-orders_min = orders["date"].min().date() if not orders.empty else _today_func(today_real.year - 1, 1, 1)
+# 날짜 range 는 orders + inbound 합쳐서 산정
+if not _inbound_raw.empty:
+    _all_dates = pd.concat([orders["date"], _inbound_raw["date"]]) if not orders.empty else _inbound_raw["date"]
+else:
+    _all_dates = orders["date"] if not orders.empty else pd.Series([], dtype="datetime64[ns]")
+orders_max = _all_dates.max().date() if not _all_dates.empty else today_real
+orders_min = _all_dates.min().date() if not _all_dates.empty else _today_func(today_real.year - 1, 1, 1)
 
 # ==========================================================
 # 기간 선택

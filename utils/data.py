@@ -12,6 +12,8 @@ DATA_DIR.mkdir(exist_ok=True)
 ADS_FILE = DATA_DIR / "ads.csv"
 ORDERS_FILE = DATA_DIR / "orders.csv"
 REVIEWS_FILE = DATA_DIR / "reviews.csv"
+# 쿠팡 벤더 발주 전용 (로켓배송 B2B — 실 소비자 판매 아님, 제품 분석에만 반영)
+COUPANG_INBOUND_FILE = DATA_DIR / "coupang_inbound.csv"
 
 CHANNELS = ["네이버", "쿠팡", "자사몰"]
 
@@ -193,6 +195,24 @@ def _add_store_column(df: pd.DataFrame) -> pd.DataFrame:
 
 def load_reviews() -> pd.DataFrame:
     return _load_or_generate(REVIEWS_FILE)
+
+
+def load_coupang_inbound() -> pd.DataFrame:
+    """쿠팡 벤더 발주 데이터 로드 (있으면 반환, 없으면 빈 DF).
+
+    컬럼: date, order_id, customer_id, channel, store, product,
+          quantity, revenue (orders.csv 와 동일 스키마)
+    store 는 '쿠팡_*_벤더' 형식으로 실 소비자 판매와 분리.
+    """
+    if not COUPANG_INBOUND_FILE.exists():
+        return pd.DataFrame(columns=[
+            "date", "order_id", "customer_id", "channel",
+            "store", "product", "quantity", "revenue",
+        ])
+    df = pd.read_csv(COUPANG_INBOUND_FILE)
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"])
+    return df
 
 
 def reset_and_generate() -> None:

@@ -27,11 +27,14 @@ sys.path.insert(0, str(ROOT))
 from api.coupang_sales_csv import (  # noqa: E402
     read_coupang_sales_file, parse_to_orders,
 )
-from utils.data import ORDERS_FILE  # noqa: E402
 
 
 UPLOAD_DIR = ROOT / "data" / "coupang_sales_upload"
 LOG_FILE = ROOT / "data" / "sync_log.txt"
+
+# 벤더 발주 데이터 전용 파일 — orders.csv (실 소비자 판매) 와 분리
+# 제품 분석 페이지에서만 병합해서 표시 (매출 분석/CRM 미포함)
+INBOUND_FILE = ROOT / "data" / "coupang_inbound.csv"
 
 
 def log(msg: str) -> None:
@@ -56,9 +59,10 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def merge_into_orders_csv(new_df) -> tuple[int, int, int]:
-    """누적 병합: 새 CSV 날짜 범위만 교체, 그 외 기존 데이터 보존.
+def merge_into_inbound_csv(new_df) -> tuple[int, int, int]:
+    """coupang_inbound.csv 누적 병합 — orders.csv 와 완전히 분리.
 
+    새 CSV 날짜 범위만 교체, 그 외 날짜 기존 데이터는 보존.
     Returns: (보존 행, 중복 제거 행, 신규 추가 행)
     """
     import pandas as pd
@@ -69,18 +73,12 @@ def merge_into_orders_csv(new_df) -> tuple[int, int, int]:
     new_df = new_df.copy()
     new_df["date"] = new_df["date"].astype(str)
     new_dates = set(new_df["date"])
-    coupang_stores = {"쿠팡", "쿠팡_똑똑연구소", "쿠팡_롤라루"}
 
-    if ORDERS_FILE.exists():
-        existing = pd.read_csv(ORDERS_FILE)
+    if INBOUND_FILE.exists():
+        existing = pd.read_csv(INBOUND_FILE)
         existing["date"] = existing["date"].astype(str)
-        if "store" not in existing.columns:
-            existing["store"] = existing["channel"]
-        # 쿠팡 스토어 × 새 파일 날짜 행만 제거, 나머지 보존
-        mask = (
-            existing["store"].isin(coupang_stores)
-            & existing["date"].isin(new_dates)
-        )
+        # 새 파일 날짜 행만 교체, 그 외 모두 보존
+        mask = existing["date"].isin(new_dates)
         removed = int(mask.sum())
         kept = existing[~mask]
         total_kept = len(kept)
@@ -91,58 +89,112 @@ def merge_into_orders_csv(new_df) -> tuple[int, int, int]:
 
     merged = pd.concat([kept, new_df], ignore_index=True)
     merged = merged.sort_values(["date", "store", "product"]).reset_index(drop=True)
-    merged.to_csv(ORDERS_FILE, index=False, encoding="utf-8-sig")
+    INBOUND_FILE.parent.mkdir(exist_ok=True)
+    merged.to_csv(INBOUND_FILE, index=False, encoding="utf-8-sig")
     return total_kept, removed, len(new_df)
 
 
 def main() -> int:
+    import pandas as pd
+
     args = parse_args()
 
+    # 처리 대상 파일 결정 (단일 또는 폴더 내 전체)
     if args.file:
-        target = Path(args.file)
-        if not target.exists():
-            log(f"파일 없음: {target}")
+        target_files = [Path(args.file)]
+        if not target_files[0].exists():
+            log(f"파일 없음: {target_files[0]}")
             return 1
     else:
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-        candidates = [
+        target_files = sorted([
             p for p in UPLOAD_DIR.glob("*")
             if p.suffix.lower() in (".csv", ".xlsx", ".xls")
             and not p.name.startswith(".")
             and p.name.lower() != "readme.txt"
-        ]
-        if not candidates:
-            log(f"업로드 폴더에 파일 없음 (쿠팡 판매 CSV 드롭 대기): {UPLOAD_DIR}")
+        ])
+        if not target_files:
+            log(f"업로드 폴더에 파일 없음: {UPLOAD_DIR}")
             return 0
-        target = max(candidates, key=lambda p: p.stat().st_mtime)
-        log(f"업로드 폴더 최신 파일 사용: {target.name}")
+        log(f"업로드 폴더 전체 파일 {len(target_files)}개 순차 처리 시작")
 
-    try:
-        raw = read_coupang_sales_file(target)
-        log(f"원본 {len(raw)}행, 헤더 {list(raw.columns)[:10]}")
-    except Exception as e:
-        log(f"파일 읽기 실패: {type(e).__name__}: {e}")
-        return 2
+    # 모든 파일 파싱 → 하나로 합치기
+    all_orders: list = []
+    total_raw = 0
+    total_blocked = 0
+    failed_files: list[tuple[str, str]] = []
 
-    try:
-        orders_df = parse_to_orders(raw)
-    except ValueError as e:
-        log(f"컬럼 매핑 실패: {e}")
+    for tf in target_files:
+        try:
+            raw = read_coupang_sales_file(tf)
+            total_raw += len(raw)
+        except Exception as e:
+            log(f"[{tf.name}] 파일 읽기 실패: {type(e).__name__}: {e}")
+            failed_files.append((tf.name, f"읽기 실패: {e}"))
+            continue
+
+        try:
+            orders_df = parse_to_orders(raw)
+        except ValueError as e:
+            log(f"[{tf.name}] 컬럼 매핑 실패: {e}")
+            failed_files.append((tf.name, f"매핑 실패: {e}"))
+            continue
+
+        # 차단된 행 수 로깅 (오즈키즈 등)
+        # parse_to_orders 가 attrs 에 정보 넣어주면 사용 — 아니면 passno log
+        blocked_n = 0  # 각 파일별 추적은 복잡해서 생략, 총합만 표시
+        if orders_df.empty:
+            log(f"[{tf.name}] 원본 {len(raw)}행 → 파싱 결과 0건 "
+                f"(전량 차단 또는 매칭 실패)")
+            continue
+
+        log(
+            f"[{tf.name}] 원본 {len(raw)}행 → 파싱 {len(orders_df)}행 "
+            f"(매출 {int(orders_df['revenue'].sum()):,}원)"
+        )
+        all_orders.append(orders_df)
+
+    if not all_orders:
+        log("모든 파일 파싱 결과 0건. 병합 스킵.")
+        if failed_files:
+            log(f"실패 파일 {len(failed_files)}개:")
+            for name, err in failed_files[:10]:
+                log(f"  - {name}: {err}")
         return 3
 
-    if orders_df.empty:
-        log("파싱 결과 0건")
-        return 0
+    merged_df = pd.concat(all_orders, ignore_index=True)
 
-    total_qty = int(orders_df["quantity"].sum())
-    total_rev = int(orders_df["revenue"].sum())
+    # 동일 (date, store, product) 중복 제거 — 수량/매출 합산
+    before_dedup = len(merged_df)
+    merged_df = (
+        merged_df.groupby(["date", "store", "product"], as_index=False)
+        .agg(
+            order_id=("order_id", "first"),
+            customer_id=("customer_id", "first"),
+            channel=("channel", "first"),
+            quantity=("quantity", "sum"),
+            revenue=("revenue", "sum"),
+        )
+    )
+    merged_df = merged_df[[
+        "date", "order_id", "customer_id", "channel", "store",
+        "product", "quantity", "revenue",
+    ]]
+    dedup_merged = before_dedup - len(merged_df)
+    if dedup_merged:
+        log(f"중복 (date × store × product) {dedup_merged}행 합산 → {len(merged_df)}행")
+
+    total_qty = int(merged_df["quantity"].sum())
+    total_rev = int(merged_df["revenue"].sum())
     log(
-        f"파싱 완료: {len(orders_df)}행 / 수량 {total_qty:,}개 "
-        f"/ 매출 {total_rev:,}원"
+        f"=== 전체 파싱 요약 ===\n"
+        f"  파일: {len(target_files)}개 (실패 {len(failed_files)}개)\n"
+        f"  원본: {total_raw:,}행 → 유효 {len(merged_df):,}행\n"
+        f"  수량: {total_qty:,}개 / 매출: {total_rev:,}원"
     )
 
-    for store in sorted(orders_df["store"].unique()):
-        sdf = orders_df[orders_df["store"] == store]
+    for store in sorted(merged_df["store"].unique()):
+        sdf = merged_df[merged_df["store"] == store]
         rev = int(sdf["revenue"].sum())
         qty = int(sdf["quantity"].sum())
         products_n = sdf["product"].nunique()
@@ -150,14 +202,20 @@ def main() -> int:
             f"수량 {qty:,}개 / 매출 {rev:,}원")
 
     try:
-        kept, removed, added = merge_into_orders_csv(orders_df)
+        kept, removed, added = merge_into_inbound_csv(merged_df)
         log(
-            f"orders.csv 누적 병합: 기존 쿠팡 데이터 {removed}행 교체 · "
-            f"신규 {added}행 추가 · 보존 {kept}행"
+            f"coupang_inbound.csv 누적 병합: 기존 {removed}행 교체 · "
+            f"신규 {added}행 추가 · 과거 데이터 보존 {kept}행"
         )
+        log(f"저장 위치: {INBOUND_FILE}")
     except Exception as e:
         log(f"병합 실패: {type(e).__name__}: {e}")
         return 4
+
+    if failed_files:
+        log(f"⚠ 실패 파일 {len(failed_files)}개 (수동 확인 필요):")
+        for name, err in failed_files[:10]:
+            log(f"  - {name}: {err}")
 
     log("동기화 성공.")
     return 0

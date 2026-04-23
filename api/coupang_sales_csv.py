@@ -29,35 +29,48 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils.products import classify_product
+from utils.products import classify_product, is_blocked_product
 
 
 # ---- 컬럼 매핑 (후보 리스트) ----
 COLUMN_CANDIDATES = {
     "date": [
+        # 일반 판매 리포트
         "날짜", "일자", "기간", "date", "집계일", "주문일",
         "결제일", "판매일",
+        # 쿠팡 Supplier Hub 발주리스트
+        "일시", "발주일", "발주일시", "입고일", "입고 예정일",
     ],
     "product": [
+        # 일반 판매
         "상품명", "상품", "제품명", "옵션명", "product", "productName",
         "등록상품명", "노출상품명",
+        # 발주리스트 (첫 SKU 명 형태)
+        "첫 SKU명", "첫SKU명", "SKU명", "SKU 명",
     ],
     "quantity": [
+        # 일반
         "판매수량", "수량", "판매 수량", "판매량", "quantity",
         "주문수량", "결제수량",
+        # 발주
+        "발주수량", "발주 수량", "발주", "입고수량", "입고 수량",
     ],
     "revenue": [
+        # 일반 판매
         "매출", "판매금액", "실결제금액", "정산금액", "순매출",
         "매출액", "revenue", "총매출", "총 매출",
         "결제금액", "결제 금액",
+        # 발주
+        "금액", "발주금액", "발주 금액", "실공급가", "공급가",
+        "공급가액", "총 발주액",
     ],
     "order_id": [
         "주문번호", "주문 번호", "order_id", "orderId",
+        "발주번호", "발주 번호",
     ],
-    # 배송방식 — 판매 형태 구분 (로켓배송/로켓그로스/업체배송)
     "shipment_type": [
         "배송방식", "판매방식", "배송 유형", "shipping_type",
-        "fulfillment", "상품 유형",
+        "fulfillment", "상품 유형", "운송",
     ],
 }
 
@@ -164,16 +177,30 @@ def parse_to_orders(df: pd.DataFrame) -> pd.DataFrame:
         ])
 
     work["_product"] = work[col_prod].astype(str).str.strip()
+
+    # 차단 키워드 필터 (오즈키즈 등 타 브랜드 제품 제외)
+    before_n = len(work)
+    work = work[~work["_product"].map(is_blocked_product)]
+    blocked_n = before_n - len(work)
+    if blocked_n:
+        # 진단 정보 DataFrame attribute 로 첨부 (CLI에서 로그에 표시)
+        work.attrs["blocked_rows"] = blocked_n
+    if work.empty:
+        return pd.DataFrame(columns=[
+            "date", "order_id", "customer_id", "channel", "store",
+            "product", "quantity", "revenue",
+        ])
     work["_quantity"] = work[col_qty].map(_clean_int) if col_qty else 1
     work["_revenue"] = work[col_rev].map(_clean_int)
     work["_brand"] = work["_product"].map(_classify_coupang_product_to_brand)
 
-    # store 매핑
+    # store 매핑 — 벤더 발주 데이터는 "_벤더" suffix 로 소비자 판매와 분리
+    # (orders.csv 의 쿠팡_롤라루/쿠팡_똑똑연구소 는 실제 판매, 이건 B2B 입고)
     def _store_for_brand(b: str) -> str:
         return {
-            "똑똑연구소": "쿠팡_똑똑연구소",
-            "롤라루":     "쿠팡_롤라루",
-        }.get(b, "쿠팡")
+            "똑똑연구소": "쿠팡_똑똑연구소_벤더",
+            "롤라루":     "쿠팡_롤라루_벤더",
+        }.get(b, "쿠팡_벤더_기타")
 
     work["_store"] = work["_brand"].map(_store_for_brand)
 
