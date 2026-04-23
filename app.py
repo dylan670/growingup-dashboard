@@ -349,9 +349,7 @@ def _render_today_highlights() -> None:
     # 4) 월 목표 소진 속도 체크 — 페이스 예측
     try:
         month_start = pd.Timestamp(today.replace(day=1))
-        month_end_full = pd.Timestamp(
-            today.replace(day=1) + pd.offsets.MonthEnd(0)
-        )
+        month_end_full = pd.Timestamp(today.replace(day=1)) + pd.offsets.MonthEnd(0)
         days_passed = (pd.Timestamp(today) - month_start).days + 1
         days_total = (month_end_full - month_start).days + 1
         month_df = sheet_df[
@@ -442,9 +440,7 @@ def _render_month_end_forecasts() -> None:
     from utils.ui import BRAND_COLORS
 
     month_start = pd.Timestamp(today.replace(day=1))
-    month_end_ts = pd.Timestamp(
-        today.replace(day=1) + pd.offsets.MonthEnd(0)
-    )
+    month_end_ts = pd.Timestamp(today.replace(day=1)) + pd.offsets.MonthEnd(0)
     days_total = (month_end_ts - month_start).days + 1
 
     st.markdown(

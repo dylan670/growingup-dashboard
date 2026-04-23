@@ -70,9 +70,8 @@ def weighted_month_end_forecast(
 
     today = pd.Timestamp(today)
     if month_end is None:
-        month_end = pd.Timestamp(
-            today.replace(day=1) + pd.offsets.MonthEnd(0)
-        )
+        # Timestamp + pd.offsets 는 Timestamp 반환 (추가 wrap 불필요)
+        month_end = pd.Timestamp(today.replace(day=1)) + pd.offsets.MonthEnd(0)
     month_start = pd.Timestamp(today.replace(day=1))
 
     # ---- 경과 실적 ----

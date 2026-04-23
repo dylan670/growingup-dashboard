@@ -293,9 +293,8 @@ def _render_weighted_forecast_section(sheet_df_: pd.DataFrame, brand: str) -> No
 
     today_ts = pd.Timestamp(today_real)
     month_start = pd.Timestamp(today_real.replace(day=1))
-    month_end_ts = pd.Timestamp(
-        today_real.replace(day=1) + pd.offsets.MonthEnd(0)
-    )
+    # pd.offsets 는 Timestamp 에만 작동 — date 는 먼저 Timestamp 변환 필요
+    month_end_ts = pd.Timestamp(today_real.replace(day=1)) + pd.offsets.MonthEnd(0)
     days_total = (month_end_ts - month_start).days + 1
 
     b_sheet = sheet_df_[sheet_df_["brand"] == brand][["date", "actual", "target"]].copy()
