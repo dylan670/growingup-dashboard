@@ -35,7 +35,14 @@ setup_page(
     header_subtitle="제품·브랜드 단위 매출·광고 통합 (네이버 광고비 자동 브랜드 할당)",
 )
 
-orders = load_orders()
+@st.cache_data(ttl=300, show_spinner="주문 데이터 로드 중...")
+def _cached_orders_classified() -> pd.DataFrame:
+    """주문 데이터 로드 + 브랜드 분류 (5분 캐시)."""
+    df = load_orders()
+    return classify_orders(df)
+
+
+orders = load_orders()  # 날짜 range 계산용 (빠름)
 from datetime import date as _today_func
 today_real = _today_func.today()
 orders_max = orders["date"].max().date() if not orders.empty else today_real
@@ -63,27 +70,77 @@ st.caption(f"분석 기간: **{start_date.date()} ~ {end_date}** ({days}일)")
 
 
 # ==========================================================
-# 기간 필터 + 브랜드 분류
+# 기간 필터 + 브랜드 분류 (분류는 전체 데이터에 한 번만 — 캐시됨)
 # ==========================================================
-o_filt_all = orders[
-    (orders["date"] >= start_date)
-    & (orders["date"] <= pd.Timestamp(end_date))
+_orders_classified = _cached_orders_classified()
+o_filt_all = _orders_classified[
+    (_orders_classified["date"] >= start_date)
+    & (_orders_classified["date"] <= pd.Timestamp(end_date))
 ].copy()
-o_filt_all = classify_orders(o_filt_all)
 
 
 # ==========================================================
 # 네이버 광고비 조회 (캐시) — 전체 기간 1회만
 # ==========================================================
-naver_client = load_client_from_env()
+# 네이버 API 클라이언트는 프리컴퓨트 미존재 시에만 fallback 용으로 로드
+# (로드 자체는 빠르지만 API 호출이 느림 → 프리컴퓨트 있으면 호출 안 함)
 ad_spend_by_umbrella: dict[str, int] = {}
 ad_spend_debug: pd.DataFrame | None = None
 
 
+@st.cache_resource
+def _cached_naver_client():
+    """네이버 API 클라이언트 — 세션 1회만 초기화."""
+    try:
+        return load_client_from_env()
+    except Exception:
+        return None
+
+
+naver_client = _cached_naver_client()
+
+
 @st.cache_data(ttl=600, show_spinner="데이터 불러오는 중…")
 def _get_brand_ad_spend(_client, since_iso: str, until_iso: str):
-    from utils.naver_insights import fetch_breakdown
+    """네이버 광고비 브랜드별 — 프리컴퓨트 parquet 우선, 없으면 API."""
     from datetime import date as _date
+
+    # 1) 프리컴퓨트 parquet 우선 (naver_campaigns_daily.parquet 활용)
+    try:
+        from utils.precomputed import load_precomputed_parquet
+        daily = load_precomputed_parquet("naver_campaigns_daily.parquet")
+        if not daily.empty:
+            daily = daily.copy()
+            daily["date"] = pd.to_datetime(daily["date"], errors="coerce")
+            daily = daily.dropna(subset=["date"])
+            since_ts = pd.Timestamp(since_iso)
+            until_ts = pd.Timestamp(until_iso)
+            sliced = daily[
+                (daily["date"] >= since_ts) & (daily["date"] <= until_ts)
+            ]
+            if not sliced.empty and "brand" in sliced.columns:
+                # brand 는 똑똑연구소 / 롤라루 / 공통
+                by_umb = (
+                    sliced.groupby("brand")["spend"].sum()
+                    .astype(int).to_dict()
+                )
+                debug = (
+                    sliced.groupby(["campaign_name", "brand"])
+                    .agg(비용=("spend", "sum"), 매출=("revenue", "sum"))
+                    .reset_index()
+                    .rename(columns={"campaign_name": "이름", "brand": "umbrella"})
+                    .sort_values("비용", ascending=False)
+                )
+                debug["brand"] = debug["umbrella"]
+                debug["ROAS(%)"] = (
+                    debug["매출"] / debug["비용"].replace(0, pd.NA) * 100
+                ).round(0).fillna(0).astype(int)
+                return by_umb, debug
+    except Exception:
+        pass
+
+    # 2) Fallback — API (느림: 수 분)
+    from utils.naver_insights import fetch_breakdown
     df = fetch_breakdown(
         _client, "adgroup",
         _date.fromisoformat(since_iso),
@@ -93,7 +150,8 @@ def _get_brand_ad_spend(_client, since_iso: str, until_iso: str):
         return {}, pd.DataFrame()
     df = attribute_naver_ad_spend(df)
     by_umb = df.groupby("umbrella")["비용"].sum().astype(int).to_dict()
-    debug = df[["이름", "brand", "umbrella", "비용", "매출", "ROAS(%)"]].sort_values("비용", ascending=False)
+    debug = df[["이름", "brand", "umbrella", "비용", "매출", "ROAS(%)"]] \
+        .sort_values("비용", ascending=False)
     return by_umb, debug
 
 
@@ -105,13 +163,55 @@ if naver_client:
     except Exception as e:
         st.warning(f"네이버 광고비 조회 실패 (브랜드별 할당 스킵): {e}")
 else:
-    st.info("네이버 검색광고 API 미연결 → 광고비 할당 없이 매출만 표시.")
+    # 프리컴퓨트만으로도 시도 — API 클라이언트 불필요
+    try:
+        ad_spend_by_umbrella, ad_spend_debug = _get_brand_ad_spend(
+            None, str(start_date.date()), str(end_date),
+        )
+    except Exception:
+        st.info("네이버 광고비 데이터 없음 → 광고비 할당 없이 매출만 표시.")
 
 
 # ==========================================================
-# 이미지 캐시
+# 이미지 캐시 + fuzzy 매칭 결과 (세션 단위 캐시, 10분 TTL)
 # ==========================================================
 image_cache = load_image_cache()
+
+
+@st.cache_data(ttl=600, show_spinner="상품 이미지 매칭 중...")
+def _cached_full_image_lookup(
+    orders_fingerprint: tuple,
+    cache_fingerprint: tuple,
+) -> dict:
+    """전체 주문 × 이미지 캐시 fuzzy 매칭 결과를 한 번만 계산.
+
+    Args:
+        orders_fingerprint: (행수, store 리스트, product 리스트 hash)
+        cache_fingerprint: (행수, name 리스트 hash)
+        → Streamlit 캐시 키 안정화용 (DataFrame 직접 해싱 느림)
+    """
+    # 실제 계산용 orders/cache 는 전역에서 로드
+    all_orders_inner = classify_orders(load_orders())
+    return build_store_scoped_lookup(
+        all_orders_inner, image_cache, min_ratio=0.5,
+    )
+
+
+# fingerprint 계산 (DataFrame 해싱 없이 빠르게 캐시 키 생성)
+_all_orders_for_fp = load_orders()
+_orders_fp = (
+    len(_all_orders_for_fp),
+    tuple(sorted(_all_orders_for_fp["store"].dropna().unique().tolist()))
+    if "store" in _all_orders_for_fp.columns else (),
+)
+_cache_fp = (
+    len(image_cache),
+    hash(tuple(image_cache["name"].dropna().astype(str).tolist()[:100]))
+    if "name" in image_cache.columns else 0,
+)
+
+# 한 번 호출 → 이후 브랜드 탭 4개 모두 이 lookup 재사용 (퍼지 매칭 재계산 X)
+full_image_lookup = _cached_full_image_lookup(_orders_fp, _cache_fp)
 
 
 # ==========================================================
@@ -342,11 +442,10 @@ def render_product_view(
     if prod_ch_agg.empty:
         return
 
-    # 이미지 매칭
-    if not image_cache.empty:
-        store_lookup = build_store_scoped_lookup(o_filt, image_cache, min_ratio=0.5)
+    # 이미지 매칭 — 전역 lookup 재사용 (퍼지 매칭 재계산 X)
+    if full_image_lookup:
         prod_ch_agg["image"] = prod_ch_agg.apply(
-            lambda r: store_lookup.get((r["store"], r["product"])), axis=1,
+            lambda r: full_image_lookup.get((r["store"], r["product"])), axis=1,
         )
     else:
         prod_ch_agg["image"] = None
@@ -514,9 +613,23 @@ def render_product_view(
                 if lines:
                     st.caption("\n".join(lines))
 
-                # 📈 일별 판매 추이 (expander — 이미지 클릭 대신)
-                with st.expander(f"📈 일별 판매 추이 ({days}일) 보기",
-                                 expanded=False):
+                # 📈 일별 판매 추이 — lazy render (버튼 클릭 시에만 차트 생성)
+                chart_toggle_key = f"show_chart_top6_{brand_label}_{idx}"
+                if chart_toggle_key not in st.session_state:
+                    st.session_state[chart_toggle_key] = False
+                btn_label = (
+                    f"📈 일별 판매 추이 ({days}일) 닫기"
+                    if st.session_state[chart_toggle_key]
+                    else f"📈 일별 판매 추이 ({days}일) 보기"
+                )
+                if st.button(
+                    btn_label, width="stretch",
+                    key=f"btn_{chart_toggle_key}",
+                ):
+                    st.session_state[chart_toggle_key] = \
+                        not st.session_state[chart_toggle_key]
+                    st.rerun()
+                if st.session_state[chart_toggle_key]:
                     _render_daily_product_chart(
                         prod_name, o_filt,
                         start_date, pd.Timestamp(end_date),
