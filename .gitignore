@@ -41,8 +41,8 @@ data/*.log
 # 이미지 캐시는 커밋됨 (이미지 URL 만 포함)
 # data/product_images.csv
 
-# 프리컴퓨트 캐시 — GitHub Actions 가 재생성
-data/precomputed/
+# 프리컴퓨트 캐시 — Streamlit Cloud 빠른 로드용 (로컬 sync_all.bat 이 매일 갱신 + push)
+# data/precomputed/  ← 커밋에 포함 (대시보드 속도 개선)
 
 # 업로드 폴더
 data/ezadmin_upload/
