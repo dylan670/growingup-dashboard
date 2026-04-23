@@ -416,22 +416,13 @@ def render_product_view(
         customers = int(row["customers"])
         products_n = int(row["products"])
 
-        ad_spend = ad_spend_by_umbrella.get(umbrella, 0)
-        roas = revenue / ad_spend * 100 if ad_spend else 0
-
         with st.container(border=True):
-            # 상단: 브랜드 정보 + 지표 4개 (숫자 컬럼 너비 확대해 짤림 방지)
-            cc = st.columns([2, 2, 1, 2, 1])
+            # 상단: 브랜드 정보 + 매출/주문 (네이버 광고비/ROAS 제거)
+            cc = st.columns([2, 3, 2])
             cc[0].markdown(f"### {umbrella}")
             cc[0].caption(f"{products_n}종 상품 · {customers}명 고객")
             cc[1].metric("매출", f"{revenue:,}원")
             cc[2].metric("주문", f"{orders_n:,}건")
-            cc[3].metric("네이버 광고비", f"{int(ad_spend):,}원")
-            cc[4].metric(
-                "추정 ROAS",
-                f"{roas:.0f}%" if ad_spend else "—",
-                help="네이버 광고비 대비 매출. 쿠팡/메타 광고비 별도.",
-            )
 
             # 하단: 채널별 매출 비중 (전폭 사용, 가로 나열)
             ch_rev = o_filt[o_filt["umbrella"] == umbrella].groupby("channel")["revenue"].sum()

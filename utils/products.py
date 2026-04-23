@@ -39,6 +39,60 @@ def is_blocked_product(name: str | None) -> bool:
         return False
     return any(kw in n for kw in PRODUCT_BLOCKLIST_KEYWORDS)
 
+
+# ==========================================================
+# 제품명 정규화 규칙 — 채널별로 흩어진 상품명을 모델명으로 통일
+#   예: "롤라루 오프너 확장형 기내용 캐리어 다크그린 20" → "오프너"
+#       "똑똑연구소 김똑똑 어린이김 30개 담백한맛 2g" → "김똑똑 어린이김 30봉"
+#
+# 동작: 패턴(substring)이 상품명에 포함되면 canonical 로 치환.
+# 순서: 긴/구체적 패턴 먼저 → 짧은 키워드는 fallback
+# ==========================================================
+PRODUCT_NAME_RULES: list[tuple[str, str]] = [
+    # ---- 똑똑연구소 긴 문구 우선 ----
+    ("똑똑연구소 김똑똑 어린이김 240개 담백한맛 2g", "김똑똑 어린이김 240봉(1박스)"),
+    ("똑똑연구소 김똑똑 어린이김 60개 담백한맛 2g", "김똑똑 어린이김 60봉"),
+    ("똑똑연구소 김똑똑 어린이김 30개 담백한맛 2g", "김똑똑 어린이김 30봉"),
+    ("똑똑연구소 유기농 쌀과자 똑똑떡뻥 30gX4봉 무첨가 아기과자 백미 떡뻥", "똑똑떡뻥 4봉"),
+    ("똑똑연구소 유기농 쌀과자 똑똑떡뻥 30g 무첨가 아기과자 백미 떡뻥 30g 4개 백미맛", "똑똑떡뻥 4봉"),
+    ("김똑똑 어린이 미니 도시락김 저염 아기김 2gX60봉", "똑똑 어린이김 60봉"),
+    ("유기농 쌀과자 똑똑떡뻥 4봉", "똑똑떡뻥 4봉"),
+    # ---- 롤라루 긴 문구 → 모델명 ----
+    ("기내용 캐리어 여행 전면오픈 기내반입 가벼운 튼튼한 소형 51cm(20인치)", "오프너"),
+    ("71cm(28인치) 81cm(32인치) 캐리어 대형 수화물 여행용 특대형 화물용 중대형", "큐보이드"),
+    ("여행용 캐리어 51cm(20인치) 기내용 캐리어 기내 반입 여행 66cm(26인치) 수화물용", "스마트"),
+    ("기내용 전면오픈 55cm(20인치) 확장형 튼튼한 여행용 캐리어 65cm(24인치)", "인딥"),
+    ("여행용 백팩 캐리어 기내반입 크로스백 남자 노트북 방수 기내용 가방 보부상 백패킹 46cm", "플렉스"),
+    ("기내용캐리어 55cm(20인치) 65cm(24인치) 전면오픈 원터치 캐리어", "스파클링"),
+    ("롤라루 기내용 캐리어 50cm(20인치) 수하물 알루미늄 캐리어 여행용", "프레임"),
+    ("여행용 대형 컵홀더 캐리어 수화물용 PC캐리어 60cm(22인치) 66cm(26인치) 75cm(30인치)", "퀘스트"),
+    # ---- 짧은 키워드 fallback (오타 보정 + 모델명 표준화) ----
+    ("큐포이드", "큐보이드"),          # 오타 보정
+    ("큐보이드", "큐보이드"),
+    ("스파클링", "스파클링"),
+    ("플렉스", "플렉스"),
+    ("오프너", "오프너"),
+    ("스마트", "스마트"),
+    ("플라이더", "플라이더"),
+    ("인딥", "인딥"),
+    ("이지프레스", "이지프레스"),
+    ("롤링프레스", "롤링프레스"),
+]
+
+
+def normalize_product_name(name: str | None) -> str:
+    """상품명 정규화 — PRODUCT_NAME_RULES 의 첫 매칭 패턴으로 치환.
+
+    매칭되지 않으면 원본 반환 (빈 문자열/None 은 그대로).
+    """
+    if not name:
+        return name or ""
+    s = str(name)
+    for pattern, canonical in PRODUCT_NAME_RULES:
+        if pattern in s:
+            return canonical
+    return s
+
 # 제품 라인 → 운영 브랜드(우산) 매핑
 UMBRELLA_BRANDS: dict[str, str] = {
     "김똑똑 (어린이김)": "똑똑연구소",
@@ -287,14 +341,17 @@ def classify_adgroup(ag_name: str | None) -> tuple[str, str]:
 def classify_orders(orders_df: pd.DataFrame) -> pd.DataFrame:
     """orders DataFrame에 brand, umbrella 컬럼 추가해서 반환.
 
-    제품명 키워드 매칭 실패 시(기타/미분류), store 기반 fallback 적용:
-    롤라루 스토어의 '네임택 옵션' 등 제품명만 보고 분류 안 되는 경우.
+    - 제품명 정규화 (PRODUCT_NAME_RULES) 자동 적용 → product 컬럼 치환
+    - 제품명 키워드 매칭 실패 시(기타/미분류) store 기반 fallback 적용
     """
     df = orders_df.copy()
     if "product" in df.columns:
+        # 1) 원본 product 로 브랜드 분류 (롤라루/똑똑연구소/캐리어 등 키워드 풍부)
         brand_series = df["product"].apply(classify_product)
         df["brand"] = brand_series.apply(lambda x: x[0])
         df["umbrella"] = brand_series.apply(lambda x: x[1])
+        # 2) 분류 후 product 이름만 정규화 (표시·집계용 — 모델명 기준 통일)
+        df["product"] = df["product"].apply(normalize_product_name)
     else:
         df["brand"] = "미분류"
         df["umbrella"] = "미분류"
