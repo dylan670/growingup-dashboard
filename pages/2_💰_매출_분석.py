@@ -17,6 +17,8 @@ from utils.products import (
 from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card,
+    render_period_picker, render_status_pill,
+    METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN, TEXT_MUTED,
 )
 from api.google_sheets import load_sheet_daily_sales, get_brand_channels
 
@@ -41,33 +43,20 @@ min_allowed = orders_min if orders_min else _today_func(today_real.year - 1, 1, 
 max_allowed = today_real
 
 # ==========================================================
-# 기간 선택
+# 기간 선택 (통합 picker — 전 페이지 동일 UI)
 # ==========================================================
-c1, c2, _ = st.columns([1, 1, 2])
-with c1:
-    period = st.selectbox(
-        "비교 기간",
-        ["최근 7일", "최근 14일", "최근 30일", "최근 90일"], index=2,
-    )
-with c2:
-    # 기본값: orders 최신일 (없으면 오늘). max 는 실제 오늘.
-    default_end = orders_max if orders_max else today_real
-    end_date = st.date_input(
-        "종료일", value=default_end,
-        min_value=min_allowed, max_value=max_allowed,
-        help="실제 오늘까지 선택 가능. 매일 10시 자동 sync 로 갱신됨.",
-    )
-
-days_map = {"최근 7일": 7, "최근 14일": 14, "최근 30일": 30, "최근 90일": 90}
-days = days_map[period]
-start_date = pd.Timestamp(end_date) - pd.Timedelta(days=days - 1)
+_pp = render_period_picker(
+    max_date=orders_max if orders_max else today_real,
+    min_date=min_allowed,
+    key_prefix="sales",
+    default_option="최근 30일",
+)
+period = _pp["period"]
+start_date = _pp["start_date"]
+end_date = _pp["end_date"].date()
+days = _pp["days"]
 prev_start = start_date - pd.Timedelta(days=days)
 prev_end = start_date - pd.Timedelta(days=1)
-
-st.caption(
-    f"분석 기간: **{start_date.date()} ~ {end_date}** ({days}일) · "
-    f"직전 기간: {prev_start.date()} ~ {prev_end.date()}"
-)
 
 
 # ==========================================================

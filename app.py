@@ -214,6 +214,159 @@ overall = _sheet_period_summary(sheet_df, start_date, end_date)
 
 
 # ============================================================
+# 🎯 오늘의 하이라이트 — 최우선 확인 3개 카드 (홈 최상단)
+# ============================================================
+def _render_today_highlights() -> None:
+    """홈 최상단 '오늘 이것만 확인하세요' 섹션 — 3개 액션 카드."""
+    from utils.ui import render_insight_card
+    from datetime import timedelta as _td
+
+    highlights: list[str] = []   # (severity, title, detail, metric, metric_label, action)
+
+    # 1) 브랜드별 달성률 체크 — 이번 달
+    try:
+        month_start = pd.Timestamp(today.replace(day=1))
+        month_end = pd.Timestamp(today)
+        brand_summary = []
+        for b in ["똑똑연구소", "롤라루", "루티니스트"]:
+            s = _sheet_period_summary(sheet_df, month_start, month_end, brand=b)
+            pct = s["achievement_pct"]
+            brand_summary.append((b, pct, s["total_actual"], s["total_target"]))
+
+        # 가장 위험한/기회 큰 브랜드 선택
+        sorted_by_pct = sorted(brand_summary, key=lambda x: x[1])
+        worst_b, worst_pct, worst_actual, worst_target = sorted_by_pct[0]
+        best_b, best_pct, best_actual, best_target = sorted_by_pct[-1]
+
+        if worst_target > 0:
+            if worst_pct < 60:
+                gap = worst_target - worst_actual
+                highlights.append(render_insight_card(
+                    severity="critical",
+                    title=f"{worst_b} 이달 달성률 {worst_pct:.0f}%",
+                    detail=(
+                        f"목표까지 <b>{gap:,}원</b> 부족. "
+                        f"남은 기간 광고 강화 또는 프로모션 긴급 검토."
+                    ),
+                    metric_value=f"{worst_pct:.0f}%",
+                    metric_label="달성률",
+                    action_hint="💰 매출 분석에서 확인",
+                ))
+            elif worst_pct < 85:
+                highlights.append(render_insight_card(
+                    severity="warning",
+                    title=f"{worst_b} 이달 달성률 {worst_pct:.0f}%",
+                    detail=(
+                        f"목표 대비 {100 - worst_pct:.0f}%p 미달. "
+                        f"마감까지 전환 효율 점검 필요."
+                    ),
+                    metric_value=f"{worst_pct:.0f}%",
+                    metric_label="달성률",
+                    action_hint="💰 매출 분석에서 확인",
+                ))
+        if best_pct >= 100 and best_b != worst_b:
+            highlights.append(render_insight_card(
+                severity="success",
+                title=f"{best_b} 목표 초과 {best_pct:.0f}%",
+                detail=(
+                    f"이달 목표 대비 <b>+{best_pct - 100:.0f}%p</b> 초과. "
+                    f"성장 동력 유지 — 재고/마케팅 점검."
+                ),
+                metric_value=f"+{best_actual - best_target:,}",
+                metric_label="추가 매출",
+                action_hint="💰 매출 분석에서 확인",
+            ))
+    except Exception:
+        pass
+
+    # 2) 광고 효율 — 최근 7일 저효율 채널
+    try:
+        recent_ads = ads[
+            (ads["date"] >= pd.Timestamp(today) - pd.Timedelta(days=6))
+            & (ads["date"] <= pd.Timestamp(today))
+        ]
+        if not recent_ads.empty:
+            by_ch = recent_ads.groupby("channel").agg(
+                spend=("spend", "sum"),
+                revenue=("revenue", "sum"),
+            ).reset_index()
+            by_ch = by_ch[by_ch["spend"] >= 50_000]   # 유의미 광고비 기준
+            if not by_ch.empty:
+                by_ch["roas"] = by_ch["revenue"] / by_ch["spend"] * 100
+                worst_ch = by_ch.sort_values("roas").iloc[0]
+                worst_ch_name = worst_ch["channel"]
+                worst_ch_roas = worst_ch["roas"]
+                target = TARGET_ROAS.get(worst_ch_name, 3.0) * 100
+                if worst_ch_roas < target * 0.7 and len(highlights) < 3:
+                    highlights.append(render_insight_card(
+                        severity="warning",
+                        title=f"{worst_ch_name} ROAS {worst_ch_roas:.0f}%",
+                        detail=(
+                            f"최근 7일 목표({target:.0f}%) 대비 저조. "
+                            f"광고비 <b>{int(worst_ch['spend']):,}원</b> 투입 대비 "
+                            f"매출 {int(worst_ch['revenue']):,}원. "
+                            f"소재/타겟 재검토."
+                        ),
+                        metric_value=f"{worst_ch_roas:.0f}%",
+                        metric_label="ROAS · 7일",
+                        action_hint="📣 광고 분석에서 캠페인 확인",
+                    ))
+    except Exception:
+        pass
+
+    # 3) 데이터 신선도 — 마지막 sync 체크
+    try:
+        from utils.precomputed import get_last_updated
+        last = get_last_updated()
+        if last:
+            now = datetime.now()
+            hours_ago = int((now - last).total_seconds() / 3600)
+            if hours_ago >= 26 and len(highlights) < 3:
+                highlights.append(render_insight_card(
+                    severity="caution",
+                    title=f"데이터 {hours_ago}시간 전 동기화",
+                    detail=(
+                        "마지막 sync 가 하루를 넘겼습니다. "
+                        "PC 전원 + 절전 설정 점검 또는 수동으로 "
+                        "<code>sync_all.bat</code> 실행 권장."
+                    ),
+                    action_hint="⚙️ 설정에서 sync 로그 확인",
+                ))
+    except Exception:
+        pass
+
+    # 4) Fallback — 데이터 없을 때 전반 요약 제시
+    if not highlights:
+        highlights.append(render_insight_card(
+            severity="info",
+            title="오늘도 모든 지표 안정",
+            detail=(
+                "이번 달 주요 브랜드가 목표 범위 내에서 움직이고 있습니다. "
+                "각 브랜드 탭에서 세부 성과를 확인하세요."
+            ),
+            action_hint="📊 전체 브랜드 성과 보기",
+        ))
+
+    if not highlights:
+        return
+
+    st.markdown(
+        f"<h3 style='margin:0 0 12px 0; font-size:1.15rem; color:{TEXT_MAIN}; "
+        f"font-weight:700; letter-spacing:-0.02em;'>🎯 오늘 이것만 확인하세요</h3>",
+        unsafe_allow_html=True,
+    )
+    # 최대 3개
+    cards = highlights[:3]
+    cols = st.columns(len(cards))
+    for col, card_html in zip(cols, cards):
+        col.markdown(card_html, unsafe_allow_html=True)
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
+
+
+_render_today_highlights()
+
+
+# ============================================================
 # 1. 상단 핵심 KPI 6개 — 커스텀 대형 카드
 # ============================================================
 st.markdown("### 📈 핵심 지표 (전체)")

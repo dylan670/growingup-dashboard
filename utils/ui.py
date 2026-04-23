@@ -14,7 +14,7 @@ import streamlit as st
 
 
 # ==========================================================
-# 브랜드 컬러 토큰
+# 컬러 디자인 토큰 — 전 페이지 일관 적용
 # ==========================================================
 BRAND_PRIMARY = "#2563eb"
 BRAND_PRIMARY_LIGHT = "#dbeafe"
@@ -22,9 +22,58 @@ BRAND_ACCENT_ORANGE = "#f59e0b"
 BRAND_ACCENT_GREEN = "#16a34a"
 TEXT_MAIN = "#0f172a"
 TEXT_MUTED = "#64748b"
+TEXT_FAINT = "#94a3b8"
 BORDER_SUBTLE = "#e2e8f0"
+BORDER_MEDIUM = "#cbd5e1"
 BG_CARD = "#ffffff"
 BG_PAGE_ALT = "#f8fafc"
+BG_SUBTLE = "#f1f5f9"
+
+# 브랜드 고정 컬러 — 모든 차트·카드·배지 전역 일관
+BRAND_COLORS: dict[str, dict[str, str]] = {
+    "똑똑연구소":  {"primary": "#2563eb", "bg": "#dbeafe", "bg_soft": "#eff6ff",
+                    "text": "#1e40af", "accent": "#3b82f6"},
+    "롤라루":      {"primary": "#f59e0b", "bg": "#fef3c7", "bg_soft": "#fffbeb",
+                    "text": "#b45309", "accent": "#fb923c"},
+    "루티니스트":  {"primary": "#16a34a", "bg": "#dcfce7", "bg_soft": "#f0fdf4",
+                    "text": "#15803d", "accent": "#22c55e"},
+}
+
+# 상태 컬러 (광고/매출 평가)
+STATUS_COLORS = {
+    "critical":    {"fg": "#dc2626", "bg": "#fee2e2", "border": "#fecaca"},
+    "warning":     {"fg": "#ea580c", "bg": "#fff7ed", "border": "#fed7aa"},
+    "caution":     {"fg": "#d97706", "bg": "#fef3c7", "border": "#fde68a"},
+    "success":     {"fg": "#16a34a", "bg": "#dcfce7", "border": "#bbf7d0"},
+    "opportunity": {"fg": "#7c3aed", "bg": "#ede9fe", "border": "#ddd6fe"},
+    "info":        {"fg": "#2563eb", "bg": "#dbeafe", "border": "#bfdbfe"},
+    "neutral":     {"fg": "#64748b", "bg": "#f1f5f9", "border": "#e2e8f0"},
+}
+
+# 채널별 고정 컬러 (차트용)
+CHANNEL_COLORS: dict[str, str] = {
+    "자사몰": "#2563eb",       # 파랑 (브랜드 메인)
+    "네이버":  "#22c55e",      # 초록
+    "네이버 스마트스토어": "#22c55e",
+    "쿠팡":    "#f97316",      # 주황
+    "메타":    "#8b5cf6",      # 보라
+    "무신사":  "#0ea5e9",      # 하늘
+    "이지웰":  "#14b8a6",      # 청록
+    "오늘의집": "#ec4899",     # 핑크
+    "오프라인": "#64748b",     # 회색
+}
+
+# 지표별 컬러 (차트 · 통일)
+METRIC_COLORS = {
+    "revenue":   "#2563eb",    # 매출 — 파랑
+    "target":    "#dc2626",    # 목표 — 빨강 (주로 점선)
+    "orders":    "#16a34a",    # 주문 — 초록
+    "customers": "#8b5cf6",    # 고객 — 보라
+    "spend":     "#f97316",    # 광고비 — 주황
+    "roas":      "#dc2626",    # ROAS — 빨강 (경고·효율)
+    "impressions": "#94a3b8",  # 노출 — 회색
+    "clicks":    "#0ea5e9",    # 클릭 — 하늘
+}
 
 _WEEKDAY_KR = ["월", "화", "수", "목", "금", "토", "일"]
 
@@ -163,15 +212,94 @@ def inject_global_css() -> None:
             border-bottom-color: {BRAND_PRIMARY} !important;
         }}
 
-        /* ---------- 테이블 ---------- */
+        /* ---------- 테이블 — 얼룩무늬 + 고정 헤더 + 숫자 우측정렬 ---------- */
         div[data-testid="stDataFrame"] {{
             border-radius: 12px;
             overflow: hidden;
+            border: 1px solid {BORDER_SUBTLE};
+        }}
+        /* 테이블 헤더 sticky */
+        div[data-testid="stDataFrame"] thead th {{
+            background: {BG_SUBTLE} !important;
+            color: {TEXT_MAIN} !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.01em;
+            border-bottom: 2px solid {BORDER_MEDIUM} !important;
+            position: sticky; top: 0; z-index: 2;
+        }}
+        /* zebra striping — 짝수 행 배경 미세 차이 */
+        div[data-testid="stDataFrame"] tbody tr:nth-child(even) td {{
+            background: {BG_SUBTLE}80 !important;
+        }}
+        /* 행 호버 하이라이트 */
+        div[data-testid="stDataFrame"] tbody tr:hover td {{
+            background: {BRAND_PRIMARY_LIGHT}80 !important;
         }}
 
         /* ---------- Caption ---------- */
         div[data-testid="stCaptionContainer"] {{
             color: {TEXT_MUTED};
+        }}
+
+        /* ---------- 섹션 간 여백 (줄간격 개선) ---------- */
+        hr, [data-testid="stHorizontalBlock"] + [data-testid="stHorizontalBlock"] {{
+            margin-top: 0.2rem !important;
+        }}
+        /* 컨테이너 간격 */
+        div[data-testid="stVerticalBlockBorderWrapper"] {{
+            margin-bottom: 14px;
+        }}
+        /* divider (hr) 스타일 */
+        hr {{
+            border-top: 1px solid {BORDER_SUBTLE} !important;
+            margin: 20px 0 !important;
+            opacity: 0.8;
+        }}
+
+        /* ---------- 버튼 — 프로페셔널 톤 ---------- */
+        button[kind="primary"] {{
+            background: {BRAND_PRIMARY} !important;
+            border-color: {BRAND_PRIMARY} !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em;
+        }}
+        button[kind="primary"]:hover {{
+            background: #1d4ed8 !important;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.25) !important;
+        }}
+        button[kind="secondary"] {{
+            border-radius: 10px !important;
+            font-weight: 500 !important;
+        }}
+
+        /* ---------- Alert 박스 — 일관된 톤 ---------- */
+        div[data-testid="stAlert"] {{
+            border-radius: 12px !important;
+            border-width: 1px !important;
+        }}
+
+        /* ---------- Expander — 깔끔한 톤 ---------- */
+        details {{
+            border-radius: 12px !important;
+            border: 1px solid {BORDER_SUBTLE} !important;
+        }}
+        details summary {{
+            font-weight: 600 !important;
+            padding: 12px 16px !important;
+        }}
+
+        /* ---------- Selectbox / Date input 일관 ---------- */
+        div[data-baseweb="select"] > div {{
+            border-radius: 10px !important;
+            border-color: {BORDER_MEDIUM} !important;
+        }}
+        input[type="text"], input[type="date"] {{
+            border-radius: 10px !important;
+        }}
+
+        /* ---------- 라디오 버튼 깔끔하게 ---------- */
+        div[role="radiogroup"] label {{
+            font-weight: 500 !important;
         }}
 
         /* ========== 📱 모바일 반응형 ========== */
@@ -295,21 +423,22 @@ def render_page_header(
     subtitle: str | None = None,
     show_date: bool = True,
 ) -> None:
-    """페이지 상단 헤더.
+    """페이지 상단 헤더 — 정보 계층 강화.
 
-    좌측: 제목 + 부제
-    우측: 오늘 날짜 + 프리컴퓨트 마지막 업데이트 시각
+    좌측: 큰 제목 + 부제
+    우측: 오늘 날짜 + 데이터 신선도 배지 (프리컴퓨트 기반)
     """
-    col_l, col_r = st.columns([3, 1])
+    col_l, col_r = st.columns([3, 1.2])
     with col_l:
         st.markdown(
-            f"<h2 style='margin:0; font-size:1.6rem; color:{TEXT_MAIN};'>{title}</h2>",
+            f"<h2 style='margin:0; font-size:1.6rem; color:{TEXT_MAIN}; "
+            f"letter-spacing:-0.025em; line-height:1.2;'>{title}</h2>",
             unsafe_allow_html=True,
         )
         if subtitle:
             st.markdown(
-                f"<div style='color:{TEXT_MUTED}; font-size:0.9rem; margin-top:4px;'>"
-                f"{subtitle}</div>",
+                f"<div style='color:{TEXT_MUTED}; font-size:0.88rem; "
+                f"margin-top:6px; line-height:1.4;'>{subtitle}</div>",
                 unsafe_allow_html=True,
             )
     with col_r:
@@ -319,36 +448,49 @@ def render_page_header(
                 f"{today.year}년 {today.month}월 {today.day}일 "
                 f"{_WEEKDAY_KR[today.weekday()]}"
             )
-            # 프리컴퓨트 마지막 업데이트 시각 (있으면)
+            # 프리컴퓨트 마지막 업데이트 → 신선도 배지로
+            freshness_badge = ""
             try:
                 from utils.precomputed import get_last_updated
                 last = get_last_updated()
                 if last:
                     minutes_ago = int((today - last).total_seconds() / 60)
-                    if minutes_ago < 60:
-                        freshness = f"🔄 {minutes_ago}분 전"
-                    elif minutes_ago < 1440:
-                        freshness = f"🔄 {minutes_ago // 60}시간 전"
+                    if minutes_ago < 90:
+                        fresh_sev = "success"
+                        fresh_icon = "🟢"
+                        if minutes_ago < 60:
+                            fresh_txt = f"{minutes_ago}분 전 동기화"
+                        else:
+                            fresh_txt = f"{minutes_ago // 60}시간 전 동기화"
+                    elif minutes_ago < 1800:   # 30시간
+                        fresh_sev = "caution"
+                        fresh_icon = "🟡"
+                        fresh_txt = f"{minutes_ago // 60}시간 전"
                     else:
-                        freshness = f"🔄 {last.strftime('%m/%d %H:%M')}"
-                else:
-                    freshness = "⚠️ 프리컴퓨트 없음"
+                        fresh_sev = "warning"
+                        fresh_icon = "🟠"
+                        fresh_txt = f"{minutes_ago // 60 // 24}일 전 — sync 필요"
+                    cfg = STATUS_COLORS.get(fresh_sev, STATUS_COLORS["neutral"])
+                    freshness_badge = (
+                        f"<div style='display:inline-flex; align-items:center; "
+                        f"gap:4px; background:{cfg['bg']}; color:{cfg['fg']}; "
+                        f"border:1px solid {cfg['border']}; "
+                        f"padding:3px 10px; border-radius:999px; "
+                        f"font-size:0.72rem; font-weight:600; margin-top:6px;'>"
+                        f"<span>{fresh_icon}</span><span>{fresh_txt}</span></div>"
+                    )
             except Exception:
-                freshness = ""
+                pass
 
             header_html = (
-                f"<div style='text-align:right; padding-top:10px;'>"
-                f"<div style='font-size:0.85rem; color:{TEXT_MUTED}; font-weight:500;'>"
-                f"📅 {date_str}</div>"
+                f"<div style='text-align:right; padding-top:4px;'>"
+                f"<div style='font-size:0.82rem; color:{TEXT_MUTED}; "
+                f"font-weight:500;'>📅 {date_str}</div>"
+                f"{freshness_badge}"
+                f"</div>"
             )
-            if freshness:
-                header_html += (
-                    f"<div style='font-size:0.72rem; color:{TEXT_MUTED}; "
-                    f"margin-top:2px; opacity:0.7;'>{freshness}</div>"
-                )
-            header_html += "</div>"
             st.markdown(header_html, unsafe_allow_html=True)
-    st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
 
 
 # ==========================================================
@@ -698,6 +840,224 @@ def status_badge(pct: float) -> str:
     html = f"""
 <div style="background:{color}15; color:{color}; padding:4px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
 <span>{icon}</span><span>{label}</span>
+</div>
+"""
+    return _clean_html(html)
+
+
+# ==========================================================
+# 상태 Pill (severity 기반 — critical/warning/success/info/neutral)
+# ==========================================================
+def render_status_pill(
+    severity: str, label: str, icon: str | None = None,
+) -> str:
+    """severity 기반 둥근 배지 HTML.
+
+    severity: critical / warning / caution / success / opportunity / info / neutral
+    """
+    cfg = STATUS_COLORS.get(severity, STATUS_COLORS["neutral"])
+    icon_map = {
+        "critical": "🚨", "warning": "⚠️", "caution": "⚡",
+        "success": "✓", "opportunity": "✨", "info": "ℹ️", "neutral": "•",
+    }
+    ico = icon or icon_map.get(severity, "•")
+    html = f"""
+<span style="display:inline-flex; align-items:center; gap:5px;
+background:{cfg['bg']}; color:{cfg['fg']}; border:1px solid {cfg['border']};
+padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:600;
+letter-spacing:-0.01em; line-height:1;">
+<span>{ico}</span><span>{label}</span></span>
+"""
+    return _clean_html(html)
+
+
+# ==========================================================
+# 오늘의 하이라이트 액션 카드 (홈 최상단용)
+# ==========================================================
+def render_insight_card(
+    severity: str,
+    title: str,
+    detail: str,
+    metric_value: str = "",
+    metric_label: str = "",
+    action_hint: str = "",
+) -> str:
+    """홈 '오늘의 하이라이트' 액션 카드 — 클릭 유도형 HTML 카드.
+
+    severity: critical / warning / success / opportunity / info
+    """
+    cfg = STATUS_COLORS.get(severity, STATUS_COLORS["info"])
+    icon_map = {
+        "critical": "🚨", "warning": "⚠️", "caution": "⚡",
+        "success": "✨", "opportunity": "🎯", "info": "💡", "neutral": "•",
+    }
+    icon = icon_map.get(severity, "•")
+    metric_html = ""
+    if metric_value:
+        metric_html = f"""
+<div style="margin-top:10px; padding-top:10px; border-top:1px dashed {cfg['border']};">
+<div style="font-size:0.7rem; color:{cfg['fg']}; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">{metric_label}</div>
+<div style="font-size:1.5rem; font-weight:800; color:{cfg['fg']}; line-height:1.1; margin-top:3px; letter-spacing:-0.02em;">{metric_value}</div>
+</div>
+"""
+    action_html = ""
+    if action_hint:
+        action_html = f"""
+<div style="margin-top:10px; font-size:0.78rem; color:{cfg['fg']}; font-weight:600; display:flex; align-items:center; gap:4px; opacity:0.85;">
+<span>→</span><span>{action_hint}</span>
+</div>
+"""
+    html = f"""
+<div style="background:{cfg['bg']}; border:1px solid {cfg['border']}; border-radius:14px; padding:16px 18px; height:100%; position:relative; overflow:hidden;">
+<div style="position:absolute; top:-10px; right:-10px; font-size:3rem; opacity:0.12;">{icon}</div>
+<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+<span style="font-size:1.1rem;">{icon}</span>
+<span style="font-size:0.72rem; color:{cfg['fg']}; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">{severity.upper()}</span>
+</div>
+<div style="font-size:1rem; font-weight:700; color:{TEXT_MAIN}; line-height:1.3; margin-bottom:4px;">{title}</div>
+<div style="font-size:0.85rem; color:{TEXT_MUTED}; line-height:1.45;">{detail}</div>
+{metric_html}
+{action_html}
+</div>
+"""
+    return _clean_html(html)
+
+
+# ==========================================================
+# 빈 상태 안내 — "무엇을 해야 하는지" 명확히
+# ==========================================================
+def render_empty_state(
+    title: str,
+    description: str,
+    icon: str = "📭",
+    action_label: str = "",
+) -> None:
+    """데이터가 없을 때 표시. 단순 '데이터 없음' 대신 다음 액션 안내."""
+    html = f"""
+<div style="background:{BG_SUBTLE}; border:1px dashed {BORDER_MEDIUM}; border-radius:14px; padding:32px 24px; text-align:center; margin:12px 0;">
+<div style="font-size:2.2rem; margin-bottom:8px; opacity:0.6;">{icon}</div>
+<div style="font-weight:700; color:{TEXT_MAIN}; font-size:1.05rem; margin-bottom:6px;">{title}</div>
+<div style="color:{TEXT_MUTED}; font-size:0.88rem; line-height:1.5; max-width:560px; margin:0 auto;">{description}</div>
+{f'<div style="margin-top:14px; color:{BRAND_PRIMARY}; font-size:0.85rem; font-weight:600;">→ {action_label}</div>' if action_label else ''}
+</div>
+"""
+    st.markdown(_clean_html(html), unsafe_allow_html=True)
+
+
+# ==========================================================
+# 통합 기간 선택기 — 전 페이지 동일 UI/위치
+# ==========================================================
+def render_period_picker(
+    max_date,
+    min_date=None,
+    key_prefix: str = "",
+    default_option: str = "최근 30일",
+    show_custom: bool = True,
+) -> dict:
+    """페이지 제목 바로 아래 통일된 기간 선택 UI.
+
+    Returns:
+        dict with keys: period, start_date, end_date, days
+    """
+    from datetime import date as _date, timedelta as _td
+    import pandas as _pd
+
+    today_real = _date.today()
+    if max_date is None:
+        max_date = today_real
+    if min_date is None:
+        min_date = _date(today_real.year - 1, 1, 1)
+    # max_date 가 today 초과 시 제한
+    if max_date > today_real:
+        max_date = today_real
+
+    options = ["최근 7일", "최근 14일", "최근 30일", "최근 90일", "이번 달", "올해"]
+    if show_custom:
+        options.append("사용자 지정")
+
+    default_idx = options.index(default_option) if default_option in options else 2
+
+    c1, c2, c3, _ = st.columns([1.1, 1.1, 1.1, 1.7])
+    with c1:
+        period = st.selectbox(
+            "🗓️ 조회 기간", options, index=default_idx,
+            key=f"{key_prefix}_period",
+        )
+    with c2:
+        end_date = st.date_input(
+            "종료일", value=max_date,
+            min_value=min_date, max_value=today_real,
+            key=f"{key_prefix}_end_date",
+            help="실제 오늘까지 선택 가능",
+        )
+
+    # 기간 계산
+    today = end_date
+    if period == "이번 달":
+        start_date = _pd.Timestamp(today.replace(day=1))
+        end_ts = _pd.Timestamp(today)
+        days = (end_ts - start_date).days + 1
+    elif period == "올해":
+        start_date = _pd.Timestamp(_date(today.year, 1, 1))
+        end_ts = _pd.Timestamp(today)
+        days = (end_ts - start_date).days + 1
+    elif period == "사용자 지정":
+        with c3:
+            start_picked = st.date_input(
+                "시작일", value=today - _td(days=6),
+                min_value=min_date, max_value=today,
+                key=f"{key_prefix}_start_date",
+            )
+        start_date = _pd.Timestamp(start_picked)
+        end_ts = _pd.Timestamp(today)
+        days = (end_ts - start_date).days + 1
+    else:
+        days_map = {"최근 7일": 7, "최근 14일": 14,
+                    "최근 30일": 30, "최근 90일": 90}
+        days = days_map[period]
+        end_ts = _pd.Timestamp(today)
+        start_date = end_ts - _pd.Timedelta(days=days - 1)
+
+    # 기간 안내 캡션 (통일)
+    st.markdown(
+        f"<div style='color:{TEXT_MUTED}; font-size:0.82rem; "
+        f"margin:-4px 0 12px 0;'>📅 <b style='color:{TEXT_MAIN};'>"
+        f"{start_date.date()} ~ {end_ts.date()}</b> "
+        f"<span style='color:{TEXT_FAINT};'>({days}일)</span></div>",
+        unsafe_allow_html=True,
+    )
+
+    return {
+        "period": period,
+        "start_date": start_date,
+        "end_date": end_ts,
+        "days": days,
+    }
+
+
+# ==========================================================
+# 큰 수치 전용 메트릭 (가독성 최우선)
+# ==========================================================
+def render_big_metric(
+    label: str, value: str, delta: str = "",
+    delta_color: str = "", value_color: str = TEXT_MAIN,
+) -> str:
+    """라벨 작게 / 메인 수치 크고 볼드 / delta 중간 — 정보 계층 명확.
+
+    value_color / delta_color 는 hex 컬러 또는 빈 문자열.
+    """
+    delta_html = ""
+    if delta:
+        dc = delta_color or TEXT_MUTED
+        delta_html = (
+            f"<div style='font-size:0.8rem; font-weight:600; "
+            f"color:{dc}; margin-top:4px;'>{delta}</div>"
+        )
+    html = f"""
+<div style="padding:4px 0;">
+<div style="font-size:0.75rem; color:{TEXT_FAINT}; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">{label}</div>
+<div style="font-size:1.7rem; font-weight:800; color:{value_color}; line-height:1.15; letter-spacing:-0.02em;">{value}</div>
+{delta_html}
 </div>
 """
     return _clean_html(html)

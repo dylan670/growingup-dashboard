@@ -25,6 +25,8 @@ from utils.product_images import (
 from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card,
+    render_period_picker,
+    METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN, TEXT_MUTED,
 )
 
 
@@ -79,24 +81,16 @@ if orders_min > today_real:
     orders_min = _today_func(today_real.year - 1, 1, 1)
 
 # ==========================================================
-# 기간 선택
+# 기간 선택 (통합 picker — 전 페이지 동일 UI)
 # ==========================================================
-c1, c2, _ = st.columns([1, 1, 2])
-with c1:
-    period = st.selectbox(
-        "기간", ["최근 7일", "최근 14일", "최근 30일", "최근 90일"], index=2,
-    )
-with c2:
-    end_date = st.date_input(
-        "종료일", value=orders_max,
-        min_value=orders_min, max_value=today_real,
-        help="실제 오늘까지 선택 가능.",
-    )
-
-days = {"최근 7일": 7, "최근 14일": 14,
-        "최근 30일": 30, "최근 90일": 90}[period]
-start_date = pd.Timestamp(end_date) - pd.Timedelta(days=days - 1)
-st.caption(f"분석 기간: **{start_date.date()} ~ {end_date}** ({days}일)")
+_pp = render_period_picker(
+    max_date=orders_max, min_date=orders_min,
+    key_prefix="products", default_option="최근 30일",
+)
+period = _pp["period"]
+start_date = _pp["start_date"]
+end_date = _pp["end_date"].date()
+days = _pp["days"]
 
 
 # ==========================================================

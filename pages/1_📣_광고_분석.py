@@ -14,6 +14,8 @@ from utils.products import filter_ads_by_brand, BRAND_AD_STORES
 from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card, status_color, TEXT_MUTED,
+    render_period_picker,
+    METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN,
 )
 from api.meta_ads import load_meta_client
 from api.naver_searchad import load_client_from_env as load_naver_client
@@ -35,22 +37,14 @@ today_real = _today_func.today()
 ads_max = ads["date"].max().date() if not ads.empty else today_real
 ads_min = ads["date"].min().date() if not ads.empty else _today_func(today_real.year - 1, 1, 1)
 
-c1, c2, _ = st.columns([1, 1, 2])
-with c1:
-    period = st.selectbox(
-        "비교 기간",
-        ["최근 7일", "최근 14일", "최근 30일"], index=0,
-    )
-with c2:
-    end_date = st.date_input(
-        "종료일", value=ads_max,
-        min_value=ads_min, max_value=today_real,
-        help="실제 오늘까지 선택 가능.",
-    )
-
-days = {"최근 7일": 7, "최근 14일": 14, "최근 30일": 30}[period]
-start_date = pd.Timestamp(end_date) - pd.Timedelta(days=days - 1)
-st.caption(f"분석 기간: **{start_date.date()} ~ {end_date}** ({days}일)")
+_pp = render_period_picker(
+    max_date=ads_max, min_date=ads_min,
+    key_prefix="ads", default_option="최근 7일",
+)
+period = _pp["period"]
+start_date = _pp["start_date"]
+end_date = _pp["end_date"].date()
+days = _pp["days"]
 
 
 # ==========================================================
@@ -529,12 +523,7 @@ def _render_daily_spend_roas_chart(df: pd.DataFrame, brand_label: str):
     # 이중 축 차트
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-    # 광고비 — 채널별 stacked 막대
-    channel_colors = {
-        "네이버": "#22c55e",   # green
-        "자사몰": "#2563eb",   # blue
-        "쿠팡":   "#f97316",   # orange
-    }
+    # 광고비 — 채널별 stacked 막대 (통일 팔레트)
     for ch in sorted(daily_ch["channel"].unique()):
         ch_data = daily_ch[daily_ch["channel"] == ch]
         fig.add_trace(
@@ -542,7 +531,7 @@ def _render_daily_spend_roas_chart(df: pd.DataFrame, brand_label: str):
                 x=ch_data["date"],
                 y=ch_data["spend"],
                 name=f"{ch} 광고비",
-                marker_color=channel_colors.get(ch, "#64748b"),
+                marker_color=CHANNEL_COLORS.get(ch, "#64748b"),
                 opacity=0.85,
                 hovertemplate="%{x|%m/%d}<br>%{y:,.0f}원<extra></extra>",
             ),
@@ -556,8 +545,8 @@ def _render_daily_spend_roas_chart(df: pd.DataFrame, brand_label: str):
             y=daily_total["roas"],
             name="블렌디드 ROAS",
             mode="lines+markers",
-            line=dict(color="#dc2626", width=3),
-            marker=dict(size=7, color="#dc2626"),
+            line=dict(color=METRIC_COLORS["roas"], width=3),
+            marker=dict(size=7, color=METRIC_COLORS["roas"]),
             hovertemplate="%{x|%m/%d}<br>ROAS %{y:.0f}%<extra></extra>",
         ),
         secondary_y=True,
