@@ -282,6 +282,203 @@ def _render_daily_achievement(
         )
 
 
+def _render_weighted_forecast_section(sheet_df_: pd.DataFrame, brand: str) -> None:
+    """가중 통계법 기반 월말 매출 예측 섹션 + 일별 예측 차트.
+
+    - EWMA(14일 half-life) × 요일 계절성(8주) × 추세 보정
+    - 실적선(확정) + 예측선(점선) + 신뢰구간(밴드)
+    """
+    from utils.forecasting import weighted_month_end_forecast, weighted_moving_average
+    from plotly.subplots import make_subplots as _ms
+
+    today_ts = pd.Timestamp(today_real)
+    month_start = pd.Timestamp(today_real.replace(day=1))
+    month_end_ts = pd.Timestamp(
+        today_real.replace(day=1) + pd.offsets.MonthEnd(0)
+    )
+    days_total = (month_end_ts - month_start).days + 1
+
+    b_sheet = sheet_df_[sheet_df_["brand"] == brand][["date", "actual", "target"]].copy()
+    if b_sheet.empty:
+        return
+
+    f = weighted_month_end_forecast(b_sheet, today_ts, month_end_ts)
+    month_target = int(
+        b_sheet[
+            (b_sheet["date"] >= month_start) & (b_sheet["date"] <= month_end_ts)
+        ]["target"].sum()
+    )
+
+    projected = f["projected_total"]
+    pct_of_target = (projected / month_target * 100) if month_target else 0
+
+    # ---- 헤더 + 요약 지표 ----
+    st.markdown(
+        f"<h5 style='margin:24px 0 4px 0; color:{TEXT_MAIN}; "
+        f"font-weight:700; letter-spacing:-0.02em;'>"
+        f"🔮 {brand} 월말 매출 예측 (가중 통계법)</h5>",
+        unsafe_allow_html=True,
+    )
+    st.caption(f"_{f['method']}_")
+
+    fc1, fc2, fc3, fc4 = st.columns(4)
+    fc1.metric(
+        f"경과 {f['days_passed']}일 실적",
+        f"{f['actual_so_far']:,}원",
+    )
+    fc2.metric(
+        f"남은 {f['days_remaining']}일 예측",
+        f"{f['forecast_remaining']:,}원",
+        delta=f"추세 ×{f['trend_multiplier']:.2f}",
+        delta_color="off",
+    )
+    fc3.metric(
+        "월말 예상",
+        f"{projected:,}원",
+        delta=f"65% 구간 ±{f['confidence_std']:,}",
+        delta_color="off",
+    )
+    if month_target > 0:
+        fc4.metric(
+            "목표 대비",
+            f"{pct_of_target:.0f}%",
+            delta=f"±{f['projected_high']-projected:,}",
+            delta_color="off",
+        )
+
+    # ---- 차트: 일별 누적 실적 + 예측 + 신뢰구간 ----
+    daily_actual = (
+        b_sheet.groupby("date")["actual"].sum().reset_index()
+    )
+    daily_actual["date"] = pd.to_datetime(daily_actual["date"])
+    month_days = pd.date_range(month_start, month_end_ts, freq="D")
+    cum_df = pd.DataFrame({"date": month_days})
+    cum_df = cum_df.merge(daily_actual, on="date", how="left").fillna(0)
+    cum_df["cum_actual"] = cum_df["actual"].cumsum()
+    # 실적 누적은 today 까지만, 이후는 NaN
+    cum_df.loc[cum_df["date"] > today_ts, "cum_actual"] = None
+
+    # 예측 누적: today+1 ~ month_end
+    baseline = f["weekday_baseline"]
+    trend = f["trend_multiplier"]
+    std = f["confidence_std"]
+    cum_df["forecast_day"] = cum_df["date"].dt.weekday.map(
+        lambda wd: baseline.get(int(wd), 0)
+    ) * trend
+    # today 까지는 forecast 무효화
+    cum_df.loc[cum_df["date"] <= today_ts, "forecast_day"] = 0
+
+    today_actual_cum = int(f["actual_so_far"])
+    # 예측 누적 계산
+    forecast_cum = []
+    running = today_actual_cum
+    for _, r in cum_df.iterrows():
+        if r["date"] <= today_ts:
+            forecast_cum.append(None)
+        else:
+            running += int(r["forecast_day"])
+            forecast_cum.append(running)
+    cum_df["cum_forecast"] = forecast_cum
+    # 신뢰구간 — day별 std × sqrt(N)
+    cum_df["days_future"] = (cum_df["date"] - today_ts).dt.days.clip(lower=0)
+    cum_df["band"] = cum_df["days_future"].apply(
+        lambda n: int(std * (n ** 0.5) / max(1, f["days_remaining"] ** 0.5))
+        if n > 0 else 0
+    )
+    cum_df["upper"] = cum_df.apply(
+        lambda r: r["cum_forecast"] + r["band"] if r["cum_forecast"] else None,
+        axis=1,
+    )
+    cum_df["lower"] = cum_df.apply(
+        lambda r: max(0, r["cum_forecast"] - r["band"]) if r["cum_forecast"] else None,
+        axis=1,
+    )
+
+    # target line (누적)
+    b_tgt_daily = (
+        b_sheet.groupby("date")["target"].sum().reset_index()
+    )
+    b_tgt_daily["date"] = pd.to_datetime(b_tgt_daily["date"])
+    month_tgt = b_tgt_daily[
+        (b_tgt_daily["date"] >= month_start) & (b_tgt_daily["date"] <= month_end_ts)
+    ]
+    cum_target = cum_df[["date"]].merge(month_tgt, on="date", how="left").fillna(0)
+    cum_target["cum_target"] = cum_target["target"].cumsum()
+
+    fig = go.Figure()
+    # 신뢰구간 (upper/lower) — semi-transparent band
+    fig.add_trace(go.Scatter(
+        x=cum_df["date"], y=cum_df["upper"],
+        line=dict(width=0), showlegend=False,
+        hoverinfo="skip",
+    ))
+    fig.add_trace(go.Scatter(
+        x=cum_df["date"], y=cum_df["lower"],
+        line=dict(width=0), fill="tonexty",
+        fillcolor="rgba(37,99,235,0.12)",
+        name="65% 신뢰구간", showlegend=True,
+        hovertemplate="하한 %{y:,}원<extra></extra>",
+    ))
+    # 예측선 (점선)
+    fig.add_trace(go.Scatter(
+        x=cum_df["date"], y=cum_df["cum_forecast"],
+        mode="lines+markers",
+        line=dict(color=METRIC_COLORS["revenue"], width=2.5, dash="dash"),
+        marker=dict(size=5, color=METRIC_COLORS["revenue"]),
+        name="예측 누적",
+        hovertemplate="%{x|%m/%d}<br>예측 %{y:,}원<extra></extra>",
+    ))
+    # 실적선 (실선)
+    fig.add_trace(go.Scatter(
+        x=cum_df["date"], y=cum_df["cum_actual"],
+        mode="lines+markers",
+        line=dict(color=METRIC_COLORS["revenue"], width=3),
+        marker=dict(size=6, color=METRIC_COLORS["revenue"]),
+        name="확정 실적",
+        hovertemplate="%{x|%m/%d}<br>실적 %{y:,}원<extra></extra>",
+    ))
+    # 목표선
+    if month_target > 0:
+        fig.add_trace(go.Scatter(
+            x=cum_target["date"], y=cum_target["cum_target"],
+            mode="lines",
+            line=dict(color=METRIC_COLORS["target"], width=1.5, dash="dot"),
+            name="목표 누적",
+            hovertemplate="%{x|%m/%d}<br>목표 %{y:,}원<extra></extra>",
+        ))
+        # 월말 목표 수평선
+        fig.add_hline(
+            y=month_target, line_dash="dot", line_color=METRIC_COLORS["target"],
+            annotation_text=f"월 목표 {month_target:,}",
+            annotation_position="right",
+        )
+
+    # 오늘 날짜 vertical line
+    fig.add_vline(
+        x=today_ts, line_dash="solid", line_color="#94a3b8",
+        line_width=1, opacity=0.6,
+        annotation_text="오늘", annotation_position="top",
+    )
+
+    fig.update_layout(
+        height=320,
+        margin=dict(l=10, r=10, t=30, b=10),
+        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center",
+                    font=dict(size=11)),
+        hovermode="x unified",
+        plot_bgcolor="white",
+        xaxis=dict(tickformat="%m/%d", showgrid=False),
+        yaxis=dict(tickformat=",", gridcolor="#f1f5f9"),
+    )
+    st.plotly_chart(fig, width="stretch", key=f"forecast_cum_{brand}")
+
+    st.caption(
+        "💡 _실선 = 이미 확정된 일별 누적 매출 / "
+        "점선 = 요일별 가중평균 × 추세 보정 기반 예측 / "
+        "파란 음영 = 65% 확신 구간 (±1σ)_"
+    )
+
+
 def render_sales_overview(
     orders_df: pd.DataFrame,
     start: pd.Timestamp,
@@ -354,6 +551,8 @@ def render_sales_overview(
         try:
             sheet_df = _cached_sheet_sales()
             _render_daily_achievement(sheet_df, start, end, brand)
+            # 월말 예측 섹션 (가중 통계법) — 바로 아래 표시
+            _render_weighted_forecast_section(sheet_df, brand)
         except Exception as e:
             st.warning(
                 f"구글 시트 로드 실패: {type(e).__name__}: {e}\n\n"

@@ -434,6 +434,108 @@ _render_today_highlights()
 
 
 # ============================================================
+# 🔮 월말 매출 예측 — 가중 통계법 (EWMA + 요일 계절성)
+# ============================================================
+def _render_month_end_forecasts() -> None:
+    """이번 달 남은 기간 가중 예측 — 3개 브랜드 카드."""
+    from utils.forecasting import weighted_month_end_forecast
+    from utils.ui import BRAND_COLORS
+
+    month_start = pd.Timestamp(today.replace(day=1))
+    month_end_ts = pd.Timestamp(
+        today.replace(day=1) + pd.offsets.MonthEnd(0)
+    )
+    days_total = (month_end_ts - month_start).days + 1
+
+    st.markdown(
+        f"<h3 style='margin:18px 0 4px 0; font-size:1.15rem; "
+        f"color:{TEXT_MAIN}; font-weight:700; letter-spacing:-0.02em;'>"
+        f"🔮 월말 매출 예측 (가중 통계법)</h3>",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "EWMA(14일 half-life) × 요일 계절성(8주) × 최근 7일 추세 보정 — "
+        "산술평균보다 정확한 월말 도달점 예측 + 65% 신뢰구간"
+    )
+
+    brands = ["똑똑연구소", "롤라루", "루티니스트"]
+    cols = st.columns(len(brands))
+
+    for col, brand in zip(cols, brands):
+        b_sheet = sheet_df[sheet_df["brand"] == brand][["date", "actual"]].copy()
+        f = weighted_month_end_forecast(
+            b_sheet, pd.Timestamp(today), month_end_ts,
+        )
+        # 이 브랜드의 월 목표 (시트 target)
+        month_target_df = sheet_df[
+            (sheet_df["brand"] == brand)
+            & (sheet_df["date"] >= month_start)
+            & (sheet_df["date"] <= month_end_ts)
+        ]
+        month_target = int(month_target_df["target"].sum())
+
+        projected = f["projected_total"]
+        pct_of_target = (projected / month_target * 100) if month_target else 0
+        actual_pct = (f["actual_so_far"] / month_target * 100) if month_target else 0
+
+        # 색상: 100%+ 초록, 85%+ 노랑, 그 외 빨강
+        cfg = BRAND_COLORS.get(brand, BRAND_COLORS["똑똑연구소"])
+        if pct_of_target >= 100:
+            pct_color = "#16a34a"; pct_icon = "✨"; pct_status = "초과 달성 예상"
+        elif pct_of_target >= 85:
+            pct_color = "#ca8a04"; pct_icon = "📈"; pct_status = "목표 근접 예상"
+        else:
+            pct_color = "#dc2626"; pct_icon = "⚠️"; pct_status = "미달 우려"
+
+        trend_mult = f["trend_multiplier"]
+        if trend_mult >= 1.15:
+            trend_txt = f"<span style='color:#16a34a;'>↗ 상승 추세 ×{trend_mult:.2f}</span>"
+        elif trend_mult <= 0.85:
+            trend_txt = f"<span style='color:#dc2626;'>↘ 하락 추세 ×{trend_mult:.2f}</span>"
+        else:
+            trend_txt = f"<span style='color:#64748b;'>→ 안정 ×{trend_mult:.2f}</span>"
+
+        # 진도 바: 실적 + 예측 누적
+        progress_actual = min(100, actual_pct)
+        progress_forecast = max(0, min(100 - progress_actual, pct_of_target - actual_pct))
+        # 실적(진한색) + 예측(연한색) 표현
+        bar_html = f"""
+<div style='background:{cfg['bg_soft']}; border-radius:999px; height:10px; overflow:hidden; margin:8px 0; position:relative;'>
+<div style='position:absolute; left:0; top:0; height:100%; width:{progress_actual}%; background:{cfg['primary']};'></div>
+<div style='position:absolute; left:{progress_actual}%; top:0; height:100%; width:{progress_forecast}%; background:{cfg['primary']}80; background-image: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.3) 4px, rgba(255,255,255,0.3) 8px);'></div>
+</div>
+"""
+
+        card_html = f"""
+<div style='background:{cfg['bg_soft']}; border:1px solid {cfg['primary']}40; border-radius:14px; padding:16px 18px; height:100%;'>
+<div style='display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;'>
+<div style='font-weight:700; color:{cfg['text']}; font-size:1rem;'>{brand}</div>
+<div style='font-size:0.72rem; background:{pct_color}15; color:{pct_color}; padding:3px 8px; border-radius:999px; font-weight:600;'>{pct_icon} {pct_status}</div>
+</div>
+<div style='color:{TEXT_MUTED}; font-size:0.75rem; margin-bottom:10px;'>{f['days_passed']}/{days_total}일 경과 · {trend_txt}</div>
+<div style='font-size:0.72rem; color:{TEXT_MUTED}; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:2px;'>월말 예상 매출</div>
+<div style='font-size:1.6rem; font-weight:800; color:{pct_color}; line-height:1.1; letter-spacing:-0.02em;'>{projected:,}원</div>
+<div style='color:{TEXT_MUTED}; font-size:0.75rem; margin-top:3px;'>목표 대비 <b style='color:{pct_color};'>{pct_of_target:.0f}%</b> · 65% 구간 {f['projected_low']:,} ~ {f['projected_high']:,}</div>
+{bar_html}
+<div style='display:flex; justify-content:space-between; font-size:0.72rem; color:{TEXT_MUTED};'>
+<span>현재 <b style='color:{TEXT_MAIN};'>{f['actual_so_far']:,}</b></span>
+<span>남은 {f['days_remaining']}일 +<b style='color:{TEXT_MAIN};'>{f['forecast_remaining']:,}</b></span>
+</div>
+<div style='color:{TEXT_MUTED}; font-size:0.68rem; margin-top:8px; opacity:0.7;'>목표: {month_target:,}원</div>
+</div>
+"""
+        col.markdown(card_html, unsafe_allow_html=True)
+
+    st.caption(
+        "💡 _진한 색 = 확정 실적 / 연한 빗금 = 예측 범위. "
+        "신뢰구간은 가중 분산 기반 ±1σ (대략 65% 확률 범위)._"
+    )
+
+
+_render_month_end_forecasts()
+
+
+# ============================================================
 # 1. 상단 핵심 KPI 6개 — 커스텀 대형 카드
 # ============================================================
 st.markdown("### 📈 핵심 지표 (전체)")

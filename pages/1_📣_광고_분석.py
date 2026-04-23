@@ -907,6 +907,159 @@ def render_ad_overview(
                 except Exception as e:
                     st.error(f"쿠팡 캠페인 조회 실패: {type(e).__name__}: {e}")
 
+    # ---------- 🔗 캠페인 → 제품 연결 분석 (가중 상관) ----------
+    if brand in ("똑똑연구소", "롤라루"):
+        _render_campaign_product_correlation(brand, start, end)
+
+
+def _render_campaign_product_correlation(
+    brand: str, start: pd.Timestamp, end: pd.Timestamp,
+) -> None:
+    """광고 캠페인 × 제품 일별 가중 상관계수 — 숨은 attribution 힌트."""
+    from utils.forecasting import campaign_product_correlation
+    from utils.data import load_orders, load_coupang_inbound
+    from utils.products import classify_orders, BRAND_AD_STORES
+
+    st.divider()
+    st.markdown(
+        f"#### 🔗 {brand} 캠페인 ↔ 제품 연결 분석 "
+        f"<span style='font-size:0.72rem; color:{TEXT_MUTED}; font-weight:400;'>"
+        f"(가중 Pearson 상관 · 최근 관측 가중)</span>",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "일별 광고비와 제품 매출의 상관관계를 가중 통계로 측정. "
+        "양의 상관 = 해당 캠페인 지출이 그 제품 매출 증가와 동조 "
+        "(인과 증명 아님, attribution 힌트)."
+    )
+
+    # 광고 데이터 — 쿠팡/네이버/Meta 캠페인별 일별 spend
+    # ads.csv 는 store × channel 단위이므로 캠페인 상세는 precompute parquet 에서
+    try:
+        from utils.precomputed import load_precomputed_parquet
+        naver_daily = load_precomputed_parquet("naver_campaigns_daily.parquet")
+        coupang_daily = load_precomputed_parquet("coupang_campaigns_daily.parquet")
+
+        # Meta 는 brand 별 파일
+        meta_daily = load_precomputed_parquet(
+            f"meta_campaigns_{brand}_daily.parquet"
+        )
+
+        frames = []
+        if not naver_daily.empty:
+            n = naver_daily[naver_daily["brand"] == brand][
+                ["date", "campaign_name", "spend"]
+            ].copy()
+            n["campaign_name"] = n["campaign_name"].astype(str) + " (네이버)"
+            frames.append(n)
+        if not coupang_daily.empty:
+            c = coupang_daily[coupang_daily["brand"] == brand][
+                ["date", "campaign_name", "spend"]
+            ].copy()
+            c["campaign_name"] = c["campaign_name"].astype(str) + " (쿠팡)"
+            frames.append(c)
+        if not meta_daily.empty:
+            m = meta_daily[["date", "campaign_name", "spend"]].copy()
+            m["campaign_name"] = m["campaign_name"].astype(str) + " (Meta)"
+            frames.append(m)
+
+        if not frames:
+            st.info(
+                "📥 캠페인 일자 단위 프리컴퓨트 parquet 없음. "
+                "`sync_all.bat` 실행 후 precompute 가 생성하면 반영됩니다."
+            )
+            return
+        ads_daily = pd.concat(frames, ignore_index=True)
+        ads_daily["date"] = pd.to_datetime(ads_daily["date"])
+        # 기간 필터 — 최근 90일 (히스토리 풍부할수록 좋음)
+        cutoff = pd.Timestamp(end) - pd.Timedelta(days=90)
+        ads_daily = ads_daily[ads_daily["date"] >= cutoff]
+
+        # 주문 데이터 (brand 의 umbrella)
+        orders = classify_orders(load_orders())
+        inbound = load_coupang_inbound()
+        if not inbound.empty:
+            inbound_cls = classify_orders(inbound)
+            orders = pd.concat([orders, inbound_cls], ignore_index=True)
+        brand_orders = orders[orders["umbrella"] == brand].copy()
+        brand_orders["date"] = pd.to_datetime(brand_orders["date"])
+        brand_orders = brand_orders[brand_orders["date"] >= cutoff]
+
+        if brand_orders.empty or ads_daily.empty:
+            st.info("선택 브랜드의 최근 90일 광고/주문 데이터 부족.")
+            return
+
+        corr_df = campaign_product_correlation(
+            ads_daily, brand_orders[["date", "product", "revenue"]],
+            today=pd.Timestamp(end), half_life_days=14.0, min_days=10,
+        )
+
+        if corr_df.empty:
+            st.info("상관 분석 결과 없음 (공통 관측일 부족).")
+            return
+
+        # Top correlations + worst (negative)
+        pos = corr_df[corr_df["corr"] >= 0.3].head(8)
+        neg = corr_df[corr_df["corr"] <= -0.3].head(5)
+
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            st.markdown("**✨ 양의 상관 TOP (광고 지출 ↑ → 제품 매출 ↑)**")
+            if pos.empty:
+                st.caption(":grey[상관 ≥ 0.3 인 쌍 없음. 광고-매출 연동 약함.]")
+            else:
+                pos_display = pos.rename(columns={
+                    "campaign_name": "캠페인",
+                    "product": "제품",
+                    "corr": "상관",
+                    "joint_days": "공통일수",
+                    "total_spend": "광고비 합계",
+                    "total_rev": "매출 합계",
+                })
+                st.dataframe(
+                    pos_display[["캠페인", "제품", "상관", "공통일수", "광고비 합계", "매출 합계"]],
+                    width="stretch", hide_index=True,
+                    column_config={
+                        "캠페인": st.column_config.TextColumn("캠페인", width="medium"),
+                        "제품": st.column_config.TextColumn("제품", width="medium"),
+                        "상관": st.column_config.ProgressColumn(
+                            "상관", format="%.2f", min_value=0, max_value=1,
+                        ),
+                        "광고비 합계": st.column_config.NumberColumn("광고비", format="%d원"),
+                        "매출 합계": st.column_config.NumberColumn("매출", format="%d원"),
+                    },
+                    height=min(350, 50 + len(pos_display) * 35),
+                )
+        with cc2:
+            st.markdown("**⚠️ 음의 상관 (광고 지출 ↑ → 제품 매출 ↓)**")
+            if neg.empty:
+                st.caption(":grey[음의 상관 ≤ -0.3 인 쌍 없음 (정상).]")
+            else:
+                neg_display = neg.rename(columns={
+                    "campaign_name": "캠페인",
+                    "product": "제품",
+                    "corr": "상관",
+                    "joint_days": "공통일수",
+                })
+                st.dataframe(
+                    neg_display[["캠페인", "제품", "상관", "공통일수"]],
+                    width="stretch", hide_index=True,
+                    column_config={
+                        "상관": st.column_config.NumberColumn("상관", format="%.2f"),
+                    },
+                )
+                st.caption(
+                    ":grey[음의 상관은 광고와 무관하거나 카니발라이제이션 "
+                    "(같은 카테고리 내 대체) 의심 — 검증 필요]"
+                )
+
+        st.caption(
+            f"📊 총 {len(corr_df)}쌍 분석 · 가중 Pearson (EWMA half-life 14일) · "
+            f"최소 공통 관측 10일 · 광고비 1만원 미만 캠페인 제외"
+        )
+    except Exception as e:
+        st.warning(f"캠페인-제품 상관 분석 실패: {type(e).__name__}: {e}")
+
 
 # ==========================================================
 # 브랜드 탭
