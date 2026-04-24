@@ -39,7 +39,7 @@ setup_page(
 )
 
 # 캐시 버전 — 제품명 정규화 규칙 바뀌면 bump 해서 기존 캐시 강제 무효화
-_ORDERS_CACHE_VER = "v9-ruti-runningvest-short"
+_ORDERS_CACHE_VER = "v10-force-refresh"
 
 
 @st.cache_data(ttl=300, show_spinner="주문 + 쿠팡 벤더 발주 데이터 로드 중...")
@@ -933,15 +933,23 @@ def render_product_view(
 # ==========================================================
 # 브랜드별 스택 뷰
 # ==========================================================
-# 상품 이미지 갱신 버튼 (상단 우측)
-hc1, hc2 = st.columns([4, 1])
+# 갱신 버튼 2개 (이미지 / 전체 캐시)
+hc1, hc2, hc3 = st.columns([3, 1, 1])
 with hc2:
-    if st.button("🔄 상품 이미지 갱신", width="stretch",
-                 help="네이버 커머스 API로 상품 이미지 캐시 재조회"):
+    if st.button("🔄 이미지 갱신", width="stretch",
+                 help="네이버 커머스 API 로 상품 이미지 재조회"):
         with st.spinner("이미지 갱신 중..."):
             n = refresh_naver_image_cache()
             st.success(f"{n}개 상품 이미지 저장 완료")
+            st.cache_data.clear()
             st.rerun()
+with hc3:
+    if st.button("♻️ 캐시 초기화", width="stretch",
+                 help="대시보드 모든 캐시 강제 무효화 — 정규화 규칙 변경 즉시 반영"):
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.success("✓ 전체 캐시 초기화 완료. 페이지 새로고침 중...")
+        st.rerun()
 
 
 # ==========================================================
