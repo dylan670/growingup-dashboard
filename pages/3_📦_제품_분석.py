@@ -975,13 +975,24 @@ with tab_rolla:
 with tab_ruti:
     render_brand_banner(
         "루티니스트",
-        "현재 제품 API 미연동 (자사몰/네이버 제품 계정 없음)",
+        "네이버 스마트스토어 · Cafe24 자사몰 (API 연동 · 매일 10시 동기화)",
     )
-    st.info(
-        "👟 **루티니스트 제품 데이터 없음** — 대시보드에서 수집 중인 주문 API가 없습니다. "
-        "자사몰/네이버 API 연결 시 자동으로 이 탭에 제품별 상세가 추가됩니다. "
-        "매출 현황은 **💰 매출 분석 → 👟 루티니스트** 탭에서 구글 시트 기반으로 확인 가능."
-    )
+    ruti_ofilt = o_filt_all[o_filt_all["umbrella"] == "루티니스트"]
+    if ruti_ofilt.empty:
+        render_empty_state(
+            title="루티니스트 주문 데이터 없음",
+            description=(
+                "선택 기간 내 루티니스트 주문이 아직 수집되지 않았습니다.\n\n"
+                "• **최초 연동 직후** 라면 내일 오전 10시 `sync_all.bat` 이 최대 90일 데이터 수집\n"
+                "• **이미 연동 완료** 라면 `.env` 의 `NAVER_COMMERCE_CLIENT_ID_RUTI` / "
+                "`CAFE24_MALL_ID_RUTI` 자격증명 유효성 확인 필요\n"
+                "• **매출 분석** 탭은 구글 시트 기준으로 집계되므로 API 없이도 표시됨"
+            ),
+            icon="👟",
+            action_label="🔌 API 연결 페이지에서 루티니스트 탭 확인",
+        )
+    else:
+        render_product_view(o_filt_all, brand="루티니스트")
 
 
 # ==========================================================

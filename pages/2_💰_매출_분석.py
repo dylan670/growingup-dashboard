@@ -1083,9 +1083,18 @@ with tab_rolla:
 with tab_ruti:
     render_brand_banner(
         "루티니스트",
-        "자사몰 · 네이버 스마트스토어 (API 미연동 · 구글 시트 기반 집계)",
+        "네이버 스마트스토어 · Cafe24 자사몰 (API 연동 · 매일 10시 sync)",
     )
-    # 루티니스트는 orders.csv 가 없으므로 시트 데이터만 사용
+    # 루티니스트 API 주문 데이터 있으면 완전한 render_sales_overview 사용
+    ruti_orders = filter_orders_by_brand(orders, "루티니스트")
+    if not ruti_orders.empty:
+        render_sales_overview(
+            ruti_orders, start_date, pd.Timestamp(end_date),
+            prev_start, prev_end, brand="루티니스트",
+        )
+    # 어떤 경우든 시트 기반 요약도 함께 표시 (목표 달성률 확인)
+    st.divider()
+    st.markdown("##### 📊 시트 기반 월 목표 요약 (공식 매출)")
     try:
         sheet_df_r = _cached_sheet_sales()
         ruti_data = sheet_df_r[

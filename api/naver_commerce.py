@@ -306,10 +306,9 @@ def load_commerce_clients_from_env() -> dict[str, NaverCommerceClient]:
     """환경변수 (.env 포함)에서 스토어별 클라이언트 dict 생성.
 
     읽는 변수 (각 스토어 쌍):
-        NAVER_COMMERCE_CLIENT_ID_DDOK
-        NAVER_COMMERCE_CLIENT_SECRET_DDOK
-        NAVER_COMMERCE_CLIENT_ID_ROLLA
-        NAVER_COMMERCE_CLIENT_SECRET_ROLLA
+        NAVER_COMMERCE_CLIENT_ID_DDOK / _SECRET_DDOK       (똑똑연구소)
+        NAVER_COMMERCE_CLIENT_ID_ROLLA / _SECRET_ROLLA     (롤라루)
+        NAVER_COMMERCE_CLIENT_ID_RUTI / _SECRET_RUTI       (루티니스트)
 
     Returns:
         {store_name: client} — 등록된 스토어만 포함. 비어있을 수 있음.
@@ -325,6 +324,7 @@ def load_commerce_clients_from_env() -> dict[str, NaverCommerceClient]:
     config = [
         ("똑똑연구소", "NAVER_COMMERCE_CLIENT_ID_DDOK", "NAVER_COMMERCE_CLIENT_SECRET_DDOK"),
         ("롤라루", "NAVER_COMMERCE_CLIENT_ID_ROLLA", "NAVER_COMMERCE_CLIENT_SECRET_ROLLA"),
+        ("루티니스트", "NAVER_COMMERCE_CLIENT_ID_RUTI", "NAVER_COMMERCE_CLIENT_SECRET_RUTI"),
     ]
 
     clients: dict[str, NaverCommerceClient] = {}
@@ -342,7 +342,7 @@ def save_commerce_credentials(store: str, client_id: str, client_secret: str) ->
 
     env_path = Path(__file__).parent.parent / ".env"
 
-    suffix_map = {"똑똑연구소": "DDOK", "롤라루": "ROLLA"}
+    suffix_map = {"똑똑연구소": "DDOK", "롤라루": "ROLLA", "루티니스트": "RUTI"}
     suffix = suffix_map.get(store)
     if suffix is None:
         raise ValueError(f"지원하지 않는 스토어: {store}")

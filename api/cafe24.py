@@ -361,12 +361,12 @@ class Cafe24Client:
 
 def _env_suffix_for_store(store: str) -> str:
     """스토어 이름 → 환경변수 suffix."""
-    mapping = {"똑똑연구소": "DDOK", "롤라루": "ROLLA"}
+    mapping = {"똑똑연구소": "DDOK", "롤라루": "ROLLA", "루티니스트": "RUTI"}
     return mapping.get(store, store.upper())
 
 
 def load_cafe24_client(store_brand: str) -> Cafe24Client | None:
-    """스토어 브랜드 (똑똑연구소 / 롤라루)에 해당하는 Cafe24 클라이언트 로드.
+    """스토어 브랜드 (똑똑연구소 / 롤라루 / 루티니스트) Cafe24 클라이언트 로드.
 
     환경변수 (2가지 모드 지원):
       - 공유 (추천): CAFE24_CLIENT_ID, CAFE24_CLIENT_SECRET + CAFE24_MALL_ID_{SUFFIX}
@@ -397,7 +397,7 @@ def load_cafe24_client(store_brand: str) -> Cafe24Client | None:
 def load_all_cafe24_clients() -> dict[str, Cafe24Client]:
     """등록된 모든 Cafe24 클라이언트 반환. key = 자사몰 store 이름."""
     clients: dict[str, Cafe24Client] = {}
-    for brand in ["똑똑연구소", "롤라루"]:
+    for brand in ["똑똑연구소", "롤라루", "루티니스트"]:
         c = load_cafe24_client(brand)
         if c is not None:
             # store 레이블은 '자사몰_{브랜드}'

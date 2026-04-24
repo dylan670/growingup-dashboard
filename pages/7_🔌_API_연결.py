@@ -212,10 +212,12 @@ st.caption(
 
 REDIRECT_URI = "https://oauth.pstmn.io/v1/callback"
 
-# 2개 스토어 (똑똑연구소 / 롤라루) 탭
-cafe24_tabs = st.tabs(["똑똑연구소 자사몰", "롤라루 자사몰"])
+# 3개 스토어 (똑똑연구소 / 롤라루 / 루티니스트) 탭
+cafe24_tabs = st.tabs([
+    "똑똑연구소 자사몰", "롤라루 자사몰", "루티니스트 자사몰",
+])
 
-for tab, brand in zip(cafe24_tabs, ["똑똑연구소", "롤라루"]):
+for tab, brand in zip(cafe24_tabs, ["똑똑연구소", "롤라루", "루티니스트"]):
     with tab:
         existing = load_cafe24_client(brand)
 
@@ -381,11 +383,28 @@ with st.expander("Cafe24 Private App 등록 방법"):
 # ==========================================================
 st.divider()
 st.header("네이버 커머스 API · 쿠팡 Wing API")
-st.success(
-    "네이버 커머스 API (스마트스토어 2개) + 쿠팡 Wing API (업체배송 + 로켓그로스) "
-    "모두 연결 완료 · 매일 10시 자동 동기화 중"
-)
+
+# 네이버 커머스 실시간 상태 체크 (3개 스토어)
+try:
+    from api.naver_commerce import load_commerce_clients_from_env as _load_nc
+    _nc_clients = _load_nc()
+    nc_status_cols = st.columns(3)
+    for col, store in zip(
+        nc_status_cols, ["똑똑연구소", "롤라루", "루티니스트"],
+    ):
+        if store in _nc_clients:
+            col.success(f"✓ **{store}** 네이버 커머스 연결됨")
+        else:
+            col.warning(
+                f"⚠️ **{store}** 미연결 — "
+                f"`.env` 에 `NAVER_COMMERCE_CLIENT_ID_"
+                f"{ {'똑똑연구소':'DDOK','롤라루':'ROLLA','루티니스트':'RUTI'}[store] }` 추가"
+            )
+except Exception as _e:
+    st.warning(f"네이버 커머스 상태 확인 실패: {_e}")
+
 st.caption(
-    "키 재발급이나 추가 스토어 등록이 필요하면 `.env` 파일 직접 수정 "
-    "(`NAVER_COMMERCE_CLIENT_ID_*`, `COUPANG_ACCESS_KEY` 등)"
+    "쿠팡 Wing API (업체배송 + 로켓그로스) · 매일 10시 자동 동기화. "
+    "키 재발급 / 추가 스토어 등록은 `.env` 직접 수정 "
+    "(`NAVER_COMMERCE_CLIENT_ID_DDOK/ROLLA/RUTI`, `CAFE24_*`, `COUPANG_ACCESS_KEY` 등)"
 )
