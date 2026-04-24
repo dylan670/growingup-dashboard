@@ -210,7 +210,8 @@ st.caption(
     "초기 1회 OAuth 인증 후 refresh_token으로 자동 갱신."
 )
 
-REDIRECT_URI = "https://oauth.pstmn.io/v1/callback"
+# Cafe24 Redirect URI — mall 도메인 기반 (각 몰 개발자센터에 동일하게 등록)
+from api.cafe24 import mall_redirect_uri as _mall_redirect_uri
 
 # 3개 스토어 (똑똑연구소 / 롤라루 / 루티니스트) 탭
 cafe24_tabs = st.tabs([
@@ -220,6 +221,11 @@ cafe24_tabs = st.tabs([
 for tab, brand in zip(cafe24_tabs, ["똑똑연구소", "롤라루", "루티니스트"]):
     with tab:
         existing = load_cafe24_client(brand)
+        # mall 도메인 기반 Redirect URI (Cafe24 앱 등록 페이지에 동일 URL 입력 필수)
+        REDIRECT_URI = (
+            _mall_redirect_uri(existing.mall_id)
+            if existing else _mall_redirect_uri("YOUR_MALL_ID")
+        )
 
         # 상태 배지
         if existing:
