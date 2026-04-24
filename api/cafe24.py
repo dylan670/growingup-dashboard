@@ -193,7 +193,8 @@ class Cafe24Client:
         return {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
-            "X-Cafe24-Api-Version": "2024-06-01",
+            # 2026-03-01 현재 Cafe24 API 최신 안정 버전 (2024-06-01 은 폐기됨)
+            "X-Cafe24-Api-Version": "2026-03-01",
         }
 
     def _request(self, method: str, path: str, params: dict | None = None,
@@ -234,13 +235,14 @@ class Cafe24Client:
         """기간 내 주문 조회 (페이징)."""
         all_orders: list[dict] = []
         offset = 0
+        # Cafe24 API v2026-03-01 기준 — order_status 필드 제거됨.
+        # 서버 필터 없이 전체 수집 후 취소/반품은 amount 로 구분.
         while True:
             params = {
                 "start_date": since.isoformat(),
                 "end_date": until.isoformat(),
                 "limit": limit,
                 "offset": offset,
-                "order_status": "N10,N20,N21,N22,N30,N40",  # 결제완료 ~ 구매확정
                 "embed": "items",
             }
             res = self._request("GET", "/orders", params=params) or {}
@@ -249,7 +251,7 @@ class Cafe24Client:
             if len(batch) < limit:
                 break
             offset += limit
-            if offset > 10000:  # 안전장치
+            if offset > 10000:
                 break
         return all_orders
 
