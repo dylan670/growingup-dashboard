@@ -590,6 +590,79 @@ def _render_weighted_forecast_section(sheet_df_: pd.DataFrame, brand: str) -> No
     )
 
 
+def _compute_official_revenue(
+    sheet_df: pd.DataFrame,
+    orders_df: pd.DataFrame,
+    inbound_df: pd.DataFrame,
+    brand: str | None,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> tuple[int, str]:
+    """브랜드 기간 '공식 매출' 계산 (매출 분석용).
+
+    공식 수치 = 구글 시트 actual 합산 (팀이 매일 기록하는 전 채널 수치).
+    시트에 모든 채널(자사몰·네이버·쿠팡 로켓배송·판매자·무신사·오프라인·
+    이지웰·오늘의집)이 다 들어있으므로 가장 정확한 전사 매출.
+
+    API fallback: 해당 일자에 시트 actual=0 이지만 API(orders+inbound) 매출이
+    있으면 그 날은 API 값으로 보완 (팀 시트 미입력 보정).
+
+    Returns:
+        (total_revenue, source_label)
+    """
+    # 시트 필터
+    if brand:
+        s = sheet_df[sheet_df["brand"] == brand] if not sheet_df.empty else sheet_df
+    else:
+        s = sheet_df
+    s = s[(s["date"] >= start) & (s["date"] <= end)] if not s.empty else s
+
+    sheet_total = int(s["actual"].sum()) if not s.empty else 0
+
+    # API 보완: 시트에 actual=0 인 날짜에만 API 값으로 대체
+    # (시트가 최신 입력됐으면 API 보완은 0)
+    o = orders_df[
+        (orders_df["date"] >= start) & (orders_df["date"] <= end)
+    ]
+    inb = (
+        inbound_df[
+            (inbound_df["date"] >= start) & (inbound_df["date"] <= end)
+        ] if not inbound_df.empty else pd.DataFrame()
+    )
+
+    # 시트에 실적이 기록된 날짜 집합
+    if not s.empty:
+        recorded_dates = set(
+            s[s["actual"] > 0]["date"].dt.date.astype(str).tolist()
+        )
+    else:
+        recorded_dates = set()
+
+    # API 매출 — 시트에 기록 안 된 날짜분만
+    api_supplement = 0
+    if not o.empty:
+        o_missing = o[
+            ~o["date"].dt.date.astype(str).isin(recorded_dates)
+        ]
+        api_supplement += int(o_missing["revenue"].sum())
+    if not inb.empty:
+        inb_missing = inb[
+            ~inb["date"].dt.date.astype(str).isin(recorded_dates)
+        ]
+        api_supplement += int(inb_missing["revenue"].sum())
+
+    total = sheet_total + api_supplement
+    if sheet_total > 0 and api_supplement > 0:
+        source = f"시트 공식 + API 보완 (시트 미입력 {api_supplement:,}원)"
+    elif sheet_total > 0:
+        source = "시트 공식 매출 (전 채널 · 무신사/오프라인/이지웰/오늘의집 포함)"
+    elif api_supplement > 0:
+        source = "API 기반 (시트 미입력 — 팀 입력 후 자동 전환)"
+    else:
+        source = "데이터 없음"
+    return total, source
+
+
 def render_sales_overview(
     orders_df: pd.DataFrame,
     start: pd.Timestamp,
@@ -606,14 +679,31 @@ def render_sales_overview(
 
     # ---------- 전체 KPI ----------
     total_orders = len(curr)
-    total_rev = int(curr["revenue"].sum())
     total_customers = curr["customer_id"].nunique()
-    avg_aov = int(total_rev / total_orders) if total_orders else 0
 
-    prev_rev = int(prev["revenue"].sum())
+    # 총 매출 = 시트 공식 매출 + API 보완 (전 채널 · 무신사/오프라인/이지웰/오늘의집 포함)
+    try:
+        _sheet_all = _cached_sheet_sales(_precompute_version_key())
+    except Exception:
+        _sheet_all = pd.DataFrame()
+    _inbound_all = load_coupang_inbound()
+    # 전체 탭 (brand=None) 이면 orders_df 는 이미 필터 안 된 전체, inbound 도 전체
+    total_rev, rev_source = _compute_official_revenue(
+        _sheet_all, orders_df, _inbound_all, brand, start, end,
+    )
+
+    # 이전 기간도 동일 로직
+    prev_rev, _ = _compute_official_revenue(
+        _sheet_all, orders_df, _inbound_all, brand, prev_start, prev_end,
+    )
     rev_change = ((total_rev - prev_rev) / prev_rev * 100) if prev_rev else 0
 
+    # 평균 객단가는 API 주문 기준 (시트엔 주문 수가 없음)
+    api_rev_for_aov = int(curr["revenue"].sum())
+    avg_aov = int(api_rev_for_aov / total_orders) if total_orders else 0
+
     st.markdown(f"#### 📈 {brand_label} 매출 요약")
+    st.caption(f"💡 총 매출 기준: _{rev_source}_")
     k1, k2, k3, k4 = st.columns(4)
 
     # 전 기간 대비 변화 서브
@@ -635,7 +725,7 @@ def render_sales_overview(
         kpi_card(
             "총 주문",
             f"{total_orders:,}건",
-            sub=f"주문 기간 {(end - start).days + 1}일",
+            sub=f"API 수집 · 주문 기간 {(end - start).days + 1}일",
         ),
         unsafe_allow_html=True,
     )
@@ -651,7 +741,7 @@ def render_sales_overview(
         kpi_card(
             "평균 객단가",
             format_won_compact(avg_aov),
-            sub=f"{avg_aov:,}원" if avg_aov else "—",
+            sub=f"API 기준 {avg_aov:,}원" if avg_aov else "—",
         ),
         unsafe_allow_html=True,
     )
