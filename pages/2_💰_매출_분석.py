@@ -556,10 +556,19 @@ def _render_weighted_forecast_section(sheet_df_: pd.DataFrame, brand: str) -> No
         )
 
     # 오늘 날짜 vertical line
+    # NOTE: plotly 6+ 에서 add_vline(x=Timestamp, annotation_text=...) 는
+    # 내부 `sum(x)/len(x)` 로직이 `0 + Timestamp` 를 시도해 pandas 2.3+/3.x
+    # 에서 TypeError 발생. → x 를 ISO 문자열로 넘기고 annotation 은 분리.
     fig.add_vline(
-        x=today_ts, line_dash="solid", line_color="#94a3b8",
+        x=today_ts.isoformat(),
+        line_dash="solid", line_color="#94a3b8",
         line_width=1, opacity=0.6,
-        annotation_text="오늘", annotation_position="top",
+    )
+    fig.add_annotation(
+        x=today_ts.isoformat(), y=1, yref="paper",
+        text="오늘", showarrow=False,
+        font=dict(size=11, color="#64748b"),
+        yshift=10,
     )
 
     fig.update_layout(
@@ -656,10 +665,12 @@ def render_sales_overview(
             # 월말 예측 섹션 (가중 통계법) — 바로 아래 표시
             _render_weighted_forecast_section(sheet_df, brand)
         except Exception as e:
+            import traceback as _tb
             st.warning(
-                f"구글 시트 로드 실패: {type(e).__name__}: {e}\n\n"
-                f"시트 접근 권한 · 네트워크 확인 필요."
+                f"구글 시트 로드 실패: {type(e).__name__}: {e}"
             )
+            with st.expander("🔍 상세 에러 (디버그)"):
+                st.code(_tb.format_exc(), language="python")
 
     # ---------- 스토어별 카드 ----------
     st.divider()
