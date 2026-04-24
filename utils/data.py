@@ -239,6 +239,84 @@ def reset_and_generate() -> None:
     generate_sample_data()
 
 
+# ==========================================================
+# 공식 매출 계산 — '시트 actual + API 보완' 통합 로직
+# 매출 분석 / 홈 스냅샷 / 인사이트 모두 이 함수를 써야 수치가 일치함.
+# ==========================================================
+def compute_official_actual(
+    sheet_df: pd.DataFrame,
+    orders_df: pd.DataFrame,
+    inbound_df: pd.DataFrame,
+    brand: str | None,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> int:
+    """브랜드·기간 '공식 매출(실적)' 계산.
+
+    기본 = 구글 시트 actual 합산 (팀이 매일 기록하는 전 채널 공식 수치).
+    시트가 공식이지만 팀이 당일 미입력한 날짜는 API 주문(orders +
+    coupang_inbound)으로 자동 보완 → 항상 최신 매출 반영.
+
+    Args:
+        sheet_df: 구글 시트 long-format DataFrame (brand/date/actual/target/channel)
+        orders_df: orders.csv (API 수집 주문 — 자사몰/네이버/쿠팡 판매자)
+        inbound_df: coupang_inbound.csv (쿠팡 벤더 발주 — 로켓배송 B2B)
+        brand: '똑똑연구소' / '롤라루' / '루티니스트' / None(전체 브랜드 합)
+        start, end: pd.Timestamp 기간
+
+    Returns:
+        (시트 actual) + (시트 미입력 날짜의 API 매출) 합
+    """
+    from utils.products import filter_orders_by_brand
+
+    # 시트 필터
+    if brand and not sheet_df.empty:
+        s = sheet_df[sheet_df["brand"] == brand]
+    else:
+        s = sheet_df
+    if not s.empty:
+        s = s[(s["date"] >= start) & (s["date"] <= end)]
+    sheet_actual = int(s["actual"].sum()) if not s.empty else 0
+
+    # 시트에 기록된 날짜 (actual > 0) — API 보완 제외 집합
+    if not s.empty:
+        recorded = set(
+            s[s["actual"] > 0]["date"].dt.date.astype(str).tolist()
+        )
+    else:
+        recorded = set()
+
+    # API 주문 — 브랜드별 필터
+    if brand:
+        b_orders = filter_orders_by_brand(orders_df, brand)
+    else:
+        b_orders = orders_df
+    o = b_orders[
+        (b_orders["date"] >= start) & (b_orders["date"] <= end)
+    ] if not b_orders.empty else pd.DataFrame()
+
+    # 쿠팡 벤더 발주 — brand 가 store 문자열 안에 포함 (예: 쿠팡_롤라루_벤더)
+    if not inbound_df.empty:
+        inb = inbound_df[
+            (inbound_df["date"] >= start) & (inbound_df["date"] <= end)
+        ]
+        if brand:
+            inb = inb[inb["store"].str.contains(brand, na=False)]
+    else:
+        inb = pd.DataFrame()
+
+    # API 보완: 시트 미기록 날짜분만 더함
+    api_sup = 0
+    if not o.empty:
+        o_missing = o[~o["date"].dt.date.astype(str).isin(recorded)]
+        api_sup += int(o_missing["revenue"].sum())
+    if not inb.empty:
+        inb_missing = inb[~inb["date"].dt.date.astype(str).isin(recorded)]
+        api_sup += int(inb_missing["revenue"].sum())
+
+    return sheet_actual + api_sup
+
+
 def merge_naver_brand_ads(new_df: pd.DataFrame) -> tuple[int, int]:
     """네이버 검색광고 브랜드별 store 행 병합.
 

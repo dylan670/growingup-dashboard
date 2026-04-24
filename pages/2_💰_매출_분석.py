@@ -600,58 +600,24 @@ def _compute_official_revenue(
 ) -> tuple[int, str]:
     """브랜드 기간 '공식 매출' 계산 (매출 분석용).
 
-    공식 수치 = 구글 시트 actual 합산 (팀이 매일 기록하는 전 채널 수치).
-    시트에 모든 채널(자사몰·네이버·쿠팡 로켓배송·판매자·무신사·오프라인·
-    이지웰·오늘의집)이 다 들어있으므로 가장 정확한 전사 매출.
-
-    API fallback: 해당 일자에 시트 actual=0 이지만 API(orders+inbound) 매출이
-    있으면 그 날은 API 값으로 보완 (팀 시트 미입력 보정).
-
-    Returns:
-        (total_revenue, source_label)
+    utils/data.py::compute_official_actual 래퍼 — 수치 계산은 공용 함수 사용,
+    캡션용 source 라벨만 추가 계산.
     """
-    # 시트 필터
+    from utils.data import compute_official_actual
+
+    # 시트 필터 (라벨 계산용)
     if brand:
         s = sheet_df[sheet_df["brand"] == brand] if not sheet_df.empty else sheet_df
     else:
         s = sheet_df
     s = s[(s["date"] >= start) & (s["date"] <= end)] if not s.empty else s
-
     sheet_total = int(s["actual"].sum()) if not s.empty else 0
 
-    # API 보완: 시트에 actual=0 인 날짜에만 API 값으로 대체
-    # (시트가 최신 입력됐으면 API 보완은 0)
-    o = orders_df[
-        (orders_df["date"] >= start) & (orders_df["date"] <= end)
-    ]
-    inb = (
-        inbound_df[
-            (inbound_df["date"] >= start) & (inbound_df["date"] <= end)
-        ] if not inbound_df.empty else pd.DataFrame()
+    total = compute_official_actual(
+        sheet_df, orders_df, inbound_df, brand, start, end,
     )
+    api_supplement = total - sheet_total
 
-    # 시트에 실적이 기록된 날짜 집합
-    if not s.empty:
-        recorded_dates = set(
-            s[s["actual"] > 0]["date"].dt.date.astype(str).tolist()
-        )
-    else:
-        recorded_dates = set()
-
-    # API 매출 — 시트에 기록 안 된 날짜분만
-    api_supplement = 0
-    if not o.empty:
-        o_missing = o[
-            ~o["date"].dt.date.astype(str).isin(recorded_dates)
-        ]
-        api_supplement += int(o_missing["revenue"].sum())
-    if not inb.empty:
-        inb_missing = inb[
-            ~inb["date"].dt.date.astype(str).isin(recorded_dates)
-        ]
-        api_supplement += int(inb_missing["revenue"].sum())
-
-    total = sheet_total + api_supplement
     if sheet_total > 0 and api_supplement > 0:
         source = f"시트 공식 + API 보완 (시트 미입력 {api_supplement:,}원)"
     elif sheet_total > 0:

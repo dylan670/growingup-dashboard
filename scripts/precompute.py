@@ -130,12 +130,19 @@ def precompute_home_snapshot() -> dict:
     """홈 KPI 스냅샷 (여러 기간 미리 계산) → JSON.
 
     대시보드는 이 JSON 바로 읽어서 KPI 그리면 됨.
+
+    total_actual / brand.actual 은 '시트 공식 + API 보완' 기준
+    (매출 분석 페이지 _compute_official_revenue 와 동일 로직) —
+    홈 / 매출 분석 수치 불일치 방지.
     """
     from api.google_sheets import load_sheet_daily_sales
-    from utils.data import load_orders, load_ads
+    from utils.data import (
+        load_orders, load_ads, load_coupang_inbound, compute_official_actual,
+    )
 
     sheet = load_sheet_daily_sales()
     orders = load_orders()
+    inbound = load_coupang_inbound()
     ads = load_ads()
 
     today = (
@@ -161,10 +168,13 @@ def precompute_home_snapshot() -> dict:
         # 전체
         period_sheet = sheet[(sheet["date"] >= start) & (sheet["date"] <= end)]
         total_target = int(period_sheet["target"].sum())
-        total_actual = int(period_sheet["actual"].sum())
+        # 전체 총 실적 = 시트 공식 + API 보완 (brand=None → 모든 브랜드 합)
+        total_actual = compute_official_actual(
+            sheet, orders, inbound, None, start, end,
+        )
         pct = (total_actual / total_target * 100) if total_target else 0
 
-        # 일별 집계
+        # 일별 집계 — 시트 기준 (요일별/best day 분석용)
         daily = (
             period_sheet.groupby(period_sheet["date"].dt.date)
             .agg(actual=("actual", "sum"), target=("target", "sum"))
@@ -180,12 +190,14 @@ def precompute_home_snapshot() -> dict:
             avg_daily = int(daily["actual"].mean())
             days_achieved = int((daily["actual"] >= daily["target"]).sum())
 
-        # 브랜드별
+        # 브랜드별 — 시트 공식 + API 보완
         brand_summary = {}
         for brand in ["똑똑연구소", "롤라루", "루티니스트"]:
             b_sheet = period_sheet[period_sheet["brand"] == brand]
             b_target = int(b_sheet["target"].sum())
-            b_actual = int(b_sheet["actual"].sum())
+            b_actual = compute_official_actual(
+                sheet, orders, inbound, brand, start, end,
+            )
             brand_summary[brand] = {
                 "target": b_target,
                 "actual": b_actual,
@@ -226,11 +238,12 @@ def precompute_home_snapshot() -> dict:
 def precompute_insights() -> list:
     """룰 기반 인사이트 계산 → JSON."""
     from api.google_sheets import load_sheet_daily_sales
-    from utils.data import load_orders, load_ads
+    from utils.data import load_orders, load_ads, load_coupang_inbound
     from utils.insights import generate_insights
 
     sheet = load_sheet_daily_sales()
     orders = load_orders()
+    inbound = load_coupang_inbound()
     ads = load_ads()
 
     today = (
@@ -240,7 +253,9 @@ def precompute_insights() -> list:
     start = pd.Timestamp(today.replace(day=1))
     end = pd.Timestamp(today)
 
-    insights = generate_insights(sheet, ads, orders, start, end, max_count=6)
+    insights = generate_insights(
+        sheet, ads, orders, start, end, max_count=6, inbound_df=inbound,
+    )
     save_precomputed_json({
         "computed_at": datetime.now().isoformat(),
         "period": f"{start.date()} ~ {end.date()}",

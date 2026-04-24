@@ -21,7 +21,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from utils.data import load_ads, load_orders, load_reviews
+from utils.data import load_ads, load_orders, load_reviews, load_coupang_inbound
 from utils.metrics import (
     TARGET_ROAS,
     calc_channel_metrics,
@@ -174,14 +174,30 @@ with st.sidebar:
 def _sheet_period_summary(
     df: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp,
     brand: str | None = None,
+    orders_df: pd.DataFrame | None = None,
+    inbound_df: pd.DataFrame | None = None,
 ) -> dict:
-    """선택 기간 · 브랜드의 시트 기반 요약 (target, actual, daily 등)."""
+    """선택 기간 · 브랜드의 시트 기반 요약 (target, actual, daily 등).
+
+    total_actual / achievement 는 utils/data.py::compute_official_actual 로
+    계산 (시트 공식 + API 보완) — 매출 분석 페이지 / 홈 인사이트 일관성.
+    orders_df / inbound_df 를 넘기지 않으면 기존 시트-only 동작.
+    """
+    from utils.data import compute_official_actual
     sub = df[(df["date"] >= start) & (df["date"] <= end)]
     if brand:
         sub = sub[sub["brand"] == brand]
 
     total_target = int(sub["target"].sum())
-    total_actual = int(sub["actual"].sum())
+    # 공식 실적 = 시트 + API 보완 (orders_df/inbound_df 주어졌을 때만)
+    if orders_df is not None:
+        total_actual = compute_official_actual(
+            df, orders_df,
+            inbound_df if inbound_df is not None else pd.DataFrame(),
+            brand, start, end,
+        )
+    else:
+        total_actual = int(sub["actual"].sum())
     achievement = (total_actual / total_target * 100) if total_target else 0
 
     # 일별 총합
@@ -220,7 +236,12 @@ def _sheet_period_summary(
     }
 
 
-overall = _sheet_period_summary(sheet_df, start_date, end_date)
+# 홈의 sheet 요약도 매출 분석과 동일한 공식 매출 기준 사용
+_inbound_for_home = load_coupang_inbound()
+overall = _sheet_period_summary(
+    sheet_df, start_date, end_date,
+    orders_df=orders, inbound_df=_inbound_for_home,
+)
 
 
 # ============================================================
@@ -239,7 +260,10 @@ def _render_today_highlights() -> None:
         month_end = pd.Timestamp(today)
         brand_summary = []
         for b in ["똑똑연구소", "롤라루", "루티니스트"]:
-            s = _sheet_period_summary(sheet_df, month_start, month_end, brand=b)
+            s = _sheet_period_summary(
+                sheet_df, month_start, month_end, brand=b,
+                orders_df=orders, inbound_df=_inbound_for_home,
+            )
             pct = s["achievement_pct"]
             brand_summary.append((b, pct, s["total_actual"], s["total_target"]))
 
@@ -811,7 +835,10 @@ def _status_info(pct: float) -> tuple[str, str, str]:
 
 
 for i, brand in enumerate(["똑똑연구소", "롤라루", "루티니스트"]):
-    summary = _sheet_period_summary(sheet_df, start_date, end_date, brand=brand)
+    summary = _sheet_period_summary(
+        sheet_df, start_date, end_date, brand=brand,
+        orders_df=orders, inbound_df=_inbound_for_home,
+    )
     cfg = BRAND_BADGES[brand]
 
     with brand_cols[i]:
@@ -876,6 +903,7 @@ st.caption(
 
 insights = generate_insights(
     sheet_df, ads, orders, start_date, end_date, max_count=6,
+    inbound_df=load_coupang_inbound(),
 )
 
 if not insights:

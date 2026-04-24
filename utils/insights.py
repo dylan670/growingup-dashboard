@@ -34,8 +34,17 @@ from utils.metrics import calc_repurchase
 # 개별 인사이트 생성기 (각 함수 → list[dict])
 # ==========================================================
 
-def _pace_forecast(sheet_df: pd.DataFrame, today: date) -> list[dict]:
-    """이번 달 페이스 예측 — 남은 일수로 예상 달성률 계산."""
+def _pace_forecast(
+    sheet_df: pd.DataFrame, today: date,
+    orders_df: pd.DataFrame | None = None,
+    inbound_df: pd.DataFrame | None = None,
+) -> list[dict]:
+    """이번 달 페이스 예측 — 남은 일수로 예상 달성률 계산.
+
+    actual_so_far 는 utils/data.py::compute_official_actual 로 계산
+    (시트 공식 + API 보완) — 매출 분석/홈 스냅샷 수치와 완전 일치.
+    """
+    from utils.data import compute_official_actual
     results: list[dict] = []
     if sheet_df.empty:
         return results
@@ -45,16 +54,23 @@ def _pace_forecast(sheet_df: pd.DataFrame, today: date) -> list[dict]:
     days_elapsed = today.day
     days_remaining = last_day - today.day
 
-    month_data = sheet_df[
-        (sheet_df["date"] >= pd.Timestamp(month_start))
-        & (sheet_df["date"] <= pd.Timestamp(today))
-    ]
+    start_ts = pd.Timestamp(month_start)
+    end_ts = pd.Timestamp(today)
+    _orders = orders_df if orders_df is not None else pd.DataFrame()
+    _inbound = inbound_df if inbound_df is not None else pd.DataFrame()
 
     for brand in ["똑똑연구소", "롤라루", "루티니스트"]:
-        b = month_data[month_data["brand"] == brand]
+        b = sheet_df[
+            (sheet_df["brand"] == brand)
+            & (sheet_df["date"] >= start_ts)
+            & (sheet_df["date"] <= end_ts)
+        ]
         if b.empty:
             continue
-        actual_so_far = int(b["actual"].sum())
+        # 시트 actual + API 보완 (공용 로직)
+        actual_so_far = compute_official_actual(
+            sheet_df, _orders, _inbound, brand, start_ts, end_ts,
+        )
         target_month = int(
             sheet_df[
                 (sheet_df["brand"] == brand)
@@ -314,17 +330,19 @@ def generate_insights(
     start: pd.Timestamp,
     end: pd.Timestamp,
     max_count: int = 6,
+    inbound_df: pd.DataFrame | None = None,
 ) -> list[dict]:
     """모든 룰 돌려서 상위 N개 인사이트 반환.
 
     우선순위 낮은 것(urgent·critical)이 위로 오도록 정렬.
+    inbound_df 를 넘기면 _pace_forecast 가 쿠팡 벤더 발주까지 보완.
     """
     today = end.date()
 
     all_insights: list[dict] = []
     all_insights.extend(_worst_channel(sheet_df, start, end))
     all_insights.extend(_ad_efficiency(ads_df, start, end))
-    all_insights.extend(_pace_forecast(sheet_df, today))
+    all_insights.extend(_pace_forecast(sheet_df, today, orders_df, inbound_df))
     all_insights.extend(_crm_opportunity(orders_df, today))
     all_insights.extend(_top_contributor(sheet_df, start, end))
     all_insights.extend(_uncollected_target(sheet_df, start, end))
