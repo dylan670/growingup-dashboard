@@ -77,7 +77,7 @@ def precompute_campaigns(days: int = 90) -> dict:
     results = {}
 
     # Meta — 브랜드별, 일자 단위
-    for brand in ["똑똑연구소", "롤라루"]:
+    for brand in ["똑똑연구소", "롤라루", "루티니스트"]:
         try:
             client = load_meta_client(brand)
             if client is None:

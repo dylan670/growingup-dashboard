@@ -778,7 +778,7 @@ def render_ad_overview(
                         st.caption(body)
 
     # ---------- 캠페인별 상세 및 진단 ----------
-    if brand in ("똑똑연구소", "롤라루") or brand is None:
+    if brand in ("똑똑연구소", "롤라루", "루티니스트") or brand is None:
         st.divider()
         st.markdown(f"#### 🔍 {brand_label} 캠페인별 상세 및 진단")
         st.caption(
@@ -908,7 +908,7 @@ def render_ad_overview(
                     st.error(f"쿠팡 캠페인 조회 실패: {type(e).__name__}: {e}")
 
     # ---------- 🔗 캠페인 → 제품 연결 분석 (가중 상관) ----------
-    if brand in ("똑똑연구소", "롤라루"):
+    if brand in ("똑똑연구소", "롤라루", "루티니스트"):
         _render_campaign_product_correlation(brand, start, end)
 
 
@@ -1100,12 +1100,12 @@ with tab_rolla:
 with tab_ruti:
     render_brand_banner(
         "루티니스트",
-        "현재 광고 API 미연동 (Meta/네이버 검색광고 계정 없음)",
+        "Meta 광고 (Routinist 자사몰) — API 연동 · 매일 10시 sync",
     )
-    st.info(
-        "👟 **루티니스트 광고 데이터 없음** — 대시보드에서 추적 중인 광고 계정이 없습니다. "
-        "Meta/네이버 검색광고 계정 연결 시 자동으로 이 탭에 추가됩니다. "
-        "매출 추적은 **💰 매출 분석 → 👟 루티니스트** 탭에서 구글 시트 기반으로 확인 가능."
+    ruti_ads = filter_ads_by_brand(ads, "루티니스트")
+    render_ad_overview(
+        ruti_ads, start_date, pd.Timestamp(end_date), ruti_ads,
+        brand="루티니스트",
     )
 
 

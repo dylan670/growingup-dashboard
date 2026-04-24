@@ -304,7 +304,9 @@ class MetaAdsClient:
 # ==========================================================
 
 def _env_suffix_for_store(store: str) -> str:
-    return {"똑똑연구소": "DDOK", "롤라루": "ROLLA"}.get(store, store.upper())
+    return {"똑똑연구소": "DDOK", "롤라루": "ROLLA", "루티니스트": "RUTI"}.get(
+        store, store.upper(),
+    )
 
 
 def load_meta_client(store_brand: str) -> MetaAdsClient | None:
@@ -331,7 +333,7 @@ def load_meta_client(store_brand: str) -> MetaAdsClient | None:
 def load_all_meta_clients() -> dict[str, MetaAdsClient]:
     """모든 Meta 광고 계정 클라이언트. key = '자사몰_{brand}'."""
     clients: dict[str, MetaAdsClient] = {}
-    for brand in ["똑똑연구소", "롤라루"]:
+    for brand in ["똑똑연구소", "롤라루", "루티니스트"]:
         c = load_meta_client(brand)
         if c is not None:
             clients[f"자사몰_{brand}"] = c
