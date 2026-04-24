@@ -113,9 +113,26 @@ def _pct_color(pct: float) -> str:
     return "#dc2626"       # red
 
 
+def _precompute_version_key() -> str:
+    """precompute last_updated 타임스탬프를 cache key 로 사용.
+
+    precompute 돌릴 때마다 자동 무효화 → 최신 parquet 즉시 반영.
+    """
+    try:
+        from utils.precomputed import get_last_updated
+        ts = get_last_updated()
+        return ts.isoformat() if ts else "none"
+    except Exception:
+        return "none"
+
+
 @st.cache_data(ttl=300, show_spinner="구글 시트에서 매출 데이터 가져오는 중…")
-def _cached_sheet_sales() -> pd.DataFrame:
-    """시트 데이터 5분 캐싱. 실패 시 올바른 dtype 의 빈 DF 반환."""
+def _cached_sheet_sales(_precompute_ver: str = "none") -> pd.DataFrame:
+    """시트 데이터 5분 캐싱 + precompute 버전 키로 즉시 무효화.
+
+    Args:
+        _precompute_ver: precompute 실행 시각(ISO). 값이 바뀌면 새 데이터 로드.
+    """
     try:
         df = load_sheet_daily_sales()
         if not df.empty and "date" in df.columns:
@@ -131,16 +148,69 @@ def _cached_sheet_sales() -> pd.DataFrame:
         })
 
 
+def _get_api_daily_fallback(
+    brand: str, start: pd.Timestamp, end: pd.Timestamp,
+) -> dict:
+    """API 수집 주문 기반 일별 채널 매출 (시트 미입력 시 fallback).
+
+    반환: {(날짜 iso, 채널): 매출}
+    """
+    from utils.products import filter_orders_by_brand, store_display_name
+    from utils.data import load_coupang_inbound
+    fb: dict[tuple[str, str], int] = {}
+    try:
+        orders_f = filter_orders_by_brand(orders, brand)
+        orders_f = orders_f[
+            (orders_f["date"] >= start) & (orders_f["date"] <= end)
+        ].copy()
+
+        # 루티니스트 쿠팡 벤더 발주도 포함 (제품 분석과 동일 로직)
+        if brand == "루티니스트":  # 향후 확장 가능
+            pass
+        inbound = load_coupang_inbound()
+        if not inbound.empty:
+            inbound_f = inbound[
+                (inbound["date"] >= start)
+                & (inbound["date"] <= end)
+            ]
+            # brand 필터 — 시트 channel 과 매핑 (쿠팡 로켓배송 계산용)
+            # 현재는 orders_f 에 추가하지 않고 별도 처리
+
+        # store → 시트 channel 매핑
+        # 시트 channel 값: '자사몰', '네이버 스마트스토어', '쿠팡 로켓그로스',
+        #                  '쿠팡 로켓배송', '무신사', '오프라인', '이지웰', '오늘의집'
+        store_to_sheet_channel = {
+            "자사몰_똑똑연구소": "자사몰",
+            "자사몰_롤라루": "자사몰",
+            "자사몰_루티니스트": "자사몰",
+            "똑똑연구소": "네이버 스마트스토어",
+            "롤라루": "네이버 스마트스토어",
+            "루티니스트": "네이버 스마트스토어",
+            "쿠팡_똑똑연구소": "쿠팡 로켓그로스",   # 똑똑은 로켓그로스
+            "쿠팡_롤라루": "쿠팡 판매자판매",       # Wing 직접 (별도 채널 없음)
+            "쿠팡": "쿠팡 (미분류)",
+        }
+        for _, r in orders_f.iterrows():
+            store = r["store"]
+            ch = store_to_sheet_channel.get(store, store)
+            date_key = (pd.Timestamp(r["date"]).date().isoformat(), ch)
+            fb[date_key] = fb.get(date_key, 0) + int(r["revenue"])
+    except Exception:
+        pass
+    return fb
+
+
 def _render_daily_achievement(
     sheet_df: pd.DataFrame,
     start: pd.Timestamp,
     end: pd.Timestamp,
     brand: str,
 ):
-    """일별 매출 달성 표 — Google Sheets 직접 로드.
+    """일별 매출 달성 표 — Google Sheets 우선 + API fallback.
 
-    시트 소스: 팀이 매일 수동 업데이트하는 '2026 그로잉업팀 일간통계'
-              → 목표·달성 100% 일치 (대시보드 계산식 사용 X).
+    우선순위:
+      1. 시트에 실적 입력됨 → 시트 값 사용 (공식 수치)
+      2. 시트 실적 = 0 (미입력) → API orders 합산 값 자동 대체
     """
     # 해당 브랜드 + 기간 필터
     df = sheet_df[
@@ -156,37 +226,70 @@ def _render_daily_achievement(
         )
         return
 
+    # API 기반 fallback 매출 (시트 미입력 날짜용)
+    api_fb = _get_api_daily_fallback(brand, start, end)
+
     # 날짜별로 피벗 — 각 채널을 컬럼으로
     date_range = pd.date_range(start.date(), end.date(), freq="D")
     channels = sorted(df["channel"].unique().tolist())
 
     rows: list[dict] = []
+    api_backfilled_dates = []   # API 로 대체된 날짜 추적
     for d in date_range:
         d_ts = pd.Timestamp(d)
         day_data = df[df["date"] == d_ts]
 
-        # 이 날 각 채널 target/actual
         day_target = int(day_data["target"].sum())
-        day_actual = int(day_data["actual"].sum())
+        day_actual_sheet = int(day_data["actual"].sum())
+
+        # 시트 실적이 0 + 목표가 있는 날 (팀 미입력 추정) → API 값으로 자동 대체
+        use_api = False
+        if day_actual_sheet == 0 and day_target > 0:
+            api_total = sum(
+                v for (dk, _), v in api_fb.items()
+                if dk == d.date().isoformat()
+            )
+            if api_total > 0:
+                day_actual = api_total
+                use_api = True
+                api_backfilled_dates.append(d.date().isoformat())
+            else:
+                day_actual = 0
+        else:
+            day_actual = day_actual_sheet
+
         pct = (day_actual / day_target * 100) if day_target > 0 else 0
 
         row: dict = {
-            "날짜": d.date().isoformat(),
+            "날짜": d.date().isoformat() + (" ⚡" if use_api else ""),
             "요일": WEEKDAY_KR[d.weekday()],
             "일 목표": day_target,
             "일 달성": day_actual,
             "달성률(%)": round(pct, 0),
         }
-        # 채널별 목표·달성
+        # 채널별 목표·달성 (시트 값 우선, 0 이면 API fallback)
         for ch in channels:
             ch_data = day_data[day_data["channel"] == ch]
             t = int(ch_data["target"].sum()) if not ch_data.empty else 0
             a = int(ch_data["actual"].sum()) if not ch_data.empty else 0
+            if a == 0 and use_api:
+                # 해당 채널 API 값으로 보완
+                api_ch_val = api_fb.get((d.date().isoformat(), ch), 0)
+                if api_ch_val > 0:
+                    a = api_ch_val
             row[f"{ch} 목표"] = t
             row[f"{ch} 달성"] = a
         rows.append(row)
 
     table = pd.DataFrame(rows)
+
+    # API 대체 안내
+    if api_backfilled_dates:
+        st.caption(
+            f":orange[⚡ 시트 미입력 날짜 {len(api_backfilled_dates)}일은 "
+            f"API 수집 실제 매출로 자동 대체됨 "
+            f"(팀에서 시트 입력하면 자동으로 시트 값 우선 적용)]"
+        )
 
     # ---------- 요약 ----------
     sum_target = int(table["일 목표"].sum())
@@ -548,7 +651,7 @@ def render_sales_overview(
     if brand in ("똑똑연구소", "롤라루", "루티니스트"):
         st.divider()
         try:
-            sheet_df = _cached_sheet_sales()
+            sheet_df = _cached_sheet_sales(_precompute_version_key())
             _render_daily_achievement(sheet_df, start, end, brand)
             # 월말 예측 섹션 (가중 통계법) — 바로 아래 표시
             _render_weighted_forecast_section(sheet_df, brand)
@@ -771,7 +874,7 @@ def render_sales_overview(
     }
     if brand in sheet_only_channels_by_brand:
         try:
-            sheet_df = _cached_sheet_sales()
+            sheet_df = _cached_sheet_sales(_precompute_version_key())
         except Exception:
             sheet_df = pd.DataFrame()
 
@@ -855,7 +958,7 @@ def _render_channel_comparison_chart(
     # ---- 시트 기반 채널 매출 추가 (주문/고객 없음) ----
     if sheet_only:
         try:
-            sheet_df = _cached_sheet_sales()
+            sheet_df = _cached_sheet_sales(_precompute_version_key())
         except Exception:
             sheet_df = pd.DataFrame()
         if not sheet_df.empty:
@@ -1096,7 +1199,7 @@ with tab_ruti:
     st.divider()
     st.markdown("##### 📊 시트 기반 월 목표 요약 (공식 매출)")
     try:
-        sheet_df_r = _cached_sheet_sales()
+        sheet_df_r = _cached_sheet_sales(_precompute_version_key())
         ruti_data = sheet_df_r[
             (sheet_df_r["brand"] == "루티니스트")
             & (sheet_df_r["date"] >= start_date)

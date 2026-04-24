@@ -68,8 +68,18 @@ orders = load_orders()
 reviews = load_reviews()
 
 
+def _precompute_version_key() -> str:
+    """precompute last_updated → 캐시 키 (precompute 마다 무효화)."""
+    try:
+        from utils.precomputed import get_last_updated
+        ts = get_last_updated()
+        return ts.isoformat() if ts else "none"
+    except Exception:
+        return "none"
+
+
 @st.cache_data(ttl=300, show_spinner="구글 시트 매출 로드 중…")
-def _cached_sheet() -> pd.DataFrame:
+def _cached_sheet(_precompute_ver: str = "none") -> pd.DataFrame:
     try:
         df = load_sheet_daily_sales()
         # date 컬럼 datetime 보장
@@ -88,7 +98,7 @@ def _cached_sheet() -> pd.DataFrame:
         })
 
 
-sheet_df = _cached_sheet()
+sheet_df = _cached_sheet(_precompute_version_key())
 
 
 # ============================================================

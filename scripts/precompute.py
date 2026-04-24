@@ -45,17 +45,29 @@ def log(msg: str) -> None:
 
 
 def precompute_sheet() -> int:
-    """구글 시트 다운로드 → Parquet 저장. 반환: 저장한 행 수."""
-    from api.google_sheets import load_sheet_daily_sales
+    """구글 시트 다운로드 → Parquet 저장. 반환: 저장한 행 수.
 
-    log("구글 시트 다운로드 시작")
-    df = load_sheet_daily_sales()
+    NOTE: load_sheet_daily_sales() 는 prefer_precomputed=True 가 기본값이므로
+    여기서는 절대 사용하면 안 됨 (기존 parquet 을 읽어서 그대로 다시 쓰게 됨).
+    반드시 live CSV 를 직접 fetch + parse 해야 함.
+    """
+    from api.google_sheets import fetch_sheet_csv, parse_daily_sales
+
+    log("구글 시트 LIVE 다운로드 시작 (prefer_precomputed 무시)")
+    csv_text = fetch_sheet_csv()
+    df = parse_daily_sales(csv_text)
     if df.empty:
         log("시트 비어있음 (skip)")
         return 0
 
     save_precomputed_parquet(df, "sheet_daily_sales.parquet")
-    log(f"시트 저장 완료: {len(df)}행")
+    # 최근 날짜 확인용 로그
+    if "date" in df.columns:
+        max_date = df["date"].max()
+        recent = df[df["date"] == max_date]
+        log(f"시트 저장 완료: {len(df)}행 (max_date={max_date}, 해당일 {len(recent)}행)")
+    else:
+        log(f"시트 저장 완료: {len(df)}행")
     return len(df)
 
 
