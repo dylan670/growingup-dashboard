@@ -1,12 +1,12 @@
 ﻿store,origin_product_no,channel_product_no,name,image_url,sale_price,category
-쿠팡,,16038425061,롤라루 인딥 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/6fd3/6d0d8abc0c2c84d9c6a1347bb5cab31727d64a5ad48e708a0f4c80245b60.jpg,,
-쿠팡,,16038336168,롤라루 스파클링 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/e16d/af3ba986acae3e480297b5cc9fa8d86edf01bbdb6bac5ea1a78bf4e6337a.jpg,,
-쿠팡,,16038220405,롤라루 스마트 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/9775/c345c1b7d6b4ae50437fa817cf12dda0ca0c1f910c3107ec56bef9e15ddc.jpg,,
-쿠팡,,16027752974,롤라루 어린이 타는 캐리어 미니 키즈 라이딩 기내용 기내반입 여행용 플라이더 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/fe48/345595fe6fa218f86d12a0c4a58ef6842e6b1ab35d563dba1c87fc8fc88b.jpg,,
-쿠팡,,15984550175,똑똑연구소 유기농 쌀과자 똑똑떡뻥 30g 무첨가 아기과자 백미 떡뻥,https://image9.coupangcdn.com/image/vendor_inventory/a9f7/f00434e919641e6b1324c432cdf53178f1daa800d44e7a3ecabfc2cca49c.png,,
+쿠팡,,16038425061,인딥,https://image9.coupangcdn.com/image/vendor_inventory/6fd3/6d0d8abc0c2c84d9c6a1347bb5cab31727d64a5ad48e708a0f4c80245b60.jpg,,
+쿠팡,,16038336168,스파클링,https://image9.coupangcdn.com/image/vendor_inventory/e16d/af3ba986acae3e480297b5cc9fa8d86edf01bbdb6bac5ea1a78bf4e6337a.jpg,,
+쿠팡,,16038220405,스마트,https://image9.coupangcdn.com/image/vendor_inventory/9775/c345c1b7d6b4ae50437fa817cf12dda0ca0c1f910c3107ec56bef9e15ddc.jpg,,
+쿠팡,,16027752974,플라이더,https://image9.coupangcdn.com/image/vendor_inventory/fe48/345595fe6fa218f86d12a0c4a58ef6842e6b1ab35d563dba1c87fc8fc88b.jpg,,
+쿠팡,,15984550175,똑똑떡뻥 4봉,https://image9.coupangcdn.com/image/vendor_inventory/a9f7/f00434e919641e6b1324c432cdf53178f1daa800d44e7a3ecabfc2cca49c.png,,
 쿠팡,,15935151932,똑똑연구소 김똑똑 어린이김,https://image9.coupangcdn.com/image/vendor_inventory/06ed/df4d3085d5e972521a82ceb5e562374ee5876df570e81ad11737dfd64511.png,,
-쿠팡,,15050382811,롤라루 오프너 확장형 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/1bb5/1a87b87a3162511fbdc321cd632d14b9b561c76b64358573e574b41b6020.jpg,,
-쿠팡,,15050376815,롤라루 오프너 캐리어 스탠다드형 20인치,https://image9.coupangcdn.com/image/vendor_inventory/1bb5/1a87b87a3162511fbdc321cd632d14b9b561c76b64358573e574b41b6020.jpg,,
+쿠팡,,15050382811,오프너,https://image9.coupangcdn.com/image/vendor_inventory/1bb5/1a87b87a3162511fbdc321cd632d14b9b561c76b64358573e574b41b6020.jpg,,
+쿠팡,,15050376815,오프너,https://image9.coupangcdn.com/image/vendor_inventory/1bb5/1a87b87a3162511fbdc321cd632d14b9b561c76b64358573e574b41b6020.jpg,,
 쿠팡,,15016883129,당일발송 일상화보 여성 아가일패턴 얇은 반팔 가디건 리닝,https://image9.coupangcdn.com/image/vendor_inventory/0664/4badaabd8625c0b91816279be0c4d693f52eac306c3dce5e0eecf06869d3.png,,
 쿠팡,,15009019631,당일발송 일상화보 여름 얇은 반팔 진주 배색 가디건 버블솝,https://image9.coupangcdn.com/image/vendor_inventory/1aa7/2563d63a0de73795f8ea23f3cdd1dfc887fb5af5bb9a0ec12d9c6d9c79ce.png,,
 쿠팡,,15008766705,당일발송 일상화보 반팔 단가라 스트라이프 가디건 티셔츠 카밀라,https://image9.coupangcdn.com/image/vendor_inventory/a6de/664a9fb405cdea759d35f931e85fabc84cdffc7dd4589caa2b3e7042433f.png,,
@@ -16,64 +16,51 @@
 쿠팡,,14949660390,일상화보 펀칭 레이스 뜨개 가디건 신디아,https://image9.coupangcdn.com/image/vendor_inventory/a1cf/26c920a7e30c20e5c37d4e7c4a7ce1849f3e50ea486de23377b56314e2e4.png,,
 쿠팡,,14949586395,일상화보 여름 반팔 면 자켓 정장 마이 스티븐,https://image9.coupangcdn.com/image/vendor_inventory/8128/eb71d2c0cc34c5bb6b9b63c3c6c8b8762307ae6cfd66d2e04ab3f819bffd.png,,
 쿠팡,,14934392428,일상화보 여성 여름 쓰리피스 정장 세트 반바지+크롭나시+자켓,https://image9.coupangcdn.com/image/vendor_inventory/0182/8cb062d54c63300127fbd068852aa9f0ff01bc358a61169e17edce443f01.png,,
-쿠팡,,14874948377,오프너 캐리어 확장형 20인치,https://image9.coupangcdn.com/image/vendor_inventory/cf8c/3124d9338482e9666b11565a6ef861d74837726d31088ad3721f3cf568b7.jpg,,
-쿠팡,,14775141445,큐보이드 캐리어 2110 new,https://image9.coupangcdn.com/image/vendor_inventory/4f26/974d9313f82a7cfbd026548f2583ec9e15e43c2e88cf4137b9a130928351.jpg,,
+쿠팡,,14874948377,오프너,https://image9.coupangcdn.com/image/vendor_inventory/cf8c/3124d9338482e9666b11565a6ef861d74837726d31088ad3721f3cf568b7.jpg,,
+쿠팡,,14775141445,큐보이드,https://image9.coupangcdn.com/image/vendor_inventory/4f26/974d9313f82a7cfbd026548f2583ec9e15e43c2e88cf4137b9a130928351.jpg,,
 쿠팡,,14734865975,롤라루 캐리어네임택,https://image9.coupangcdn.com/image/vendor_inventory/7ebf/93a7d600189cbc4e3cdb69a913f01fe7402bbad7f83e14bf079a1fa2cfeb.jpg,,
 쿠팡,,14690254842,롤라루 마카롱 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/1dae/97b1b7ce28b0886e92994a58de20cb0a82909caf60ea5a2d2e736ee63479.jpg,,
 쿠팡,,14690195461,롤라루 20인치 알루미늄 캐리어 24인치 26인치 29인치 기내 반입 중대형 캐리어 프레임,https://image9.coupangcdn.com/image/vendor_inventory/05aa/bd9aef9ad57852cc0a016456ac44b7d374626f4fffe87a492c494c62161f.jpg,,
 쿠팡,,14690147663,아이스크림 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/d4f7/c3bde7655fb68e75f6615595f7ecec82a97625ec56f4ed0521c3556f23ac.jpg,,
-쿠팡,,14690041243,롤라루 컵홀더 오프너 기내용 여행용 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/07ad/992f8a795ef87cbcaef45e3ebb2a370c99370fcffa609088ba3cef9626db.png,,
-쿠팡,,14690008633,스마트 캐리어 지퍼형,https://image9.coupangcdn.com/image/vendor_inventory/a787/37c47ec8871f5c3fa3d182c8feffd8e896d84fe169bbc3caa437c33f8c8f.jpg,,
+쿠팡,,14690041243,오프너,https://image9.coupangcdn.com/image/vendor_inventory/07ad/992f8a795ef87cbcaef45e3ebb2a370c99370fcffa609088ba3cef9626db.png,,
+쿠팡,,14690008633,스마트,https://image9.coupangcdn.com/image/vendor_inventory/a787/37c47ec8871f5c3fa3d182c8feffd8e896d84fe169bbc3caa437c33f8c8f.jpg,,
 쿠팡,,14433039319,리츠 레디백 캐리어,https://image9.coupangcdn.com/image/vendor_inventory/450e/8b5cb9490e41315e7b5f1fabcb78b718f1d39ae9c046bb9c1e5e107a697c.png,,
-쿠팡,,14333650227,큐보이드 캐리어 2110,https://image9.coupangcdn.com/image/vendor_inventory/4f26/974d9313f82a7cfbd026548f2583ec9e15e43c2e88cf4137b9a130928351.jpg,,
-쿠팡,,14333551488,오프너 캐리어 8026 스탠다드,https://image9.coupangcdn.com/image/vendor_inventory/07ad/992f8a795ef87cbcaef45e3ebb2a370c99370fcffa609088ba3cef9626db.png,,
-쿠팡,,14333376358,스마트 캐리어 B19 원터치,https://image9.coupangcdn.com/image/vendor_inventory/617e/02c852a1933cde5c1e521764234cf85615fd8177bb6c0c039e5a1b42004b.jpg,,
+쿠팡,,14333650227,큐보이드,https://image9.coupangcdn.com/image/vendor_inventory/4f26/974d9313f82a7cfbd026548f2583ec9e15e43c2e88cf4137b9a130928351.jpg,,
+쿠팡,,14333551488,오프너,https://image9.coupangcdn.com/image/vendor_inventory/07ad/992f8a795ef87cbcaef45e3ebb2a370c99370fcffa609088ba3cef9626db.png,,
+쿠팡,,14333376358,스마트,https://image9.coupangcdn.com/image/vendor_inventory/617e/02c852a1933cde5c1e521764234cf85615fd8177bb6c0c039e5a1b42004b.jpg,,
 쿠팡,,13896429782,무소음 벽시계 인테리어 사각시계 벽걸이 - 5color,https://image9.coupangcdn.com/image/vendor_inventory/7805/abce8dee1e2543c64ad77baa7b871b4231f20a29f96a7215eb16da3b9bb0.jpg,,
-자사몰_롤라루,23.0,23,롤라루 플라이더 어린이 타는 캐리어 20인치 기내용 (롤라루 네임택 증정!),https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20260328/052ff2ab2dc189bc9c900c0496ae5643.jpg,,
-자사몰_롤라루,20.0,20,롤라루 오프너 기내용 수화물용 캐리어 20인치 22인치 24인치 26인치 컵홀더형 (롤라루 네임택 증정!),https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251121/c750b9d21a5b34d51b7b54431e126f10.jpg,,
-자사몰_롤라루,19.0,19,롤라루 오프너 기내용 캐리어 18인치 20인치 스탠다드형 (롤라루 네임택 증정!),https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251121/57f0b635c2527e6ea0b33751c480d5d7.jpg,,
-자사몰_롤라루,18.0,18,롤라루 롤링프레스 백팩,https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251121/0dee5cfb1d3de2ad16f5eae5b49c8f75.jpg,,
-자사몰_롤라루,17.0,17,롤라루 이지프레스 백팩,https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251121/7008911533f2734674fbad71c945eee5.jpg,,
-자사몰_롤라루,16.0,16,롤라루 플렉스 트래블 백팩,https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251224/747dc46038d7703f7780e2c7fb59c6c3.jpg,,
-자사몰_롤라루,15.0,15,롤라루 구름쿠션 캐리어 바퀴커버,https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251121/2fa6b2c527930e784dcdfc10b7d55ad0.jpg,,
-자사몰_롤라루,14.0,14,롤라루 캐리어 네임택,https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251121/d29d871e59ae5e62b344e9305a22bf78.jpg,,
-자사몰_롤라루,13.0,13,롤라루 스마트 캐리어 20인치 26인치 (롤라루 네임택 증정!),https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251124/6fb6850b16dd5eb7c7abd8c8ef29f495.jpg,,
-자사몰_롤라루,12.0,12,롤라루 인딥 캐리어 20인치 기내용 24인치 수화물용 확장형 전면오픈 (롤라루 네임택 증정!),https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251126/46767d3001e999611d47f8ff0e024397.jpg,,
-자사몰_롤라루,11.0,11,롤라루 스파클링 기내용 캐리어 20인치 수화물용 24인치 26인치 (롤라루 네임택 증정!),https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251124/e6ffc0f9c2acbf165340766818fb0ba8.jpg,,
-자사몰_롤라루,10.0,10,롤라루 큐보이드 수화물 캐리어 28인치 32인치 36인치 (롤라루 네임택 증정!),https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251124/b8af88145baf52b7ea2e01501c508a2c.jpg,,
-자사몰_롤라루,9.0,9,롤라루 오프너 기내용 캐리어 20인치 확장형 (롤라루 네임택 증정!),https://ecimg.cafe24img.com/pg2283b71579436010/rollaroo/web/product/big/20251121/0dc6b4663d8bbd79763a6271011a6a2a.jpg,,
 똑똑연구소,13348673829.0,13407595870,"똑똑연구소 유기농 쌀과자 똑똑 떡뻥 30g, 7개",https://shop-phinf.pstatic.net/20260114_135/1768364674388hYx3F_JPEG/4848119498215530_851000379.jpg,28000.0,출산/육아>아기간식>유아과자
 똑똑연구소,13348673822.0,13407595869,"똑똑연구소 유기농 쌀과자 똑똑 떡뻥 30g, 3개",https://shop-phinf.pstatic.net/20260114_135/1768364674388hYx3F_JPEG/4848119498215530_851000379.jpg,12000.0,출산/육아>아기간식>유아과자
 똑똑연구소,13215733286.0,13274261185,김똑똑 맛있는 아기김 구운 조미 어린이 저염 유아 김 2gx240봉,https://shop-phinf.pstatic.net/20251223_100/1766471838188Pz0DH_JPEG/39446191039060557_1587392323.jpg,93600.0,출산/육아>이유식>가공이유식
-똑똑연구소,13215702600.0,13274230429,똑똑연구소 김똑똑 저염 조미 도시락김 맛있는 구운 모양김 동물모양 알파벳 한글모양,https://shop-phinf.pstatic.net/20250919_87/1758260488455wTUFa_JPEG/12922871431625638_1027737739.jpg,12900.0,출산/육아>이유식>가공이유식
-똑똑연구소,13150020039.0,13208357636,"김똑똑 맛있는 아기김 구운 조미 어린이 저염 유아김 2g, 30개",https://shop-phinf.pstatic.net/20260306_76/1772759777913kTAsF_JPEG/48377810388851420_2033336489.jpg,11690.0,출산/육아>이유식>가공이유식
-똑똑연구소,12909984275.0,12967671727,"똑똑연구소 유기농 쌀과자 똑똑 떡뻥 30g, 4개",https://shop-phinf.pstatic.net/20260114_135/1768364674388hYx3F_JPEG/4848119498215530_851000379.jpg,16000.0,출산/육아>아기간식>유아과자
+똑똑연구소,13215702600.0,13274230429,김똑똑 어린이 모양김 세트,https://shop-phinf.pstatic.net/20250919_87/1758260488455wTUFa_JPEG/12922871431625638_1027737739.jpg,12900.0,출산/육아>이유식>가공이유식
+똑똑연구소,13150020039.0,13208357636,김똑똑 어린이김 30봉,https://shop-phinf.pstatic.net/20260306_76/1772759777913kTAsF_JPEG/48377810388851420_2033336489.jpg,11690.0,출산/육아>이유식>가공이유식
+똑똑연구소,12909984275.0,12967671727,똑똑떡뻥 4봉,https://shop-phinf.pstatic.net/20260114_135/1768364674388hYx3F_JPEG/4848119498215530_851000379.jpg,16000.0,출산/육아>아기간식>유아과자
 똑똑연구소,12856319542.0,12913889172,김똑똑 어린이김 30봉 + 똑똑떡뻥 4봉,https://shop-phinf.pstatic.net/20260102_17/1767333813323WNx1h_PNG/101466605374994881_57185935.png,4700.0,식품>수산물>김/해초>김
 똑똑연구소,12805059382.0,12862525065,"김똑똑 어린이김 저염 밥태기 아기반찬 구운 도시락 아기김 2g, 240개",https://shop-phinf.pstatic.net/20251223_100/1766471838188Pz0DH_JPEG/39446191039060557_1587392323.jpg,93600.0,식품>수산물>김/해초>김
-똑똑연구소,12639505347.0,12696566217,"김똑똑 어린이김 저염 밥태기 아기반찬 구운 도시락 아기김 2g, 60개",https://shop-phinf.pstatic.net/20260331_125/1774945023161Xy2j1_JPEG/11510845953119670_948036634.jpg,28200.0,식품>수산물>김/해초>김
-똑똑연구소,12372341116.0,12428657005,똑똑연구소 김똑똑 저염 조미 도시락김 맛있는 구운 모양김,https://shop-phinf.pstatic.net/20250919_87/1758260488455wTUFa_JPEG/12922871431625638_1027737739.jpg,12900.0,식품>수산물>김/해초>김
-롤라루,12941964544.0,12999737028,어린이 타는 캐리어 미니 키즈 라이딩 기내용 기내반입 여행용 플라이더 47cm(20인치),https://shop-phinf.pstatic.net/20260330_53/17748308767706ApCz_JPEG/47365321065523161_412709632.jpg,109000.0,패션잡화>여행용가방/소품>기내용 캐리어
+똑똑연구소,12639505347.0,12696566217,김똑똑 어린이김 60봉,https://shop-phinf.pstatic.net/20260331_125/1774945023161Xy2j1_JPEG/11510845953119670_948036634.jpg,28200.0,식품>수산물>김/해초>김
+똑똑연구소,12372341116.0,12428657005,김똑똑 어린이 모양김 세트,https://shop-phinf.pstatic.net/20250919_87/1758260488455wTUFa_JPEG/12922871431625638_1027737739.jpg,12900.0,식품>수산물>김/해초>김
+롤라루,12941964544.0,12999737028,플라이더,https://shop-phinf.pstatic.net/20260330_53/17748308767706ApCz_JPEG/47365321065523161_412709632.jpg,109000.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,12477050427.0,12533654486,여행용 백팩 캐리어 노트북 가방 백패킹 확장형 해외여행 대용량 바퀴달린 트롤리 가방 출장,https://shop-phinf.pstatic.net/20251013_22/1760330990633Nb8NG_JPEG/15294004918135096_803808720.jpg,189000.0,패션잡화>여행용가방/소품>중대형 캐리어
 롤라루,12476536383.0,12533139075,진공 압축 여행용 백팩 노트북 도난방지 여행 등산 배낭 백패킹 방수 자전거 가방 TSA 49cm,https://shop-phinf.pstatic.net/20251013_151/1760322441569A2IxD_JPEG/1429605375701812_272699759.jpg,199000.0,패션잡화>남성가방>백팩
 롤라루,12430695980.0,12487178264,진공 압축 여행용 백팩 노트북 도난방지 여행 등산 배낭 백패킹 방수 자전거 가방,https://shop-phinf.pstatic.net/20251001_237/1759287502827I0Du6_JPEG/93420373946739179_923571890.jpg,139000.0,패션잡화>남성가방>백팩
-롤라루,12426364166.0,12482832562,여행용 백팩 캐리어 기내반입 크로스백 남자 노트북 방수 기내용 가방 보부상 백패킹 46cm,https://shop-phinf.pstatic.net/20250930_140/1759213070222s4Wr6_JPEG/13800536691368937_941102017.jpg,59900.0,패션잡화>남성가방>백팩
+롤라루,12426364166.0,12482832562,플렉스,https://shop-phinf.pstatic.net/20250930_140/1759213070222s4Wr6_JPEG/13800536691368937_941102017.jpg,59900.0,패션잡화>남성가방>백팩
 롤라루,12298902721.0,12355029783,롤라루 기내용 캐리어 55cm(20인치) 폴리카보네이트 pc 캐리어 여행용 전면 오픈,https://shop-phinf.pstatic.net/20250905_187/1757035780345XuxXm_JPEG/71925487209756373_2002208602.jpg,229000.0,패션잡화>여행용가방/소품>기내용 캐리어
-롤라루,12248109283.0,12304096471,기내용 전면오픈 55cm(20인치) 확장형 튼튼한 여행용 캐리어 65cm(24인치),https://shop-phinf.pstatic.net/20251127_140/1764210401744IMPva_JPEG/24254568898042653_62437679.jpg,109000.0,패션잡화>여행용가방/소품>기내용 캐리어
-롤라루,12244495461.0,12300474998,기내용캐리어 55cm(20인치) 65cm(24인치) 전면오픈 원터치 캐리어,https://shop-phinf.pstatic.net/20251124_186/1763962293279guaIY_JPEG/61440427843561010_1244525513.jpg,139000.0,패션잡화>여행용가방/소품>기내용 캐리어
+롤라루,12248109283.0,12304096471,인딥,https://shop-phinf.pstatic.net/20251127_140/1764210401744IMPva_JPEG/24254568898042653_62437679.jpg,109000.0,패션잡화>여행용가방/소품>기내용 캐리어
+롤라루,12244495461.0,12300474998,스파클링,https://shop-phinf.pstatic.net/20251124_186/1763962293279guaIY_JPEG/61440427843561010_1244525513.jpg,139000.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,12115136735.0,12170807778,튼튼한 기내용 캐리어 54cm(20인치) pc 폴리카보네이트,https://shop-phinf.pstatic.net/20250728_176/1753693008642CJNyd_JPEG/8230972209147503_1286984507.jpg,199000.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,11632649038.0,11686910991,기내용캐리어 51cm(20인치) 무지개 그라데이션 미니 여행용 하드 컵홀더 스마트폰 충전 거치,https://shop-phinf.pstatic.net/20250407_86/1743991931403zqCnf_JPEG/97267105573084374_100189481.jpg,99900.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,11551587394.0,11605568083,롤라루 베베롤 타는 캐리어 50cm(20인치) 유아 아기 어린이 미니 여행 안전한 기내용 라이딩캐리어,https://shop-phinf.pstatic.net/20250318_19/17422756570031Y7cz_JPEG/76408578934644226_1958349865.jpg,189000.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,10929659932.0,10981590506,워터락 완벽 방수 여행용 캐리어 기내용 화물용 폴리카보네이트 20인치 24인치 26인치 28인치 30인치,https://shop-phinf.pstatic.net/20241023_144/1729649098894ifIpK_JPEG/900519036052326_729160628.jpg,189000.0,패션잡화>여행용가방/소품>중대형 캐리어
 롤라루,10684272515.0,10735388807,기내용 캐리어 컵홀더 캐리어 노트북수납  C타입 충전 여행가방 노트북수납 20,https://shop-phinf.pstatic.net/20241216_77/1734308514533Wwy06_JPEG/13704309639533737_1592371271.jpg,128000.0,패션잡화>여행용가방/소품>기내용 캐리어
-롤라루,10589437637.0,10640326452,여행용 대형 컵홀더 캐리어 수화물용 PC캐리어 60cm(22인치) 66cm(26인치) 75cm(30인치),https://shop-phinf.pstatic.net/20240725_204/1721867966899utLAo_JPEG/4094333671010412_1437108640.jpg,99000.0,패션잡화>여행용가방/소품>중대형 캐리어
+롤라루,10589437637.0,10640326452,퀘스트,https://shop-phinf.pstatic.net/20240725_204/1721867966899utLAo_JPEG/4094333671010412_1437108640.jpg,99000.0,패션잡화>여행용가방/소품>중대형 캐리어
 롤라루,10589389951.0,10640278542,기내용 캐리어 54cm(20인치) 컵홀더 확장형 캐리어 여행용 여행가방 TSA,https://shop-phinf.pstatic.net/20240903_99/1725332250167X6dRN_JPEG/35513123126315769_2073689765.jpg,109000.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,10462694728.0,10513264435,여행용 파우치 세트 캐리어 정리백 이지캐리,https://shop-phinf.pstatic.net/20240628_173/1719561915410n2Wq0_JPEG/18270905435935766_476646954.jpg,19900.0,패션잡화>여행용가방/소품>캐리어소품
 롤라루,10462568163.0,10513136955,여행용 압축 파우치 6종 세트 캐리어 엘리트 정리백,https://shop-phinf.pstatic.net/20240628_146/1719559818460JepgD_JPEG/3175193463617385_314266812.jpg,19900.0,패션잡화>여행용가방/소품>캐리어소품
 롤라루,10059574229.0,10108240060,롤라루 캐리어 바퀴커버 무소음 휠 바퀴 보호 커버 실리콘,https://shop-phinf.pstatic.net/20250415_101/1744707197361HCwSE_JPEG/9431753511027514_1472070211.jpg,3000.0,패션잡화>여행용가방/소품>캐리어소품
 롤라루,9494827936.0,9539914797,롤라루 캐리어벨트 캐리어 스트랩,https://shop-phinf.pstatic.net/20231116_95/1700096061828062Un_JPEG/2702542646556861_1473166149.jpg,1900.0,패션잡화>여행용가방/소품>캐리어소품
-롤라루,9491275795.0,9536344765,롤라루 기내용 캐리어 50cm(20인치) 수하물 알루미늄 캐리어 여행용,https://shop-phinf.pstatic.net/20231128_115/1701131713380jvsyg_JPEG/14496650239022078_340197686.jpg,119000.0,패션잡화>여행용가방/소품>중대형 캐리어
+롤라루,9491275795.0,9536344765,프레임,https://shop-phinf.pstatic.net/20231128_115/1701131713380jvsyg_JPEG/14496650239022078_340197686.jpg,119000.0,패션잡화>여행용가방/소품>중대형 캐리어
 롤라루,9455411491.0,9500135744,롤라루 어린이용 탈수있는 여행용 앉아타는 라이딩 캐리어 가방 52cm(수하물용),https://shop-phinf.pstatic.net/20231108_242/1699408426150ACLD8_JPEG/11047328168202176_1579530437.jpg,149000.0,출산/육아>유아동잡화>가방>캐리어백
-롤라루,9342254473.0,9386300670,롤라루 캐리어네임택 러기지택 캐리어 택 이름표 꼬리표 가방,https://shop-phinf.pstatic.net/20231110_115/1699595176874JbVPh_JPEG/10528407626456263_1901990092.jpg,3000.0,패션잡화>여행용가방/소품>네임태그
+롤라루,9342254473.0,9386300670,러기지택,https://shop-phinf.pstatic.net/20231110_115/1699595176874JbVPh_JPEG/10528407626456263_1901990092.jpg,3000.0,패션잡화>여행용가방/소품>네임태그
 롤라루,9199341267.0,9242683523,롤라루 간편한 접이식 부피작은 기내용 58cm(20인치) 폴딩 접는 캐리어,https://shop-phinf.pstatic.net/20230925_227/16956337470432Fggl_JPEG/9951018859877131_1441659701.jpg,77900.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,9199327956.0,9242670134,롤라루 어린이 유모차 탈수있는 조립식 분리형 20인치 캐리어,https://shop-phinf.pstatic.net/20230925_138/1695633663446P2Gmz_JPEG/2174929450461881_597429942.jpg,199000.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,9199314053.0,9242656151,롤라루 어린이 캐리어 유아 아기 키즈 타는 라이딩 캐리어,https://shop-phinf.pstatic.net/20230919_268/1695084418552jp9e4_JPEG/8973276359703510_806385166.jpg,95000.0,출산/육아>유아동잡화>가방>캐리어백
@@ -82,6 +69,8 @@
 롤라루,9162184109.0,9205359516,롤라루 30cm(14인치) 캐리어 레디백 미니 소형 기내용 캐리어,https://shop-phinf.pstatic.net/20230916_40/1694854430552AhNt9_PNG/744122369461576_1027773872.png,24900.0,패션잡화>여행용가방/소품>기내용 캐리어
 롤라루,9162056198.0,9205230761,타는 캐리어 어린이 유아 아기 캐리어 라이딩 탈수있는,https://shop-phinf.pstatic.net/20230912_233/16944986060392rQN4_JPEG/7706004491278169_1944688445.jpg,89000.0,출산/육아>유아동잡화>가방>캐리어백
 롤라루,9157187579.0,9200343962,롤라루 기내 반입 여행 캐리어 기내용 54cm(20인치) 수하물용 65cm(24인치),https://shop-phinf.pstatic.net/20230911_190/1694421204791YMaiG_JPEG/14774932749179318_876639355.jpg,89000.0,패션잡화>여행용가방/소품>기내용 캐리어
-롤라루,8972229378.0,9014636344,71cm(28인치) 81cm(32인치) 캐리어 대형 수화물 여행용 특대형 화물용 중대형,https://shop-phinf.pstatic.net/20251016_274/1760598109405yQk3i_JPEG/1705273214624005_266035838.jpg,159000.0,패션잡화>여행용가방/소품>중대형 캐리어
-롤라루,8892683906.0,8934808894,기내용 캐리어 여행 전면오픈 기내반입 가벼운 튼튼한 소형 51cm(20인치),https://shop-phinf.pstatic.net/20250916_256/1757983647042GG329_JPEG/33948321182191124_1290139236.jpg,109800.0,패션잡화>여행용가방/소품>기내용 캐리어
-롤라루,8798799379.0,8840494249,여행용 캐리어 51cm(20인치) 기내용 캐리어 기내 반입 여행 66cm(26인치) 수화물용,https://shop-phinf.pstatic.net/20260112_11/1768184996878yfNhi_JPEG/34370824312005127_777937038.jpg,129000.0,패션잡화>여행용가방/소품>기내용 캐리어
+롤라루,8972229378.0,9014636344,큐보이드,https://shop-phinf.pstatic.net/20251016_274/1760598109405yQk3i_JPEG/1705273214624005_266035838.jpg,159000.0,패션잡화>여행용가방/소품>중대형 캐리어
+롤라루,8892683906.0,8934808894,오프너,https://shop-phinf.pstatic.net/20250916_256/1757983647042GG329_JPEG/33948321182191124_1290139236.jpg,109800.0,패션잡화>여행용가방/소품>기내용 캐리어
+롤라루,8798799379.0,8840494249,스마트,https://shop-phinf.pstatic.net/20260112_11/1768184996878yfNhi_JPEG/34370824312005127_777937038.jpg,129000.0,패션잡화>여행용가방/소품>기내용 캐리어
+루티니스트,13317656596.0,13376485833,루티니스트 초경량 러닝조끼 메쉬 트레일러닝 베스트 마라톤 스포츠 운동조끼 (헤어/손목밴드 포함),https://shop-phinf.pstatic.net/20260415_294/1776216300405AJGoI_JPEG/44233136532299506_1245639316.jpg,22900.0,스포츠/레저>등산>등산의류>조끼
+루티니스트,13317509233.0,13376337923,만년다이어리,https://shop-phinf.pstatic.net/20260409_259/1775717008902Du10k_JPEG/59332383862760322_1374445302.jpg,15900.0,생활/건강>문구/사무용품>다이어리/플래너>다이어리
