@@ -29,10 +29,28 @@ from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card,
     render_period_picker, render_empty_state, render_status_pill,
-    METRIC_COLORS, CHANNEL_COLORS, channel_color,
+    METRIC_COLORS, CHANNEL_COLORS,
     TEXT_MAIN, TEXT_MUTED, TEXT_FAINT,
     BORDER_SUBTLE, BG_SUBTLE,
 )
+
+
+def channel_color(label: str, default: str = "#94a3b8") -> str:
+    """채널 라벨 → 색상 매핑 (페이지 self-contained 버전).
+
+    '네이버 스마트스토어 (롤라루)' 처럼 brand suffix 가 붙어도 매칭됨.
+    긴 key 부터 시도해 '쿠팡 로켓그로스' 와 '쿠팡' 충돌 방지.
+    utils.ui 의 동명 함수와 같은 로직 — Streamlit Cloud module 캐시
+    stale 상태에서도 안정 동작 보장 (외부 의존 제거).
+    """
+    if not label:
+        return default
+    if label in CHANNEL_COLORS:
+        return CHANNEL_COLORS[label]
+    for key in sorted(CHANNEL_COLORS.keys(), key=len, reverse=True):
+        if key in label:
+            return CHANNEL_COLORS[key]
+    return default
 
 
 setup_page(
