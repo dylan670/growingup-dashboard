@@ -45,10 +45,11 @@ setup_page(
 # ==========================================================
 is_local = VENV_PYTHON.exists()
 if not is_local:
-    st.warning(
-        "⚠️ 이 기능은 **로컬 PC 전용**입니다.\n\n"
-        "Streamlit Cloud 환경에선 파일 시스템에 쓰기/스크립트 실행이 제한되어 "
-        "동작하지 않습니다. 로컬 PC에서 실행 중인 대시보드에 접속해주세요."
+    st.info(
+        "ℹ️ **Streamlit Cloud 환경**입니다.\n\n"
+        "업로드한 파일은 **현재 세션 컨테이너에서만 처리**되며, 다음 자동 sync "
+        "(매일 10시) 또는 로컬 PC에서 같은 파일을 올린 후 git push 하기 전엔 "
+        "영구 반영되지 않습니다. 임시 확인용으로는 정상 동작합니다."
     )
 
 
@@ -102,6 +103,179 @@ def _run_sync_script(script_name: str) -> tuple[bool, str]:
 def _run_precompute() -> tuple[bool, str]:
     """precompute 재실행 (사용자 화면 즉시 갱신용)."""
     return _run_sync_script("precompute.py")
+
+
+# ----------------------------------------------------------
+# In-process 처리 (Streamlit Cloud 호환 — subprocess 미사용)
+# ----------------------------------------------------------
+def _process_coupang_ads_inprocess(file_paths: list[Path]) -> tuple[bool, str]:
+    """쿠팡 광고 CSV 처리 — 로컬/Cloud 둘 다 동작.
+
+    api.coupang_ads_csv 모듈 직접 호출. 일별/합계 자동 분기.
+    """
+    import io
+    import contextlib
+    import sys as _sys
+    sys_path = _sys.path
+    if str(ROOT) not in sys_path:
+        sys_path.insert(0, str(ROOT))
+
+    log_buf = io.StringIO()
+    try:
+        from api.coupang_ads_csv import (
+            read_coupang_ads_file, parse_to_ads, parse_to_campaigns,
+            parse_to_campaigns_daily, _resolve_col, COLUMN_CANDIDATES,
+        )
+        from utils.data import ADS_FILE
+        from utils.precomputed import (
+            save_precomputed_parquet, PRECOMP_DIR,
+        )
+        import pandas as pd
+    except Exception as e:
+        return False, f"모듈 로드 실패: {type(e).__name__}: {e}"
+
+    results = []
+    success_any = False
+
+    for fp in file_paths:
+        try:
+            log_buf.write(f"\n--- {fp.name} ---\n")
+            raw = read_coupang_ads_file(fp)
+            log_buf.write(f"원본 {len(raw)}행, 헤더 {list(raw.columns)[:6]}\n")
+
+            cols = list(raw.columns.astype(str))
+            has_date = _resolve_col(cols, COLUMN_CANDIDATES["date"]) is not None
+
+            if not has_date:
+                # 합계 리포트 → coupang_campaigns.parquet 만 갱신
+                log_buf.write("⚠️ 합계 리포트(no date) — 캠페인 합계 parquet 만 갱신\n")
+                summary = parse_to_campaigns(raw)
+                if summary.empty:
+                    log_buf.write("  ❌ 캠페인 합계 파싱 결과 0건\n")
+                    continue
+                save_precomputed_parquet(summary, "coupang_campaigns.parquet")
+                ts = int(summary["spend"].sum())
+                tr = int(summary["revenue"].sum())
+                log_buf.write(
+                    f"  ✅ {len(summary)} 캠페인 / 광고비 {ts:,}원 / 매출 {tr:,}원 / "
+                    f"ROAS {(tr/ts*100 if ts else 0):.0f}%\n"
+                )
+                success_any = True
+                continue
+
+            # 일별 리포트
+            ads_df = parse_to_ads(raw)
+            if ads_df.empty:
+                log_buf.write("  ❌ 일별 ads 파싱 결과 0건\n")
+                continue
+            tspend = int(ads_df["spend"].sum())
+            trev = int(ads_df["revenue"].sum())
+            log_buf.write(
+                f"  파싱 일별: {len(ads_df)}행 / 광고비 {tspend:,}원 / 매출 {trev:,}원\n"
+            )
+
+            # ads.csv 누적 병합
+            new_dates = set(ads_df["date"].astype(str))
+            coupang_stores = {"쿠팡", "쿠팡_똑똑연구소", "쿠팡_롤라루", "쿠팡_루티니스트"}
+            if ADS_FILE.exists():
+                existing = pd.read_csv(ADS_FILE)
+                existing["date"] = existing["date"].astype(str)
+                if "store" not in existing.columns:
+                    existing["store"] = existing["channel"]
+                mask = (
+                    existing["store"].isin(coupang_stores)
+                    & existing["date"].isin(new_dates)
+                )
+                removed = int(mask.sum())
+                existing = existing[~mask]
+            else:
+                existing = pd.DataFrame()
+                removed = 0
+            merged = pd.concat([existing, ads_df], ignore_index=True)
+            if "store" not in merged.columns:
+                merged["store"] = merged["channel"]
+            merged = merged.sort_values(["date", "channel", "store"]).reset_index(drop=True)
+            merged.to_csv(ADS_FILE, index=False, encoding="utf-8-sig")
+            log_buf.write(f"  ads.csv: 기존 {removed}행 교체 + 신규 {len(ads_df)}행\n")
+
+            # campaigns_daily parquet 누적 병합
+            new_daily = parse_to_campaigns_daily(raw)
+            if not new_daily.empty:
+                new_daily["date"] = new_daily["date"].astype(str)
+                ndates = set(new_daily["date"])
+                exist_path = PRECOMP_DIR / "coupang_campaigns_daily.parquet"
+                if exist_path.exists():
+                    ex = pd.read_parquet(exist_path)
+                    ex["date"] = ex["date"].astype(str)
+                    overlap = ex["date"].isin(ndates)
+                    kept = ex[~overlap]
+                else:
+                    kept = pd.DataFrame()
+                combined = pd.concat([kept, new_daily], ignore_index=True)
+                combined = combined.sort_values(["date", "campaign_name"]).reset_index(drop=True)
+                save_precomputed_parquet(combined, "coupang_campaigns_daily.parquet")
+                log_buf.write(
+                    f"  daily parquet: {len(new_daily)} 행 추가 (총 {len(combined)})\n"
+                )
+
+                # 합계 parquet 도 daily 에서 재계산
+                from utils.products import classify_coupang_ad_to_brand
+                agg = combined.groupby("campaign_name").agg(
+                    spend=("spend", "sum"),
+                    impressions=("impressions", "sum"),
+                    clicks=("clicks", "sum"),
+                    conversions=("conversions", "sum"),
+                    revenue=("revenue", "sum"),
+                ).reset_index()
+                agg["brand"] = agg["campaign_name"].astype(str).map(classify_coupang_ad_to_brand)
+                agg["ctr_pct"] = (
+                    agg["clicks"] / agg["impressions"].replace(0, pd.NA) * 100
+                ).round(2).fillna(0)
+                agg["cpc"] = (
+                    agg["spend"] / agg["clicks"].replace(0, pd.NA)
+                ).round(0).fillna(0).astype(int)
+                agg["roas_pct"] = (
+                    agg["revenue"] / agg["spend"].replace(0, pd.NA) * 100
+                ).round(0).fillna(0).astype(int)
+                save_precomputed_parquet(agg, "coupang_campaigns.parquet")
+                log_buf.write(f"  합계 parquet 재계산: {len(agg)} 캠페인\n")
+
+            success_any = True
+        except Exception as e:
+            import traceback
+            log_buf.write(f"  ❌ 처리 실패: {type(e).__name__}: {e}\n")
+            log_buf.write(traceback.format_exc())
+
+    return success_any, log_buf.getvalue()
+
+
+def _process_coupang_sales_inprocess(file_paths: list[Path]) -> tuple[bool, str]:
+    """쿠팡 판매 CSV 처리 — in-process. 기존 sync 스크립트 main 직접 호출."""
+    import io
+    import sys as _sys
+    sys_path = _sys.path
+    if str(ROOT) not in sys_path:
+        sys_path.insert(0, str(ROOT))
+
+    log_buf = io.StringIO()
+    try:
+        # 기존 sync_coupang_sales_csv.py 의 main() 직접 호출 (subprocess 안 씀)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "sync_sales", str(ROOT / "scripts" / "sync_coupang_sales_csv.py"),
+        )
+        mod = importlib.util.module_from_spec(spec)
+        # log() 함수의 print 출력 캡처
+        import contextlib
+        with contextlib.redirect_stdout(log_buf), contextlib.redirect_stderr(log_buf):
+            spec.loader.exec_module(mod)
+            rc = mod.main()
+        return rc == 0, log_buf.getvalue()
+    except SystemExit as e:
+        return e.code == 0, log_buf.getvalue()
+    except Exception as e:
+        import traceback
+        return False, log_buf.getvalue() + f"\n❌ {type(e).__name__}: {e}\n{traceback.format_exc()}"
 
 
 def _get_existing_files(d: Path) -> list[Path]:
@@ -258,10 +432,9 @@ with tab_sales:
         type=["csv", "xlsx", "xls"],
         accept_multiple_files=True,
         key="sales_uploader",
-        disabled=not is_local,
     )
 
-    if uploaded_sales and is_local:
+    if uploaded_sales:
         col_a, col_b = st.columns([1, 1])
         with col_a:
             run_btn = st.button(
@@ -287,7 +460,11 @@ with tab_sales:
 
             if run_btn:
                 with st.spinner("쿠팡 판매 CSV 파싱 + 병합 중... (1~3분)"):
-                    ok, output = _run_sync_script("sync_coupang_sales_csv.py")
+                    if is_local:
+                        ok, output = _run_sync_script("sync_coupang_sales_csv.py")
+                    else:
+                        # Cloud — in-process 처리
+                        ok, output = _process_coupang_sales_inprocess(saved)
                 if ok:
                     st.success("✅ 처리 완료! coupang_inbound.csv 에 병합되었습니다.")
                 else:
@@ -298,7 +475,23 @@ with tab_sales:
 
                 if ok:
                     with st.spinner("프리컴퓨트 갱신 중... (1분)"):
-                        pc_ok, pc_out = _run_precompute()
+                        if is_local:
+                            pc_ok, pc_out = _run_precompute()
+                        else:
+                            # Cloud — precompute 도 in-process
+                            try:
+                                from scripts.precompute import (
+                                    precompute_home_snapshot,
+                                    precompute_insights,
+                                )
+                                from utils.precomputed import mark_last_updated
+                                precompute_home_snapshot()
+                                precompute_insights()
+                                mark_last_updated()
+                                pc_ok = True
+                            except Exception as e:
+                                pc_ok = False
+                                st.warning(f"precompute 실패: {e}")
                     if pc_ok:
                         st.success("✅ 대시보드 데이터도 즉시 반영됨!")
                         st.cache_data.clear()
@@ -364,10 +557,9 @@ with tab_ads:
         type=["csv", "xlsx", "xls"],
         accept_multiple_files=True,
         key="ads_uploader",
-        disabled=not is_local,
     )
 
-    if uploaded_ads and is_local:
+    if uploaded_ads:
         col_a, col_b = st.columns([1, 1])
         with col_a:
             run_btn = st.button(
@@ -392,7 +584,8 @@ with tab_ads:
 
             if run_btn:
                 with st.spinner("쿠팡 광고 CSV 파싱 + 병합 중... (1~2분)"):
-                    ok, output = _run_sync_script("sync_coupang_ads_csv.py")
+                    # 일별/합계 자동 분기는 in-process 함수가 처리 — 양 환경 동일
+                    ok, output = _process_coupang_ads_inprocess(saved)
                 if ok:
                     st.success("✅ 처리 완료! ads.csv + 캠페인 parquet 갱신됨.")
                 else:
@@ -403,7 +596,22 @@ with tab_ads:
 
                 if ok:
                     with st.spinner("프리컴퓨트 갱신 중..."):
-                        pc_ok, _ = _run_precompute()
+                        if is_local:
+                            pc_ok, _ = _run_precompute()
+                        else:
+                            try:
+                                from scripts.precompute import (
+                                    precompute_home_snapshot,
+                                    precompute_insights,
+                                )
+                                from utils.precomputed import mark_last_updated
+                                precompute_home_snapshot()
+                                precompute_insights()
+                                mark_last_updated()
+                                pc_ok = True
+                            except Exception as e:
+                                pc_ok = False
+                                st.warning(f"precompute 실패: {e}")
                     if pc_ok:
                         st.success("✅ 광고 분석에 즉시 반영됨!")
                         st.cache_data.clear()
