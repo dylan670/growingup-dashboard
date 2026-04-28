@@ -285,6 +285,12 @@ class CoupangWingClient:
                     or 0
                 ) * qty
 
+                # 쿠팡 vendorItemName 은 옵션 포함 SKU 명 — 별도 option 필드로
+                sku_name = str(item.get("vendorItemName") or "")
+                option_str = (
+                    sku_name if sku_name and sku_name != product_name else ""
+                )
+
                 rows.append({
                     "date": paid_at,
                     "order_id": f"W-{order_id_base}-{item.get('vendorItemId', '')}",
@@ -292,6 +298,7 @@ class CoupangWingClient:
                     "channel": "쿠팡",
                     "store": "쿠팡",
                     "product": str(product_name),
+                    "option": option_str,
                     "quantity": qty,
                     "revenue": amount,
                 })
@@ -332,13 +339,19 @@ class CoupangWingClient:
                 # RG는 고객 정보 노출 X → 주문 단위로 익명 ID (재구매 추적 불가)
                 rg_cust = _hash_id(f"RG-{order_id_base}")
 
+                # vendorItemName = 옵션 포함 SKU 명
+                sku_name = str(item.get("vendorItemName") or "")
+                pname = str(item.get("productName") or "")
+                option_str = sku_name if sku_name and sku_name != pname else ""
+
                 rows.append({
                     "date": paid_date,
                     "order_id": f"RG-{order_id_base}-{item.get('vendorItemId', '')}",
                     "customer_id": rg_cust,
                     "channel": "쿠팡",
                     "store": "쿠팡",
-                    "product": str(item.get("productName") or ""),
+                    "product": pname,
+                    "option": option_str,
                     "quantity": qty,
                     "revenue": amount,
                 })
@@ -348,7 +361,7 @@ class CoupangWingClient:
 
         return pd.DataFrame(rows, columns=[
             "date", "order_id", "customer_id", "channel",
-            "store", "product", "quantity", "revenue",
+            "store", "product", "option", "quantity", "revenue",
         ])
 
 

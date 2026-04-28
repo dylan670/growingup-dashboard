@@ -404,6 +404,111 @@ def show_product_detail(
             },
         )
 
+    # ---------- 옵션별 상세 (색상/사이즈 등 SKU 단위) ----------
+    st.divider()
+    st.markdown(
+        f"<div style='font-weight:700; color:{TEXT_MAIN}; "
+        f"font-size:0.95rem; margin-bottom:6px;'>🎨 옵션별 판매 상세</div>",
+        unsafe_allow_html=True,
+    )
+
+    if "option" not in period_df.columns:
+        st.caption(
+            ":grey[옵션 데이터 없음 — 다음 sync 부터 자동 수집됩니다.]"
+        )
+    else:
+        opt_df = period_df.copy()
+        opt_df["option"] = opt_df["option"].fillna("").astype(str).str.strip()
+        with_opt = opt_df[opt_df["option"] != ""]
+
+        if with_opt.empty:
+            st.caption(
+                ":grey[이 제품의 옵션 데이터가 아직 수집되지 않았습니다. "
+                "Cafe24 / 네이버 / 쿠팡 API 가 다음 sync(매일 10시 또는 사이드바 "
+                "🔄 버튼) 부터 옵션 정보를 자동 추출합니다.]"
+            )
+        else:
+            opt_agg = (
+                with_opt.groupby("option")
+                .agg(
+                    매출=("revenue", "sum"),
+                    수량=("quantity", "sum"),
+                    주문=("order_id", "count"),
+                )
+                .reset_index()
+                .sort_values("매출", ascending=False)
+                .rename(columns={"option": "옵션"})
+            )
+            opt_agg["비중(%)"] = (
+                opt_agg["매출"] / opt_agg["매출"].sum() * 100
+            ).round(1)
+
+            # 채널별로도 옵션이 다르게 잡힐 수 있으므로, 채널 정보 같이 표시
+            opt_by_ch = (
+                with_opt.groupby(["option", ch_col])
+                .agg(매출=("revenue", "sum"), 수량=("quantity", "sum"))
+                .reset_index()
+            )
+            # 옵션마다 가장 큰 채널 표시
+            top_ch_per_opt = (
+                opt_by_ch.sort_values("매출", ascending=False)
+                .drop_duplicates(subset=["option"], keep="first")
+                [["option", ch_col]]
+                .rename(columns={"option": "옵션", ch_col: "주력 채널"})
+            )
+            opt_agg = opt_agg.merge(top_ch_per_opt, on="옵션", how="left")
+
+            # 요약 — 총 옵션 개수 + 상위 3개 비중
+            total_opts = len(opt_agg)
+            top3_pct = opt_agg.head(3)["비중(%)"].sum()
+            st.caption(
+                f"📊 총 **{total_opts}개 옵션** · "
+                f"상위 3개 옵션이 매출의 **{top3_pct:.1f}%** 차지"
+            )
+
+            st.dataframe(
+                opt_agg[[
+                    "옵션", "주력 채널", "매출", "수량", "주문", "비중(%)",
+                ]],
+                width="stretch", hide_index=True,
+                column_config={
+                    "옵션": st.column_config.TextColumn("옵션", width="large"),
+                    "주력 채널": st.column_config.TextColumn("주력 채널", width="medium"),
+                    "매출": st.column_config.NumberColumn("매출", format="%d원"),
+                    "수량": st.column_config.NumberColumn("수량", format="%d개"),
+                    "주문": st.column_config.NumberColumn("주문", format="%d건"),
+                    "비중(%)": st.column_config.ProgressColumn(
+                        "비중", format="%.1f%%", min_value=0, max_value=100,
+                    ),
+                },
+                height=min(360, 50 + len(opt_agg) * 36),
+            )
+
+            # 옵션 매출 막대 차트 (상위 10개)
+            if len(opt_agg) > 1:
+                top_opts = opt_agg.head(10)
+                fig_opt = go.Figure(go.Bar(
+                    x=top_opts["매출"],
+                    y=top_opts["옵션"],
+                    orientation="h",
+                    marker=dict(color=METRIC_COLORS["revenue"], opacity=0.85),
+                    text=[f"{v:,}원" for v in top_opts["매출"]],
+                    textposition="outside",
+                    hovertemplate="<b>%{y}</b><br>매출 %{x:,}원<extra></extra>",
+                ))
+                fig_opt.update_layout(
+                    height=max(220, 35 * len(top_opts) + 60),
+                    margin=dict(l=10, r=80, t=10, b=10),
+                    showlegend=False,
+                    plot_bgcolor="white",
+                    xaxis=dict(tickformat=",", showgrid=True, gridcolor="#f1f5f9"),
+                    yaxis=dict(autorange="reversed"),
+                )
+                st.plotly_chart(
+                    fig_opt, width="stretch",
+                    key=f"dlg_opt_{product_name}",
+                )
+
 
 # ==========================================================
 # 제품별 일별 판매 추이 차트 (수량 막대 + 매출 선)

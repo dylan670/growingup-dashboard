@@ -323,6 +323,21 @@ class Cafe24Client:
                 unit = float(item.get("product_price") or item.get("price") or 0)
                 amount = int(round(qty * unit))
 
+                # 옵션 추출 — Cafe24 응답에 다양한 키로 들어옴
+                option_value = (
+                    item.get("option_value")
+                    or item.get("option_text")
+                    or item.get("option_name")
+                    or ""
+                )
+                # 가끔 list 형태로 옴 — 문자열로 직렬화
+                if isinstance(option_value, list):
+                    option_value = " / ".join(
+                        str(o.get("name", "") if isinstance(o, dict) else o)
+                        for o in option_value
+                    )
+                option_str = str(option_value).strip()
+
                 rows.append({
                     "date": paid_date,
                     "order_id": f"{order_id_base}-{item.get('shipping_code', '')}",
@@ -330,13 +345,14 @@ class Cafe24Client:
                     "channel": "자사몰",
                     "store": store,
                     "product": str(item.get("product_name") or ""),
+                    "option": option_str,
                     "quantity": qty,
                     "revenue": amount,
                 })
 
         return pd.DataFrame(rows, columns=[
             "date", "order_id", "customer_id", "channel",
-            "store", "product", "quantity", "revenue",
+            "store", "product", "option", "quantity", "revenue",
         ])
 
     def get_product_images(self) -> list[dict]:

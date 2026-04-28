@@ -171,6 +171,12 @@ def load_orders() -> pd.DataFrame:
         df = _add_store_column(df)
         df.to_csv(ORDERS_FILE, index=False, encoding="utf-8-sig")
 
+    # 'option' 컬럼 — 옵션별 분석 (색상/사이즈 등). 구버전 데이터엔 없으면 빈 문자열
+    if "option" not in df.columns:
+        df["option"] = ""
+    else:
+        df["option"] = df["option"].fillna("").astype(str)
+
     # 제품명 정규화 — 모든 페이지에서 일관된 제품명 표시 (긴 SKU 이름 → 모델명)
     # 원본 CSV 는 그대로 두고, 메모리상 로드 시점에만 치환
     if "product" in df.columns:
@@ -222,6 +228,16 @@ def load_coupang_inbound() -> pd.DataFrame:
     df = pd.read_csv(COUPANG_INBOUND_FILE)
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"])
+
+    # 옵션 추출 — 쿠팡 inbound 의 product 는 이미 옵션 포함 SKU 이름.
+    #   원본 product 를 정규화 전에 option 으로 보존 → 정규화된 product 와 분리.
+    if "option" not in df.columns and "product" in df.columns:
+        # 원본 SKU 이름을 옵션으로 사용 (정규화된 product 와 구분되어 옵션 분석 가능)
+        df["option"] = df["product"].astype(str)
+    elif "option" not in df.columns:
+        df["option"] = ""
+    df["option"] = df["option"].fillna("").astype(str)
+
     # 제품명 정규화 (모든 페이지 일관성)
     if "product" in df.columns:
         try:
@@ -229,6 +245,9 @@ def load_coupang_inbound() -> pd.DataFrame:
             df["product"] = df["product"].apply(normalize_product_name)
         except Exception:
             pass
+
+    # 정규화된 product 와 option 이 동일하면 의미 없음 → option 비우기
+    df.loc[df["option"] == df["product"], "option"] = ""
     return df
 
 

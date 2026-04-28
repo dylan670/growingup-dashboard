@@ -283,6 +283,15 @@ class NaverCommerceClient:
                 src.get("paymentAmount") or 0
             )
 
+            # 옵션 추출 — Naver Commerce 응답에 productOption 으로 옴
+            option_value = (
+                src.get("productOption")
+                or src.get("productOptionName")
+                or src.get("productOptionContent")
+                or ""
+            )
+            option_str = str(option_value).strip() if option_value else ""
+
             rows.append({
                 "date": pay_date,
                 "order_id": str(src.get("productOrderId") or src.get("orderNo") or ""),
@@ -290,13 +299,14 @@ class NaverCommerceClient:
                 "channel": "네이버",
                 "store": store,
                 "product": str(src.get("productName") or ""),
+                "option": option_str,
                 "quantity": int(src.get("quantity") or 1),
                 "revenue": int(total_amt or 0),
             })
 
         return pd.DataFrame(rows, columns=[
             "date", "order_id", "customer_id", "channel",
-            "store", "product", "quantity", "revenue",
+            "store", "product", "option", "quantity", "revenue",
         ])
 
 
