@@ -233,8 +233,16 @@ def _render_daily_achievement(
     date_range = pd.date_range(start.date(), end.date(), freq="D")
     channels = sorted(df["channel"].unique().tolist())
 
+    # 시트 누락 의심 임계값
+    #   - API 가 시트보다 일정 비율 + 절대값 모두 크면 "시트가 덜 적힘" 으로 의심
+    #   - 너무 민감하면 노이즈가 많고, 너무 둔하면 진짜 누락을 놓침
+    DISCREPANCY_RATIO = 1.20    # API 가 시트의 120% 초과
+    DISCREPANCY_ABS = 10_000    # 절대 차이 1만원 이상
+
     rows: list[dict] = []
     api_backfilled_dates = []   # API 로 대체된 날짜 추적
+    discrepancies: list[dict] = []   # 시트 누락 의심 (date, channel, sheet, api, diff)
+    flagged_days: set[str] = set()   # 의심 셀이 있는 날짜
     for d in date_range:
         d_ts = pd.Timestamp(d)
         day_data = df[df["date"] == d_ts]
@@ -260,23 +268,51 @@ def _render_daily_achievement(
 
         pct = (day_actual / day_target * 100) if day_target > 0 else 0
 
+        # 채널별 목표·달성 + 시트 누락 의심 검출
+        ch_cells: dict[str, tuple[int, int, bool]] = {}   # ch → (t, a, suspected)
+        for ch in channels:
+            ch_data = day_data[day_data["channel"] == ch]
+            t = int(ch_data["target"].sum()) if not ch_data.empty else 0
+            a = int(ch_data["actual"].sum()) if not ch_data.empty else 0
+            api_ch_val = api_fb.get((d.date().isoformat(), ch), 0)
+
+            if a == 0 and use_api:
+                # 해당 채널 API 값으로 보완 (이미 표시값=API)
+                if api_ch_val > 0:
+                    a = api_ch_val
+
+            # 시트 누락 의심 검사: 시트 actual>0 + API>시트*ratio + 절대차>=abs
+            suspected = (
+                a > 0
+                and api_ch_val > a * DISCREPANCY_RATIO
+                and (api_ch_val - a) >= DISCREPANCY_ABS
+            )
+            if suspected:
+                discrepancies.append({
+                    "date": d.date().isoformat(),
+                    "channel": ch,
+                    "sheet": a,
+                    "api": api_ch_val,
+                    "diff": api_ch_val - a,
+                })
+                flagged_days.add(d.date().isoformat())
+            ch_cells[ch] = (t, a, suspected)
+
+        # 날짜 라벨 — API 보완(⚡) / 누락 의심(📌)
+        date_marker = ""
+        if use_api:
+            date_marker = " ⚡"
+        elif d.date().isoformat() in flagged_days:
+            date_marker = " 📌"
+
         row: dict = {
-            "날짜": d.date().isoformat() + (" ⚡" if use_api else ""),
+            "날짜": d.date().isoformat() + date_marker,
             "요일": WEEKDAY_KR[d.weekday()],
             "일 목표": day_target,
             "일 달성": day_actual,
             "달성률(%)": round(pct, 0),
         }
-        # 채널별 목표·달성 (시트 값 우선, 0 이면 API fallback)
-        for ch in channels:
-            ch_data = day_data[day_data["channel"] == ch]
-            t = int(ch_data["target"].sum()) if not ch_data.empty else 0
-            a = int(ch_data["actual"].sum()) if not ch_data.empty else 0
-            if a == 0 and use_api:
-                # 해당 채널 API 값으로 보완
-                api_ch_val = api_fb.get((d.date().isoformat(), ch), 0)
-                if api_ch_val > 0:
-                    a = api_ch_val
+        for ch, (t, a, _) in ch_cells.items():
             row[f"{ch} 목표"] = t
             row[f"{ch} 달성"] = a
         rows.append(row)
@@ -290,6 +326,37 @@ def _render_daily_achievement(
             f"API 수집 실제 매출로 자동 대체됨 "
             f"(팀에서 시트 입력하면 자동으로 시트 값 우선 적용)]"
         )
+
+    # 📌 시트 누락 의심 안내 — API > 시트 일정 비율 이상인 셀
+    if discrepancies:
+        total_missing = sum(d["diff"] for d in discrepancies)
+        st.warning(
+            f"📌 **시트 누락 의심 셀 {len(discrepancies)}개 발견** — "
+            f"API 수집값과 비교 시 시트에 약 **{total_missing:,}원**이 덜 적혀 있습니다. "
+            f"(시트 actual > 0 이지만 API ≥ 시트 × {int(DISCREPANCY_RATIO * 100)}% 이고 차이 ≥ "
+            f"{DISCREPANCY_ABS:,}원). 시트는 공식 수치이므로 표시값은 시트 그대로 유지됩니다."
+        )
+        with st.expander(
+            f"🔎 누락 의심 상세 — {len(discrepancies)}개 셀 (날짜·채널별)"
+        ):
+            disc_df = pd.DataFrame(discrepancies)
+            disc_df.columns = ["날짜", "채널", "시트값", "API값", "차이(API-시트)"]
+            st.dataframe(
+                disc_df.sort_values("차이(API-시트)", ascending=False),
+                width="stretch", hide_index=True,
+                column_config={
+                    "시트값": st.column_config.NumberColumn("시트값", format="%d원"),
+                    "API값": st.column_config.NumberColumn("API값", format="%d원"),
+                    "차이(API-시트)": st.column_config.NumberColumn(
+                        "차이(API-시트)", format="%d원",
+                    ),
+                },
+            )
+            st.caption(
+                "💡 _시트 기입 누락이 의심되는 케이스. 팀에서 시트 채워주시면 "
+                "자동으로 정확한 값으로 갱신됩니다. "
+                "(혹은 정산 타이밍 차이일 수도 있어 며칠 뒤 자연 수렴 가능)_"
+            )
 
     # ---------- 요약 ----------
     sum_target = int(table["일 목표"].sum())
