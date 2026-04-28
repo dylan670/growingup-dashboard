@@ -323,6 +323,60 @@ def _uncollected_target(sheet_df: pd.DataFrame, start: pd.Timestamp, end: pd.Tim
 # ==========================================================
 # 메인 집계 함수
 # ==========================================================
+def _balanced_select(
+    insights: list[dict], max_count: int,
+) -> list[dict]:
+    """severity 다양성 보장 — 빨강(urgent) 만 가득 차서 초록/주황이
+    잘려나가는 현상 방지.
+
+    정책 (max_count=6 기준):
+      - urgent 최대 (max_count - 2)개 = 4개
+      - good 최소 1개 보장 (있으면)
+      - 남은 슬롯은 priority 순으로 채움 (warning/info)
+
+    결과는 다시 priority 순 정렬해 반환 → 빨강 위·초록 아래 자연스러운 시각.
+    """
+    if len(insights) <= max_count:
+        return insights
+
+    # severity 별 분류 (priority 순 정렬 유지)
+    by_sev: dict[str, list[dict]] = {"urgent": [], "warning": [], "good": [], "info": []}
+    for ins in insights:
+        sev = ins.get("severity", "info")
+        if sev in by_sev:
+            by_sev[sev].append(ins)
+        else:
+            by_sev["info"].append(ins)
+
+    selected: list[dict] = []
+    selected_ids: set[int] = set()
+
+    def _add(ins_list: list[dict], n: int) -> None:
+        for ins in ins_list[:n]:
+            if id(ins) not in selected_ids:
+                selected.append(ins)
+                selected_ids.add(id(ins))
+
+    # 1) urgent 최대 (max_count - 2) 개
+    urgent_quota = max(1, max_count - 2)
+    _add(by_sev["urgent"], urgent_quota)
+
+    # 2) good 1 개 보장
+    _add(by_sev["good"], 1)
+
+    # 3) 남은 슬롯을 priority 순으로 채움
+    remaining_slots = max_count - len(selected)
+    if remaining_slots > 0:
+        leftovers = [
+            ins for ins in insights if id(ins) not in selected_ids
+        ]
+        _add(leftovers, remaining_slots)
+
+    # priority 순으로 다시 정렬 (urgent 위, good/info 아래)
+    selected.sort(key=lambda x: x.get("priority", 100))
+    return selected
+
+
 def generate_insights(
     sheet_df: pd.DataFrame,
     ads_df: pd.DataFrame,
@@ -334,7 +388,10 @@ def generate_insights(
 ) -> list[dict]:
     """모든 룰 돌려서 상위 N개 인사이트 반환.
 
-    우선순위 낮은 것(urgent·critical)이 위로 오도록 정렬.
+    severity 다양성 보장:
+      - urgent 가 N개 이상 있어도 화면 슬롯 중 1개는 good 에 양보
+      - 빨강만 가득 차서 잘된 신호가 잘려나가는 현상 방지
+
     inbound_df 를 넘기면 _pace_forecast 가 쿠팡 벤더 발주까지 보완.
     """
     today = end.date()
@@ -347,9 +404,11 @@ def generate_insights(
     all_insights.extend(_top_contributor(sheet_df, start, end))
     all_insights.extend(_uncollected_target(sheet_df, start, end))
 
-    # 우선순위 순 (낮은 번호 = 먼저)
+    # 우선순위 순 1차 정렬
     all_insights.sort(key=lambda x: x.get("priority", 100))
-    return all_insights[:max_count]
+
+    # severity 다양성 보장 후 최종 N개 반환
+    return _balanced_select(all_insights, max_count)
 
 
 # ==========================================================
