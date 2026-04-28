@@ -64,6 +64,7 @@ CHANNEL_STATUS = {
 
 
 def render_untracked_card(ch_key: str, status_msg: str):
+    """채널 자체가 미집계 (자동 수집 안 함) — '미집계' 라벨."""
     with st.container(border=True):
         col_info, col_action = st.columns([2, 3])
         with col_info:
@@ -75,6 +76,23 @@ def render_untracked_card(ch_key: str, status_msg: str):
                 f"**{ch_key} 광고 데이터 없음**  \n"
                 "이 채널은 자동 집계되지 않으므로 지표 계산에서 제외됩니다. "
                 "수동 리포트는 각 플랫폼 광고 관리자에서 확인하세요."
+            )
+
+
+def render_no_data_in_period_card(ch_key: str, status_msg: str):
+    """채널은 추적되지만 선택 기간 내 데이터 없음 — '기간 외'."""
+    with st.container(border=True):
+        col_info, col_action = st.columns([2, 3])
+        with col_info:
+            st.markdown(f"### {CHANNEL_LABELS[ch_key]}")
+            st.markdown(":blue[선택 기간 외]")
+            st.caption(status_msg)
+        with col_action:
+            st.info(
+                f"📅 **선택 기간에 {ch_key} 광고 데이터 없음**  \n"
+                "기간을 넓혀서 확인하거나, 최신 광고 리포트(`pa_daily_*`)를 "
+                "사이드바 → 📤 CSV 업로드에서 올려주세요. "
+                "(채널은 정상 추적 중 — 단지 이 기간에 매출/노출 0)"
             )
 
 
@@ -728,7 +746,8 @@ def render_ad_overview(
             continue
 
         if ch_data.empty:
-            render_untracked_card(ch, f"해당 기간 데이터 없음. ({status_msg})")
+            # 채널은 추적 중이지만 선택 기간엔 데이터 없음 — 별도 카드
+            render_no_data_in_period_card(ch, status_msg)
             continue
 
         spend = int(ch_data["spend"].sum())
