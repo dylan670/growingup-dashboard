@@ -492,6 +492,97 @@ def render_sidebar_nav() -> None:
             current_section = section
         st.sidebar.page_link(path, label=label, icon=icon)
 
+    # ----------------------------------------------------------
+    # 🔄 전체 업데이트 버튼
+    # ----------------------------------------------------------
+    render_global_refresh_button()
+
+
+def render_global_refresh_button() -> None:
+    """사이드바 글로벌 데이터 갱신 버튼.
+
+    동작 환경별:
+      - 로컬 PC (sync_all.bat + .venv 존재): 5개 API + 시트 + precompute 백그라운드 실행
+      - Streamlit Cloud: 캐시만 강제 클리어 (parquet 다시 읽음)
+    """
+    import subprocess
+    import platform
+    from pathlib import Path
+
+    ROOT = Path(__file__).parent.parent
+    sync_bat = ROOT / "sync_all.bat"
+    venv_python = ROOT / ".venv" / "Scripts" / "python.exe"
+    is_local = sync_bat.exists() and venv_python.exists()
+
+    st.sidebar.markdown(
+        "<div class='nav-section-header'>UPDATE</div>",
+        unsafe_allow_html=True,
+    )
+
+    # 마지막 sync 시각 표시
+    try:
+        from utils.precomputed import get_last_updated
+        last = get_last_updated()
+        if last:
+            st.sidebar.caption(
+                f"🕒 마지막 갱신: {last.strftime('%m/%d %H:%M')}"
+            )
+    except Exception:
+        pass
+
+    if is_local:
+        # 로컬 모드 — 진짜 sync 트리거
+        if st.sidebar.button(
+            "🔄 전체 API + 시트 갱신",
+            use_container_width=True,
+            help=(
+                "5개 API (Naver/Coupang/Cafe24/Meta/시트) + 광고 캠페인 + "
+                "프리컴퓨트 + git push 까지 자동. 5~10분 소요. "
+                "별도 콘솔창이 열려 진행 상황 표시됨."
+            ),
+            key="global_sync_btn",
+        ):
+            try:
+                if platform.system() == "Windows":
+                    # Windows: 새 콘솔창에서 실행 (Streamlit 프로세스 차단 방지)
+                    subprocess.Popen(
+                        ["cmd", "/c", "start", "sync_all", str(sync_bat)],
+                        cwd=str(ROOT),
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    )
+                else:
+                    # Unix: nohup background
+                    subprocess.Popen(
+                        ["bash", str(sync_bat)],
+                        cwd=str(ROOT),
+                        start_new_session=True,
+                    )
+                st.cache_data.clear()
+                st.sidebar.success(
+                    "✅ Sync 백그라운드 시작!\n\n"
+                    "5~10분 후 새로고침하면 최신 데이터가 반영됩니다."
+                )
+            except Exception as e:
+                st.sidebar.error(f"❌ 실행 실패: {type(e).__name__}: {e}")
+    else:
+        # Cloud 모드 — 캐시만 클리어
+        if st.sidebar.button(
+            "🔄 캐시 새로고침",
+            use_container_width=True,
+            help=(
+                "Streamlit 캐시 강제 비움 → parquet/JSON 다시 로드. "
+                "API 재수집은 매일 10시 자동 sync 또는 로컬 PC sync_all.bat 실행."
+            ),
+            key="global_cache_clear_btn",
+        ):
+            st.cache_data.clear()
+            st.sidebar.success("✅ 캐시 비움 — 페이지 새로고침됩니다.")
+            st.rerun()
+        st.sidebar.caption(
+            ":blue[💡 API 재수집은 로컬 PC 전용. "
+            "매일 10:00 자동 sync 작동 중.]"
+        )
+
 
 # ==========================================================
 # 페이지 헤더 (제목 + 부제 + 오늘 날짜)
