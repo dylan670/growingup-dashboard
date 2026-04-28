@@ -26,7 +26,8 @@ from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card,
     render_period_picker, render_empty_state, render_status_pill,
-    METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN, TEXT_MUTED, TEXT_FAINT,
+    METRIC_COLORS, CHANNEL_COLORS, channel_color,
+    TEXT_MAIN, TEXT_MUTED, TEXT_FAINT,
     BORDER_SUBTLE, BG_SUBTLE,
 )
 
@@ -328,7 +329,7 @@ def show_product_detail(
                 values=ch_dist["rev"].tolist(),
                 hole=0.55,
                 marker=dict(colors=[
-                    CHANNEL_COLORS.get(c, "#94a3b8") for c in ch_dist[ch_col]
+                    channel_color(c) for c in ch_dist[ch_col]
                 ]),
                 textinfo="label+percent",
                 hovertemplate="<b>%{label}</b><br>매출 %{value:,}원<br>%{percent}<extra></extra>",

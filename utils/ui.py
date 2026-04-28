@@ -56,12 +56,31 @@ CHANNEL_COLORS: dict[str, str] = {
     "네이버":  "#22c55e",      # 초록
     "네이버 스마트스토어": "#22c55e",
     "쿠팡":    "#f97316",      # 주황
+    "쿠팡 로켓그로스": "#f97316",
+    "쿠팡 로켓배송": "#fb923c",   # 살짝 다른 주황 (벤더 발주)
+    "쿠팡 판매자 판매": "#fdba74",
     "메타":    "#8b5cf6",      # 보라
     "무신사":  "#0ea5e9",      # 하늘
     "이지웰":  "#14b8a6",      # 청록
     "오늘의집": "#ec4899",     # 핑크
     "오프라인": "#64748b",     # 회색
 }
+
+
+def channel_color(label: str, default: str = "#94a3b8") -> str:
+    """채널 라벨 → 색상 매핑 (suffix 지원).
+
+    '네이버 스마트스토어 (롤라루)' 처럼 brand suffix 가 붙어도 매칭됨.
+    긴 key 부터 시도해 '쿠팡 로켓그로스' 와 '쿠팡' 충돌 방지.
+    """
+    if not label:
+        return default
+    if label in CHANNEL_COLORS:
+        return CHANNEL_COLORS[label]
+    for key in sorted(CHANNEL_COLORS.keys(), key=len, reverse=True):
+        if key in label:
+            return CHANNEL_COLORS[key]
+    return default
 
 # 지표별 컬러 (차트 · 통일)
 METRIC_COLORS = {

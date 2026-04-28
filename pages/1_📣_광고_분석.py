@@ -15,7 +15,7 @@ from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card, status_color, TEXT_MUTED,
     render_period_picker,
-    METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN,
+    METRIC_COLORS, CHANNEL_COLORS, channel_color, TEXT_MAIN,
 )
 from api.meta_ads import load_meta_client
 from api.naver_searchad import load_client_from_env as load_naver_client
@@ -573,7 +573,7 @@ def _render_daily_spend_roas_chart(df: pd.DataFrame, brand_label: str):
                 x=ch_data["date"],
                 y=ch_data["spend"],
                 name=f"{ch} 광고비",
-                marker_color=CHANNEL_COLORS.get(ch, "#64748b"),
+                marker_color=channel_color(ch, "#64748b"),
                 opacity=0.85,
                 hovertemplate="%{x|%m/%d}<br>%{y:,.0f}원<extra></extra>",
             ),
