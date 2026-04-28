@@ -345,8 +345,19 @@ with tab_ads:
             2. **리포트 → 캠페인 리포트** 또는 **광고그룹 리포트**
             3. CSV/Excel 다운로드
             4. 아래에 드롭/업로드
+
+            **권장: 일별 리포트 (`pa_daily_*`)** — 매출/광고 분석에 일별 그래프 반영됨.
+            합계 리포트(`pa_total_campaign_*`)도 받으시지만 캠페인 분석 탭에만 반영됩니다.
             """
         )
+
+    st.info(
+        "💡 **두 가지 리포트 모두 지원**\n\n"
+        "- **`pa_daily_*` 일별 리포트**: ads.csv + 일별 parquet 모두 갱신 → "
+        "광고 분석 시계열 차트, ROAS 추이, 매출 분석 등 전체 반영\n"
+        "- **`pa_total_campaign_*` 합계 리포트**: 캠페인 합계 parquet 만 갱신 → "
+        "광고 분석 → 쿠팡 → 캠페인 분석 탭의 ROAS/지출 합계 반영"
+    )
 
     uploaded_ads = st.file_uploader(
         "📂 CSV/Excel 파일 (다중 업로드 가능)",

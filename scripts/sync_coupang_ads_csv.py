@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 from api.coupang_ads_csv import (  # noqa: E402
     read_coupang_ads_file, parse_to_ads, parse_to_campaigns,
-    parse_to_campaigns_daily,
+    parse_to_campaigns_daily, _resolve_col, COLUMN_CANDIDATES,
 )
 from utils.data import ADS_FILE  # noqa: E402
 from utils.precomputed import (  # noqa: E402
@@ -113,39 +113,71 @@ def main() -> int:
         log(f"파일 읽기 실패: {type(e).__name__}: {e}")
         return 2
 
-    try:
-        ads_df = parse_to_ads(raw)
-    except ValueError as e:
-        log(f"컬럼 매핑 실패: {e}")
-        return 3
+    # 파일 형식 판별 — date 컬럼 유무로 일별/합계 결정
+    raw_cols = list(raw.columns.astype(str))
+    has_date_col = _resolve_col(raw_cols, COLUMN_CANDIDATES["date"]) is not None
+    is_summary_only = not has_date_col
 
-    if ads_df.empty:
-        log("파싱 결과 0건")
-        return 0
+    if is_summary_only:
+        log(
+            "⚠️ 일별 date 컬럼 없음 — '캠페인 합계 리포트(total_campaign)' 로 판단. "
+            "ads.csv (일별) 갱신은 스킵하고 캠페인 합계 parquet 만 갱신합니다. "
+            "일별 데이터 필요 시 'pa_daily_*' (일별 vendorItem) 형식으로 다운로드 하세요."
+        )
+        ads_df = None  # 일별 갱신 스킵
+    else:
+        try:
+            ads_df = parse_to_ads(raw)
+        except ValueError as e:
+            log(f"컬럼 매핑 실패: {e}")
+            return 3
 
-    total_spend = int(ads_df["spend"].sum())
-    total_rev = int(ads_df["revenue"].sum())
-    roas = total_rev / total_spend * 100 if total_spend else 0
-    log(
-        f"파싱 완료: {len(ads_df)}행 / 광고비 {total_spend:,}원 "
-        f"/ 매출 {total_rev:,}원 / ROAS {roas:.0f}%"
-    )
+        if ads_df.empty:
+            log("파싱 결과 0건")
+            return 0
 
-    for store in sorted(ads_df["store"].unique()):
-        sdf = ads_df[ads_df["store"] == store]
-        spend = int(sdf["spend"].sum())
-        log(f"  [{store}] {len(sdf)}행 / 광고비 {spend:,}원")
+        total_spend = int(ads_df["spend"].sum())
+        total_rev = int(ads_df["revenue"].sum())
+        roas = total_rev / total_spend * 100 if total_spend else 0
+        log(
+            f"파싱 완료: {len(ads_df)}행 / 광고비 {total_spend:,}원 "
+            f"/ 매출 {total_rev:,}원 / ROAS {roas:.0f}%"
+        )
 
-    try:
-        removed, added = merge_into_ads_csv(ads_df)
-        log(f"병합 완료: 기존 {removed}행 제거 -> 신규 {added}행 추가")
-    except Exception as e:
-        log(f"병합 실패: {type(e).__name__}: {e}")
-        return 4
+        for store in sorted(ads_df["store"].unique()):
+            sdf = ads_df[ads_df["store"] == store]
+            spend = int(sdf["spend"].sum())
+            log(f"  [{store}] {len(sdf)}행 / 광고비 {spend:,}원")
+
+        try:
+            removed, added = merge_into_ads_csv(ads_df)
+            log(f"병합 완료: 기존 {removed}행 제거 -> 신규 {added}행 추가")
+        except Exception as e:
+            log(f"병합 실패: {type(e).__name__}: {e}")
+            return 4
 
     # ----- 캠페인 × 일자 parquet: 누적 병합 (중복 날짜만 새 데이터로 교체) -----
     try:
         import pandas as pd
+
+        # 합계 리포트면 daily 는 skip 하고 summary parquet 직접 저장
+        if is_summary_only:
+            summary = parse_to_campaigns(raw)
+            if summary.empty:
+                log("⚠️ 캠페인 합계 파싱 결과 0건 — 캠페인명/광고비 컬럼 확인 필요.")
+            else:
+                save_precomputed_parquet(summary, "coupang_campaigns.parquet")
+                total_spend = int(summary["spend"].sum())
+                total_rev = int(summary["revenue"].sum())
+                log(
+                    f"✅ 캠페인 합계 parquet 저장: {len(summary)} 캠페인 "
+                    f"(총 광고비 {total_spend:,}원, 매출 {total_rev:,}원, "
+                    f"ROAS {(total_rev/total_spend*100 if total_spend else 0):.0f}%)"
+                )
+                # 광고 분석 페이지의 '캠페인 분석' 탭에 즉시 반영됨 (drill-down)
+                log("→ 광고 분석 → 쿠팡 → 캠페인 분석 탭에서 확인 가능.")
+            log("동기화 성공.")
+            return 0
 
         new_daily = parse_to_campaigns_daily(raw)
         if new_daily.empty:
