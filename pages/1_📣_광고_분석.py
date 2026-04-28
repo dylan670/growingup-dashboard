@@ -789,7 +789,7 @@ def render_ad_overview(
         start_iso = str(start.date())
         end_iso = str(end.date())
         target_naver = TARGET_ROAS.get("네이버", 4.0) * 100
-        target_meta = TARGET_ROAS.get("자사몰", 2.5) * 100
+        target_meta = TARGET_ROAS.get("자사몰", 3.0) * 100
         target_coupang = TARGET_ROAS.get("쿠팡", 5.0) * 100
 
         # ----- 네이버 검색광고 -----

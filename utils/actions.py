@@ -16,7 +16,7 @@ THRESHOLDS = {
     "target_roas": {
         "네이버": 400,
         "쿠팡":   500,
-        "자사몰": 250,
+        "자사몰": 300,
     },
     # 재구매 분석
     "repurchase_cycle_days": 30,
