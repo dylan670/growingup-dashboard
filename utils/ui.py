@@ -520,13 +520,37 @@ def render_global_refresh_button() -> None:
         unsafe_allow_html=True,
     )
 
-    # 마지막 sync 시각 표시
+    # 마지막 sync 시각 + CSV 업로드 시각 표시
     try:
         from utils.precomputed import get_last_updated
         last = get_last_updated()
         if last:
             st.sidebar.caption(
                 f"🕒 마지막 갱신: {last.strftime('%m/%d %H:%M')}"
+            )
+    except Exception:
+        pass
+
+    # CSV 업로드 폴더의 가장 최근 파일 mtime
+    try:
+        from datetime import datetime as _dt
+        latest_csv = None
+        for folder in ["coupang_sales_upload", "coupang_ads_upload"]:
+            d = ROOT / "data" / folder
+            if not d.exists():
+                continue
+            for f in d.iterdir():
+                if not f.is_file():
+                    continue
+                if f.suffix.lower() not in (".csv", ".xlsx", ".xls"):
+                    continue
+                m = f.stat().st_mtime
+                if latest_csv is None or m > latest_csv:
+                    latest_csv = m
+        if latest_csv:
+            csv_dt = _dt.fromtimestamp(latest_csv)
+            st.sidebar.caption(
+                f"📤 CSV 마지막 업로드: {csv_dt.strftime('%m/%d %H:%M')}"
             )
     except Exception:
         pass

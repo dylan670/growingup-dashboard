@@ -115,6 +115,110 @@ def _get_existing_files(d: Path) -> list[Path]:
     return sorted(files, key=lambda f: f.stat().st_mtime, reverse=True)
 
 
+def _last_upload_info(d: Path) -> tuple[datetime | None, int, str | None]:
+    """업로드 폴더 요약: (마지막 업로드 시각, 총 파일 수, 마지막 파일명)."""
+    files = _get_existing_files(d)
+    if not files:
+        return None, 0, None
+    last_file = files[0]
+    last_mtime = datetime.fromtimestamp(last_file.stat().st_mtime)
+    return last_mtime, len(files), last_file.name
+
+
+def _render_last_upload_card(d: Path, label: str) -> None:
+    """탭 상단 마지막 업로드 정보 카드."""
+    last_mtime, total, last_name = _last_upload_info(d)
+    c1, c2, c3 = st.columns([1.2, 1, 2])
+    with c1:
+        if last_mtime:
+            now = datetime.now()
+            delta = now - last_mtime
+            if delta.days >= 1:
+                rel = f"{delta.days}일 전"
+                color = "#dc2626" if delta.days >= 7 else "#ca8a04"
+            elif delta.seconds >= 3600:
+                rel = f"{delta.seconds // 3600}시간 전"
+                color = "#16a34a"
+            elif delta.seconds >= 60:
+                rel = f"{delta.seconds // 60}분 전"
+                color = "#16a34a"
+            else:
+                rel = "방금 전"
+                color = "#16a34a"
+            st.markdown(
+                f"""
+                <div style='padding:10px 14px; background:#f8fafc; border-left:4px solid {color};
+                            border-radius:6px;'>
+                  <div style='font-size:0.7rem; color:#64748b; font-weight:600;
+                              text-transform:uppercase; letter-spacing:0.05em;'>
+                    📅 마지막 업로드
+                  </div>
+                  <div style='font-size:1.05rem; font-weight:700; color:#0f172a;
+                              margin-top:2px;'>
+                    {last_mtime.strftime('%Y-%m-%d %H:%M')}
+                  </div>
+                  <div style='font-size:0.75rem; color:{color}; font-weight:600;
+                              margin-top:2px;'>
+                    {rel}
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                """
+                <div style='padding:10px 14px; background:#fef3c7; border-left:4px solid #f59e0b;
+                            border-radius:6px;'>
+                  <div style='font-size:0.7rem; color:#92400e; font-weight:600;
+                              text-transform:uppercase; letter-spacing:0.05em;'>
+                    📅 마지막 업로드
+                  </div>
+                  <div style='font-size:1rem; font-weight:600; color:#92400e;
+                              margin-top:4px;'>
+                    아직 업로드 없음
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+    with c2:
+        st.markdown(
+            f"""
+            <div style='padding:10px 14px; background:#eff6ff; border-left:4px solid #2563eb;
+                        border-radius:6px;'>
+              <div style='font-size:0.7rem; color:#64748b; font-weight:600;
+                          text-transform:uppercase; letter-spacing:0.05em;'>
+                📦 총 파일
+              </div>
+              <div style='font-size:1.4rem; font-weight:700; color:#1e40af;
+                          margin-top:2px;'>
+                {total}개
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with c3:
+        if last_name:
+            st.markdown(
+                f"""
+                <div style='padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0;
+                            border-radius:6px;'>
+                  <div style='font-size:0.7rem; color:#64748b; font-weight:600;
+                              text-transform:uppercase; letter-spacing:0.05em;'>
+                    📄 가장 최근 파일
+                  </div>
+                  <div style='font-size:0.85rem; font-weight:500; color:#334155;
+                              margin-top:2px; word-break:break-all;'>
+                    {last_name}
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
 # ==========================================================
 # 탭 구성
 # ==========================================================
@@ -134,6 +238,10 @@ with tab_sales:
         "쿠팡 로켓배송(벤더 발주) 매출은 Wing API 미지원 → "
         "Supplier Hub 매출 리포트 CSV 를 업로드해야 함."
     )
+
+    # 마지막 업로드 정보
+    _render_last_upload_card(SALES_UPLOAD_DIR, "쿠팡 판매")
+    st.write("")
 
     with st.expander("📥 어디서 받나요?", expanded=False):
         st.markdown(
@@ -225,6 +333,10 @@ with tab_ads:
         "쿠팡 광고센터의 캠페인/리포트 CSV 를 업로드 → "
         "ads.csv 에 누적 병합 + 캠페인 parquet 갱신."
     )
+
+    # 마지막 업로드 정보
+    _render_last_upload_card(ADS_UPLOAD_DIR, "쿠팡 광고")
+    st.write("")
 
     with st.expander("📥 어디서 받나요?", expanded=False):
         st.markdown(
