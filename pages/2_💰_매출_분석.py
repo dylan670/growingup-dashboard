@@ -18,7 +18,7 @@ from utils.ui import (
     setup_page, render_brand_banner,
     format_won_compact, kpi_card,
     render_period_picker, render_status_pill,
-    render_comparison_toggle, compute_comparison_range,
+    compute_comparison_range,
     render_download_button,
     METRIC_COLORS, CHANNEL_COLORS, TEXT_MAIN, TEXT_MUTED,
 )
@@ -58,16 +58,14 @@ start_date = _pp["start_date"]
 end_date = _pp["end_date"].date()
 days = _pp["days"]
 
-# 비교 기준 토글 (직전 기간 / 전주 / 전월 / 전년)
-_cmp = render_comparison_toggle(key_prefix="sales",
-                                current_end=pd.Timestamp(end_date))
+# 비교 기준 — '직전 기간' 으로 고정 (UI 토글 제거)
+# 예: 선택 기간이 30일이면 그 직전 30일과 비교 → 가장 직관적
 prev_start, prev_end = compute_comparison_range(
-    start_date, pd.Timestamp(end_date), _cmp["mode"],
+    start_date, pd.Timestamp(end_date), "직전 기간",
 )
-# 비교 범위 안내 캡션
 st.markdown(
     f"<div style='color:{TEXT_MUTED}; font-size:0.78rem; "
-    f"margin:-8px 0 12px 0;'>🔀 비교: <b>{_cmp['mode']}</b> · "
+    f"margin:-8px 0 12px 0;'>🔀 비교: <b>직전 기간</b> · "
     f"{prev_start.date()} ~ {prev_end.date()}</div>",
     unsafe_allow_html=True,
 )
