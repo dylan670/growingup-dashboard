@@ -96,9 +96,17 @@ def _aggregate_daily_campaigns(
     if df.empty:
         return pd.DataFrame()
 
-    group_cols = ["campaign_id", "campaign_name"]
+    # campaign_id 가 없는 소스도 있음 (쿠팡 CSV 파서는 campaign_name 만)
+    # → 존재하는 키만 group_by 에 사용
+    group_cols: list[str] = []
+    if "campaign_id" in df.columns:
+        group_cols.append("campaign_id")
+    if "campaign_name" in df.columns:
+        group_cols.append("campaign_name")
     if "brand" in df.columns:
         group_cols.append("brand")
+    if not group_cols:
+        return pd.DataFrame()
 
     agg = (
         df.groupby(group_cols)
@@ -127,7 +135,30 @@ def _aggregate_daily_campaigns(
 
 
 # 캐시 버전 (loader 로직 바뀌면 증가시켜 기존 Streamlit 캐시 무효화)
-_CAMP_LOADER_VERSION = "v2-daily"
+_CAMP_LOADER_VERSION = "v3-coupang-id-fix"
+
+
+def _campaign_cache_key() -> str:
+    """precompute/CSV 업로드 시각 + 합계 parquet mtime 결합한 캐시 키.
+
+    precompute 돌거나 CSV 업로드해서 parquet 변경되면 자동 무효화.
+    """
+    try:
+        from utils.precomputed import get_last_updated, PRECOMP_DIR
+        parts: list[str] = []
+        last = get_last_updated()
+        if last:
+            parts.append(last.isoformat())
+        for fname in (
+            "coupang_campaigns_daily.parquet",
+            "coupang_campaigns.parquet",
+        ):
+            p = PRECOMP_DIR / fname
+            if p.exists():
+                parts.append(f"{fname}:{int(p.stat().st_mtime)}")
+        return "|".join(parts) or "none"
+    except Exception:
+        return "none"
 
 
 @st.cache_data(ttl=600, show_spinner="🔍 Meta 캠페인 로드 중...")
@@ -188,8 +219,15 @@ def _cached_naver_campaigns(
 def _cached_coupang_campaigns(
     since_iso: str | None = None, until_iso: str | None = None,
     _cache_ver: str = _CAMP_LOADER_VERSION,
+    _data_ver: str = "none",
 ):
-    """쿠팡 광고 캠페인 — CSV 업로드 기반 (일자 단위 parquet 슬라이스)."""
+    """쿠팡 광고 캠페인 — CSV 업로드 기반 (일자 단위 parquet 슬라이스).
+
+    Args:
+        _data_ver: parquet mtime + precompute 시각 결합 키
+            (CSV 업로드 / precompute 후 자동 캐시 무효화)
+    """
+    import traceback as _tb
     from utils.precomputed import load_precomputed_parquet
 
     if since_iso and until_iso:
@@ -200,9 +238,13 @@ def _cached_coupang_campaigns(
                 if not agg.empty:
                     return agg
         except Exception:
-            pass
+            # 디버그용 sidebar 출력 (문제 발생 시 추적)
+            try:
+                st.session_state.setdefault("_coupang_camp_err", _tb.format_exc())
+            except Exception:
+                pass
 
-    # Fallback: legacy 전체 합계 (아직 일자 parquet 없을 때)
+    # Fallback: legacy 전체 합계 (일자 parquet 없거나 슬라이스 결과 비어있을 때)
     try:
         df = load_precomputed_parquet("coupang_campaigns.parquet")
         if df is None or df.empty:
@@ -879,7 +921,33 @@ def render_ad_overview(
             )
             with st.expander(coupang_header, expanded=False):
                 try:
-                    coupang_camp = _cached_coupang_campaigns(start_iso, end_iso)
+                    coupang_camp = _cached_coupang_campaigns(
+                        start_iso, end_iso,
+                        _data_ver=_campaign_cache_key(),
+                    )
+                    # 데이터 소스 안내 캡션 (일자 슬라이스 vs 합계 fallback)
+                    if coupang_camp is not None and not coupang_camp.empty:
+                        # 일자 단위 parquet 이 있으면 그쪽이 우선 사용됨
+                        from utils.precomputed import load_precomputed_parquet
+                        _daily_check = load_precomputed_parquet("coupang_campaigns_daily.parquet")
+                        if not _daily_check.empty:
+                            d_min = pd.to_datetime(_daily_check["date"]).min().date()
+                            d_max = pd.to_datetime(_daily_check["date"]).max().date()
+                            # 선택 기간이 daily 범위와 겹치면 일별 슬라이스 사용중
+                            sel_s = pd.Timestamp(start_iso).date()
+                            sel_e = pd.Timestamp(end_iso).date()
+                            if sel_s <= d_max and sel_e >= d_min:
+                                st.caption(
+                                    f"🗓️ 데이터 소스: 일별 리포트 슬라이스 — "
+                                    f"`{start_iso} ~ {end_iso}` 기간 합산 "
+                                    f"(일별 parquet 보유 범위 {d_min} ~ {d_max})"
+                                )
+                            else:
+                                st.caption(
+                                    f"📊 데이터 소스: 합계 리포트 (선택 기간이 일별 데이터 범위 밖)"
+                                )
+                        else:
+                            st.caption("📊 데이터 소스: 합계 리포트 (일별 데이터 없음)")
                     if coupang_camp is None:
                         st.info(
                             "📥 **쿠팡 광고 데이터 없음**  \n"
