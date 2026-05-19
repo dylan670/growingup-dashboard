@@ -154,7 +154,17 @@ def generate_sample_data(days: int = 60) -> None:
 def _load_or_generate(file: Path, date_col: str = "date") -> pd.DataFrame:
     if not file.exists():
         generate_sample_data()
-    df = pd.read_csv(file)
+    # utf-8 우선, 실패 시 errors='replace' 로 깨진 바이트 ? 대체
+    # (cp949 fallback 은 date 컬럼까지 깨지므로 사용 X)
+    try:
+        df = pd.read_csv(file, encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        df = pd.read_csv(file, encoding="utf-8", encoding_errors="replace")
+        # 다음 load 부터는 정상 utf-8 로 읽히게 한 번 클린 재저장
+        try:
+            df.to_csv(file, index=False, encoding="utf-8-sig")
+        except Exception:
+            pass
     if date_col in df.columns:
         df[date_col] = pd.to_datetime(df[date_col])
     return df
