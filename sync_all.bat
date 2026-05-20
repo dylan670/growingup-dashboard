@@ -16,13 +16,14 @@ if not exist ".venv\Scripts\python.exe" (
 echo [%date% %time%] ============ SYNC START ============
 
 REM 1. 5개 API 동기화 (한국 IP 에서 호출 — 403 회피)
-REM    --days 7: 정산 지연/주문 수정 케이스(쿠팡 createdAt 늦게 등록) 갱신용.
-REM    매일 7일치 재수집 → 1주일 내에 들어온 추가 주문/취소 모두 동기화됨.
-".venv\Scripts\python.exe" "scripts\sync_naver_ads.py" --days 7
-".venv\Scripts\python.exe" "scripts\sync_naver_commerce.py" --days 7
-".venv\Scripts\python.exe" "scripts\sync_coupang.py" --days 7
-".venv\Scripts\python.exe" "scripts\sync_cafe24.py" --days 7
-".venv\Scripts\python.exe" "scripts\sync_meta_ads.py" --days 7
+REM    --days 14: 카페24/쿠팡 API pagination 누락 케이스 방어용.
+REM    7일 윈도우는 일부 페이지가 빠지는 경우 있어 catch-up 못 함.
+REM    14일치 재수집으로 1주일 이상 지난 누락도 다음날 자동 복구됨.
+".venv\Scripts\python.exe" "scripts\sync_naver_ads.py" --days 14
+".venv\Scripts\python.exe" "scripts\sync_naver_commerce.py" --days 14
+".venv\Scripts\python.exe" "scripts\sync_coupang.py" --days 14
+".venv\Scripts\python.exe" "scripts\sync_cafe24.py" --days 14
+".venv\Scripts\python.exe" "scripts\sync_meta_ads.py" --days 14
 
 REM 2. 쿠팡 광고 CSV 파싱 (폴더에 업로드된 파일 있으면 처리, 없으면 스킵)
 ".venv\Scripts\python.exe" "scripts\sync_coupang_ads_csv.py"
