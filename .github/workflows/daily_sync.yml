@@ -58,7 +58,7 @@ jobs:
           META_AD_ACCOUNT_ID_ROLLA: ${{ secrets.META_AD_ACCOUNT_ID_ROLLA }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SHEET_GID: ${{ secrets.GOOGLE_SHEET_GID }}
-          DAYS: ${{ github.event.inputs.days || '3' }}
+          DAYS: ${{ github.event.inputs.days || '14' }}
         run: |
           mkdir -p data
           echo "📈 네이버 검색광고 sync..."
