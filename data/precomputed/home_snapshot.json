@@ -1,5 +1,5 @@
 {
-  "computed_at": "2026-05-20T10:49:55.193678",
+  "computed_at": "2026-05-20T10:56:13.956401",
   "data_today": "2026-05-19",
   "periods": {
     "이번달": {
@@ -7,8 +7,8 @@
       "end": "2026-05-19",
       "days": 19,
       "total_target": 124293623,
-      "total_actual": 38653630,
-      "pct": 31.1,
+      "total_actual": 39042950,
+      "pct": 31.4,
       "avg_daily": 2008122,
       "best_day_date": "2026-05-06",
       "best_day_revenue": 3147620,
@@ -17,14 +17,14 @@
       "brands": {
         "똑똑연구소": {
           "target": 15112923,
-          "actual": 5362400,
-          "pct": 35.5,
+          "actual": 5436980,
+          "pct": 36.0,
           "days_recorded": 19
         },
         "롤라루": {
           "target": 101180700,
-          "actual": 29492330,
-          "pct": 29.1,
+          "actual": 29807070,
+          "pct": 29.5,
           "days_recorded": 19
         },
         "루티니스트": {
@@ -40,8 +40,8 @@
       "end": "2026-05-19",
       "days": 7,
       "total_target": 47531651,
-      "total_actual": 11630850,
-      "pct": 24.5,
+      "total_actual": 12020170,
+      "pct": 25.3,
       "avg_daily": 1590221,
       "best_day_date": "2026-05-15",
       "best_day_revenue": 2478980,
@@ -50,14 +50,14 @@
       "brands": {
         "똑똑연구소": {
           "target": 5807151,
-          "actual": 2076800,
-          "pct": 35.8,
+          "actual": 2151380,
+          "pct": 37.0,
           "days_recorded": 7
         },
         "롤라루": {
           "target": 38524500,
-          "actual": 7486450,
-          "pct": 19.4,
+          "actual": 7801190,
+          "pct": 20.2,
           "days_recorded": 7
         },
         "루티니스트": {
@@ -73,8 +73,8 @@
       "end": "2026-05-19",
       "days": 30,
       "total_target": 205305170,
-      "total_actual": 68955444,
-      "pct": 33.6,
+      "total_actual": 69344764,
+      "pct": 33.8,
       "avg_daily": 2281871,
       "best_day_date": "2026-04-30",
       "best_day_revenue": 10400820,
@@ -83,14 +83,14 @@
       "brands": {
         "똑똑연구소": {
           "target": 22922670,
-          "actual": 7978460,
-          "pct": 34.8,
+          "actual": 8053040,
+          "pct": 35.1,
           "days_recorded": 30
         },
         "롤라루": {
           "target": 172082500,
-          "actual": 56583784,
-          "pct": 32.9,
+          "actual": 56898524,
+          "pct": 33.1,
           "days_recorded": 30
         },
         "루티니스트": {
@@ -106,8 +106,8 @@
       "end": "2026-05-19",
       "days": 90,
       "total_target": 563687010,
-      "total_actual": 153529562,
-      "pct": 27.2,
+      "total_actual": 153918882,
+      "pct": 27.3,
       "avg_daily": 1700336,
       "best_day_date": "2026-04-30",
       "best_day_revenue": 10400820,
@@ -116,14 +116,14 @@
       "brands": {
         "똑똑연구소": {
           "target": 53388810,
-          "actual": 21235880,
-          "pct": 39.8,
+          "actual": 21310460,
+          "pct": 39.9,
           "days_recorded": 90
         },
         "롤라루": {
           "target": 493598200,
-          "actual": 127510782,
-          "pct": 25.8,
+          "actual": 127825522,
+          "pct": 25.9,
           "days_recorded": 90
         },
         "루티니스트": {
