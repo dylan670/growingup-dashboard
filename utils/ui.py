@@ -491,8 +491,8 @@ _NAV_PAGES: list[tuple[str, str, str, str]] = [
     ("ANALYTICS", "👥", "CRM",            "pages/5_👥_CRM.py"),
     ("ANALYTICS", "🚦", "알림 센터",      "pages/4_🚦_알림_센터.py"),
 
-    ("GROWTH",    "🎯", "SKU 확장 보드",  "pages/10_🎯_SKU_확장_보드.py"),
-    ("GROWTH",    "💬", "리뷰 VOC",       "pages/11_💬_리뷰_VOC.py"),
+    ("GROWTH",    "🎯", "롤라루 SKU 보드", "pages/10_🎯_SKU_확장_보드.py"),
+    ("GROWTH",    "💬", "리뷰 VOC",        "pages/11_💬_리뷰_VOC.py"),
 
     ("WORKSPACE", "📝", "회의록",         "pages/9_📝_회의록.py"),
 

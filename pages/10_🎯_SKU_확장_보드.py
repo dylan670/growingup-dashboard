@@ -25,9 +25,9 @@ from utils.ui import (
 
 
 setup_page(
-    page_title="SKU 확장 보드",
+    page_title="롤라루 SKU 확장 보드",
     page_icon="🎯",
-    header_title="🎯 SKU 확장 의사결정 보드",
+    header_title="🎯 롤라루 SKU 확장 보드",
     header_subtitle="옵션별 성과 · 가격대 갭 · ROAS 기반 다음 SKU 후보 도출",
 )
 
@@ -143,12 +143,18 @@ if orders.empty:
 # ==========================================================
 st.sidebar.markdown("#### 🔎 필터")
 
-# 브랜드 선택
-brand_options = ["전체"] + sorted(orders["brand"].unique().tolist())
+# 브랜드 선택 — 기본 롤라루 (옵션 데이터가 가장 풍부)
+brand_options_all = sorted(orders["brand"].unique().tolist())
+# 롤라루를 맨 앞으로
+brand_options = (
+    (["롤라루"] if "롤라루" in brand_options_all else [])
+    + [b for b in brand_options_all if b != "롤라루"]
+    + ["전체"]
+)
 selected_brand = st.sidebar.selectbox(
     "브랜드",
     brand_options,
-    index=brand_options.index("롤라루") if "롤라루" in brand_options else 0,
+    index=0,
     help="롤라루(캐리어)가 옵션 데이터가 가장 풍부합니다",
 )
 
@@ -193,11 +199,11 @@ unique_options = filtered["option"].dropna().nunique()
 avg_price = total_rev / total_qty if total_qty > 0 else 0
 
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("📅 기간 매출", f"₩{total_rev/1e6:.1f}M")
+k1.metric("📅 기간 매출", f"₩{int(total_rev):,}")
 k2.metric("📦 총 판매수량", f"{int(total_qty):,}")
 k3.metric("🏷 판매 SKU", f"{unique_products}")
 k4.metric("🎨 판매 옵션", f"{unique_options}")
-k5.metric("💰 평균 단가", f"₩{avg_price:,.0f}")
+k5.metric("💰 평균 단가", f"₩{int(avg_price):,}")
 
 st.markdown("---")
 
@@ -271,6 +277,7 @@ with tab_opt:
             )
             fig.update_layout(
                 yaxis={"categoryorder": "total ascending"},
+                xaxis=dict(tickformat=",", title="매출 (원)"),
                 height=max(350, top_n * 30),
                 margin=dict(l=10, r=10, t=30, b=10),
                 showlegend=False,
@@ -279,7 +286,7 @@ with tab_opt:
             fig.update_traces(
                 texttemplate="%{text}%",
                 textposition="outside",
-                hovertemplate="%{y}<br>매출: ₩%{x:,.0f}<br>비중: %{text}%",
+                hovertemplate="%{y}<br>매출: ₩%{x:,.0f}원<br>비중: %{text}%",
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -340,7 +347,7 @@ with tab_price:
 
         bins = list(range(0, max_price + bin_width, bin_width))
         labels = [
-            f"{b/1000:.0f}~{(b+bin_width)/1000:.0f}K"
+            f"{b:,}~{b+bin_width:,}원"
             for b in bins[:-1]
         ]
         price_per_unit["가격대"] = pd.cut(
@@ -382,8 +389,8 @@ with tab_price:
         ))
         fig.update_layout(
             height=400,
-            xaxis=dict(title="가격대 (1K=1천원)"),
-            yaxis=dict(title="매출", side="left"),
+            xaxis=dict(title="가격대 (원)"),
+            yaxis=dict(title="매출 (원)", side="left", tickformat=","),
             yaxis2=dict(title="진출 SKU 수", overlaying="y", side="right"),
             margin=dict(l=10, r=10, t=30, b=10),
             legend=dict(orientation="h", y=1.1),
@@ -399,10 +406,10 @@ with tab_price:
         if not opp.empty:
             opp_display = opp.copy()
             opp_display["매출"] = opp_display["매출"].apply(
-                lambda v: f"₩{v/1e6:.1f}M"
+                lambda v: f"₩{int(v):,}"
             )
             opp_display["SKU당평균매출"] = opp_display["SKU당평균매출"].apply(
-                lambda v: f"₩{v/1e6:.1f}M"
+                lambda v: f"₩{int(v):,}"
             )
             opp_display["판매수량"] = opp_display["판매수량"].apply(
                 lambda v: f"{int(v):,}"
@@ -416,7 +423,7 @@ with tab_price:
             st.success(
                 f"💡 **`{top_opp['가격대']}` 가격대** — "
                 f"SKU {int(top_opp['고유SKU'])}개로 매출 {top_opp['매출비중%']}% 차지 → "
-                f"SKU 당 평균 매출 ₩{top_opp['SKU당평균매출']/1e6:.1f}M. "
+                f"SKU 당 평균 매출 ₩{int(top_opp['SKU당평균매출']):,}. "
                 f"이 가격대 신규 SKU 추가 시 ROI 가장 큼."
             )
 
@@ -479,7 +486,7 @@ with tab_roas:
             top = prod_agg.nlargest(8, "매출")[
                 ["product", "매출", "판매수량", "ROAS"]
             ].copy()
-            top["매출"] = top["매출"].apply(lambda v: f"₩{v/1e6:.2f}M")
+            top["매출"] = top["매출"].apply(lambda v: f"₩{int(v):,}")
             top["판매수량"] = top["판매수량"].apply(lambda v: f"{int(v):,}")
             top["ROAS"] = top["ROAS"].apply(
                 lambda v: f"{v:,.1f}x" if pd.notna(v) and v > 0 else "—"
@@ -495,7 +502,7 @@ with tab_roas:
                 st.caption("(추정 광고비 0원인 SKU 없음)")
             else:
                 organic["매출"] = organic["매출"].apply(
-                    lambda v: f"₩{v/1e6:.2f}M"
+                    lambda v: f"₩{int(v):,}"
                 )
                 organic["판매수량"] = organic["판매수량"].apply(
                     lambda v: f"{int(v):,}"
@@ -510,11 +517,14 @@ with tab_roas:
 
 
 # ==========================================================
-# TAB 4 — 옵션 조합 매트릭스 (컬러 X 사이즈 등)
+# TAB 4 — 옵션 조합 분석 (잘 팔리는 조합 찾기)
 # ==========================================================
 with tab_combo:
-    st.markdown("##### 🧩 옵션 조합 매트릭스 — '잘 팔리는 조합' 발견")
-    st.caption("두 옵션을 교차해서 어떤 조합이 가장 잘 팔리는지 시각화")
+    st.markdown("##### 🧩 옵션 조합 분석 — '어떤 조합이 잘 팔리는지' 한눈에")
+    st.caption(
+        "두 옵션을 교차해서 베스트셀러 조합을 찾고, 각 메인 옵션별 "
+        "최강 서브 옵션을 자동으로 추출합니다."
+    )
 
     expanded = _expand_options(filtered)
     opt_cols = [c for c in expanded.columns if c.startswith("opt_")]
@@ -525,84 +535,181 @@ with tab_combo:
         opt_labels = [c.replace("opt_", "") for c in opt_cols]
         c1, c2 = st.columns(2)
         with c1:
-            x_key = st.selectbox(
-                "X축 옵션",
+            main_key = st.selectbox(
+                "메인 옵션 (X축)",
                 opt_labels,
                 index=opt_labels.index("컬러") if "컬러" in opt_labels else 0,
+                help="가로축에 배치할 옵션",
             )
         with c2:
-            remaining = [l for l in opt_labels if l != x_key]
-            y_key = st.selectbox(
-                "Y축 옵션",
+            remaining = [l for l in opt_labels if l != main_key]
+            sub_key = st.selectbox(
+                "서브 옵션 (색상 구분)",
                 remaining,
                 index=remaining.index("사이즈") if "사이즈" in remaining else 0,
+                help="누적 막대를 색으로 구분할 옵션",
             )
 
-        x_col, y_col = f"opt_{x_key}", f"opt_{y_key}"
+        main_col, sub_col = f"opt_{main_key}", f"opt_{sub_key}"
         combo_df = expanded[
-            (expanded[x_col] != "") & (expanded[y_col] != "")
+            (expanded[main_col] != "") & (expanded[sub_col] != "")
         ].copy()
 
         if combo_df.empty:
             st.info("두 옵션 모두 값이 있는 데이터 없음")
         else:
-            heatmap_data = (
-                combo_df.groupby([y_col, x_col])
-                .agg(매출=("revenue", "sum"))
+            # 조합별 집계
+            combo_agg = (
+                combo_df.groupby([main_col, sub_col])
+                .agg(매출=("revenue", "sum"),
+                     판매수량=("quantity", "sum"))
                 .reset_index()
             )
-            pivot = heatmap_data.pivot(
-                index=y_col, columns=x_col, values="매출",
-            ).fillna(0)
+            total_combo_rev = combo_agg["매출"].sum()
+            combo_agg["매출비중%"] = (
+                combo_agg["매출"] / total_combo_rev * 100
+            ).round(1)
 
-            fig = px.imshow(
-                pivot.values,
-                x=pivot.columns.tolist(),
-                y=pivot.index.tolist(),
-                color_continuous_scale=["#ffffff", "#fef3c7", "#f59e0b", "#b45309"],
-                aspect="auto",
-                labels=dict(color="매출"),
+            # 메인 옵션별 총 매출 (X축 정렬 기준)
+            main_totals = (
+                combo_agg.groupby(main_col)["매출"]
+                .sum()
+                .sort_values(ascending=False)
             )
-            # 셀에 매출 표시
-            text_matrix = [
-                [f"₩{v/1e6:.1f}M" if v > 0 else "" for v in row]
-                for row in pivot.values
-            ]
-            fig.update_traces(
-                text=text_matrix,
-                texttemplate="%{text}",
-                textfont={"size": 11},
+            main_order = main_totals.index.tolist()
+
+            # ============================================
+            # ① Stacked Bar — 메인 옵션별 서브 옵션 매출 누적
+            # ============================================
+            st.markdown(f"**📊 {main_key}별 매출 구성 (색 = {sub_key})**")
+            st.caption(
+                f"각 막대 = 한 {main_key} 의 총 매출. "
+                f"색 영역 크기 = 그 {main_key} 안에서 각 {sub_key} 의 매출 기여."
+            )
+
+            fig = px.bar(
+                combo_agg,
+                x=main_col, y="매출",
+                color=sub_col,
+                category_orders={main_col: main_order},
+                color_discrete_sequence=px.colors.qualitative.Set2,
+                hover_data={"판매수량": True, "매출비중%": True},
+                labels={main_col: main_key, sub_col: sub_key},
             )
             fig.update_layout(
-                height=max(350, len(pivot.index) * 50),
-                margin=dict(l=10, r=10, t=30, b=10),
-                xaxis=dict(title=x_key),
-                yaxis=dict(title=y_key),
+                height=450,
+                margin=dict(l=10, r=10, t=20, b=10),
+                yaxis=dict(title="매출 (원)", tickformat=","),
+                xaxis=dict(title=main_key),
+                legend=dict(
+                    orientation="v",
+                    title=sub_key,
+                    yanchor="top", y=1, xanchor="left", x=1.02,
+                ),
+            )
+            fig.update_traces(
+                hovertemplate=(
+                    f"<b>%{{x}}</b><br>"
+                    f"{sub_key}: %{{fullData.name}}<br>"
+                    "매출: ₩%{y:,.0f}<br>"
+                    "판매수량: %{customdata[0]:,}<br>"
+                    "비중: %{customdata[1]:.1f}%<extra></extra>"
+                ),
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # 최고 조합 강조
-            stacked = heatmap_data.sort_values("매출", ascending=False)
-            top = stacked.head(5)
-            if not top.empty:
-                top_combo = top.iloc[0]
-                st.success(
-                    f"💡 **베스트 조합** — "
-                    f"`{top_combo[y_col]} × {top_combo[x_col]}` "
-                    f"매출 ₩{top_combo['매출']/1e6:.1f}M. "
-                    f"이 조합 기반으로 비슷한 옵션 확장 검토 권장."
-                )
+            # ============================================
+            # ② 메인 옵션별 BEST 서브 옵션 자동 추출
+            # ============================================
+            st.markdown(f"**🏆 {main_key}별 베스트 {sub_key}**")
+            st.caption(
+                f"각 {main_key} 에서 가장 매출 높은 {sub_key} 자동 추출 → "
+                f"신규 SKU 디자인 가이드 (예: '블랙 컬러는 어떤 사이즈를 같이 내야 하는가')"
+            )
 
-                # Top 5 표
-                with st.expander("📋 상위 5개 조합 상세", expanded=False):
-                    top_display = top.copy()
-                    top_display["매출"] = top_display["매출"].apply(
-                        lambda v: f"₩{v/1e6:.2f}M"
-                    )
-                    top_display.columns = [y_key, x_key, "매출"]
-                    st.dataframe(
-                        top_display, hide_index=True, width="stretch",
-                    )
+            best_per_main = (
+                combo_agg.sort_values("매출", ascending=False)
+                .groupby(main_col)
+                .head(1)
+                .sort_values("매출", ascending=False)
+            )
+            best_display = best_per_main[[main_col, sub_col, "매출",
+                                          "판매수량", "매출비중%"]].copy()
+            best_display.columns = [
+                main_key, f"베스트 {sub_key}", "매출", "판매수량", "전체매출 비중%",
+            ]
+            best_display["매출"] = best_display["매출"].apply(
+                lambda v: f"₩{int(v):,}"
+            )
+            best_display["판매수량"] = best_display["판매수량"].apply(
+                lambda v: f"{int(v):,}"
+            )
+            st.dataframe(
+                best_display, hide_index=True, width="stretch",
+                height=min(400, 60 + len(best_display) * 36),
+            )
+
+            # ============================================
+            # ③ Top 10 전체 조합 ranking (어떤 조합이 절대 매출 큰지)
+            # ============================================
+            st.markdown(f"**🥇 전체 조합 Top 10 — 절대 매출 ranking**")
+            top10 = combo_agg.sort_values("매출", ascending=False).head(10).copy()
+            top10["조합"] = (
+                top10[main_col].astype(str) + " × " + top10[sub_col].astype(str)
+            )
+            top10_chart = top10[["조합", "매출", "매출비중%"]].copy()
+
+            fig_top = px.bar(
+                top10_chart.iloc[::-1],
+                x="매출", y="조합",
+                orientation="h",
+                text="매출비중%",
+                color="매출",
+                color_continuous_scale=["#fef3c7", "#f59e0b", "#b45309"],
+            )
+            fig_top.update_layout(
+                height=max(350, len(top10_chart) * 35),
+                margin=dict(l=10, r=10, t=20, b=10),
+                showlegend=False,
+                coloraxis_showscale=False,
+                xaxis=dict(title="매출 (원)", tickformat=","),
+                yaxis=dict(title=""),
+            )
+            fig_top.update_traces(
+                texttemplate="%{text}%",
+                textposition="outside",
+                hovertemplate="<b>%{y}</b><br>매출: ₩%{x:,.0f}원<extra></extra>",
+            )
+            st.plotly_chart(fig_top, use_container_width=True)
+
+            # ============================================
+            # ④ 인사이트 박스
+            # ============================================
+            top_combo = top10.iloc[0]
+            # 카니발리제이션 시그널: 같은 메인 옵션에 서브 옵션 여러 개가 비슷한 매출
+            cannibal_warn = ""
+            for main_val, grp in combo_agg.groupby(main_col):
+                if len(grp) >= 3:
+                    sorted_grp = grp.sort_values("매출", ascending=False)
+                    if (sorted_grp["매출"].iloc[1] /
+                            max(sorted_grp["매출"].iloc[0], 1)) > 0.7:
+                        # 1, 2위 매출 차이 30% 미만 → 카니발 가능성
+                        cannibal_warn = (
+                            f"\n\n⚠️ **카니발리제이션 시그널** — "
+                            f"`{main_val}` 안에서 "
+                            f"`{sorted_grp[sub_col].iloc[0]}` 와 "
+                            f"`{sorted_grp[sub_col].iloc[1]}` 가 "
+                            f"매출 차이 30% 미만 → 두 옵션이 서로 잠식 가능성"
+                        )
+                        break
+
+            st.success(
+                f"💡 **베스트 조합** — `{top_combo[main_col]} × {top_combo[sub_col]}` "
+                f"매출 ₩{int(top_combo['매출']):,} (전체의 {top_combo['매출비중%']}%)\n\n"
+                f"이 조합 기반으로 비슷한 옵션 확장 검토. "
+                f"위 '베스트 {sub_key}' 표를 참고하면 각 {main_key}별 최강 조합 한눈에 보여요."
+                f"{cannibal_warn}"
+            )
 
 
 # ==========================================================
