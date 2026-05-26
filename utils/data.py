@@ -466,3 +466,64 @@ def merge_store_orders(new_df: pd.DataFrame, store: str) -> tuple[int, int]:
     merged = merged.sort_values(["date", "store"]).reset_index(drop=True)
     merged.to_csv(ORDERS_FILE, index=False, encoding="utf-8-sig")
     return removed, len(new_df)
+
+
+def merge_reviews(
+    new_df: pd.DataFrame, channel: str, brand: str,
+) -> tuple[int, int]:
+    """특정 채널 × 브랜드 × new_df 의 날짜 범위를 교체.
+
+    네이버/자사몰 리뷰 sync 가 호출.
+    동일 (date, channel, brand, product, text) 기존 행은 새 데이터로 대체.
+
+    반환: (removed, added)
+    """
+    if len(new_df) == 0:
+        return 0, 0
+
+    new_df = new_df.copy()
+    new_df["date"] = new_df["date"].astype(str)
+    min_date = new_df["date"].min()
+    max_date = new_df["date"].max()
+
+    if REVIEWS_FILE.exists():
+        try:
+            existing = pd.read_csv(REVIEWS_FILE, encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            existing = pd.read_csv(REVIEWS_FILE, encoding="utf-8")
+        existing["date"] = existing["date"].astype(str)
+        # brand 컬럼 없는 구버전 → 추가
+        if "brand" not in existing.columns:
+            existing["brand"] = "기타"
+
+        # 같은 채널·브랜드 × 같은 기간 데이터 제거 → 새 데이터로 교체
+        mask = (
+            (existing["channel"] == channel)
+            & (existing["brand"] == brand)
+            & (existing["date"] >= min_date)
+            & (existing["date"] <= max_date)
+        )
+        removed = int(mask.sum())
+        existing = existing[~mask]
+    else:
+        existing = pd.DataFrame()
+        removed = 0
+
+    # 컬럼 순서 통일
+    cols = ["date", "channel", "brand", "product", "rating", "text"]
+    for c in cols:
+        if c not in new_df.columns:
+            new_df[c] = ""
+    new_df = new_df[cols]
+
+    if not existing.empty:
+        for c in cols:
+            if c not in existing.columns:
+                existing[c] = ""
+        existing = existing[cols]
+
+    merged = pd.concat([existing, new_df], ignore_index=True)
+    merged = merged.sort_values(["date", "channel", "brand"]).reset_index(drop=True)
+    REVIEWS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    merged.to_csv(REVIEWS_FILE, index=False, encoding="utf-8-sig")
+    return removed, len(new_df)

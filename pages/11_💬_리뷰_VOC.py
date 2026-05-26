@@ -224,6 +224,18 @@ st.sidebar.markdown("#### 🔎 필터")
 brand_options = ["전체"] + sorted(enriched["brand"].unique().tolist())
 selected_brand = st.sidebar.selectbox("브랜드", brand_options, index=0)
 
+# 채널 필터 (multi-select)
+all_channels = sorted(enriched["channel"].dropna().unique().tolist())
+# 기본 정렬: 네이버 → 자사몰 → 쿠팡 → 그 외
+ch_order = {"네이버": 0, "자사몰": 1, "쿠팡": 2}
+all_channels = sorted(all_channels, key=lambda c: ch_order.get(c, 99))
+selected_channels = st.sidebar.multiselect(
+    "채널",
+    all_channels,
+    default=all_channels,
+    help="네이버 / 자사몰 / 쿠팡 등 채널별 분리해서 보기",
+)
+
 # 기간
 max_date = enriched["date"].max().date()
 min_date = enriched["date"].min().date()
@@ -254,6 +266,8 @@ mask = (enriched["date"].dt.date >= start_date) & (
 )
 if selected_brand != "전체":
     mask &= enriched["brand"] == selected_brand
+if selected_channels:
+    mask &= enriched["channel"].isin(selected_channels)
 if sent_filter:
     mask &= enriched["감성"].isin(sent_filter)
 filtered = enriched[mask].copy()
@@ -282,6 +296,147 @@ k4.metric("😐 중립", f"{neu_count}")
 k5.metric("😠 부정", f"{neg_count}",
           delta=f"{neg_share:.1f}%",
           delta_color="inverse")
+
+st.markdown("---")
+
+
+# ==========================================================
+# 채널 × 브랜드 매트릭스 (가장 정밀한 분리)
+# ==========================================================
+st.markdown("##### 🔀 채널 × 브랜드 매트릭스")
+st.caption(
+    "각 채널별로 브랜드 리뷰가 어떻게 분포되는지 한눈에. "
+    "셀 클릭은 아닌 시각화 — 사이드바 채널/브랜드 필터로 깊이 파고드세요."
+)
+
+# 채널 정렬 (네이버 → 자사몰 → 쿠팡)
+ch_priority = {"네이버": 0, "자사몰": 1, "쿠팡": 2}
+mtx_channels = sorted(
+    filtered["channel"].dropna().unique().tolist(),
+    key=lambda c: ch_priority.get(c, 99),
+)
+# 브랜드 정렬 (똑똑 → 롤라루 → 루티 → 기타)
+br_priority = {"똑똑연구소": 0, "롤라루": 1, "루티니스트": 2, "기타": 99}
+mtx_brands = sorted(
+    filtered["brand"].dropna().unique().tolist(),
+    key=lambda b: br_priority.get(b, 50),
+)
+
+# 채널별 row 생성
+for ch in mtx_channels:
+    ch_df = filtered[filtered["channel"] == ch]
+    if ch_df.empty:
+        continue
+
+    # 채널 헤더 (채널 색상 적용)
+    ch_color = channel_color(ch, default="#64748b")
+    ch_total = len(ch_df)
+    ch_avg = ch_df["rating"].mean() if ch_df["rating"].notna().any() else 0
+    ch_pos = (ch_df["감성"] == "긍정").sum()
+    ch_neg = (ch_df["감성"] == "부정").sum()
+
+    st.markdown(
+        f"""
+        <div style="display:flex; align-items:baseline; gap:14px;
+                    margin-top:14px; margin-bottom:8px;
+                    padding:6px 0; border-bottom:2px solid {ch_color};">
+            <div style="font-size:1rem; font-weight:700; color:{ch_color};">
+                📡 {ch}
+            </div>
+            <div style="font-size:0.82rem; color:#64748b;">
+                {ch_total}건 · ⭐{ch_avg:.2f}
+                · 😊{ch_pos/ch_total*100:.0f}%
+                · 😠{ch_neg/ch_total*100:.0f}%
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 브랜드별 셀 (가로 3개)
+    cell_cols = st.columns(len(mtx_brands))
+    for i, b in enumerate(mtx_brands):
+        cell = ch_df[ch_df["brand"] == b]
+        bcolor = BRAND_COLORS.get(b, {})
+        primary = bcolor.get("primary", "#64748b")
+        bg_soft = bcolor.get("bg_soft", "#f8fafc")
+        text_col = bcolor.get("text", "#0f172a")
+
+        with cell_cols[i]:
+            if cell.empty:
+                # 빈 셀 — 회색 처리
+                st.markdown(
+                    f"""
+                    <div style="background:#f1f5f9; border:1px dashed #cbd5e1;
+                                border-radius:8px; padding:14px 14px;
+                                opacity:0.6; min-height:118px;
+                                display:flex; flex-direction:column;
+                                justify-content:center; align-items:center;">
+                        <div style="font-size:0.82rem; color:#94a3b8;
+                                    font-weight:600;">{b}</div>
+                        <div style="font-size:1.2rem; color:#cbd5e1;
+                                    margin-top:6px;">— 0건 —</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                continue
+
+            c_total = len(cell)
+            c_avg = cell["rating"].mean() if cell["rating"].notna().any() else 0
+            c_pos = int((cell["감성"] == "긍정").sum())
+            c_neu = int((cell["감성"] == "중립").sum())
+            c_neg = int((cell["감성"] == "부정").sum())
+            c_sku = cell["product"].nunique()
+            pos_pct = c_pos / c_total * 100
+            neu_pct = c_neu / c_total * 100
+            neg_pct = c_neg / c_total * 100
+            pos_pct_label = c_pos / c_total * 100
+            neg_pct_label = c_neg / c_total * 100
+
+            st.markdown(
+                f"""
+                <div style="background:{bg_soft}; border-left:4px solid {primary};
+                            border-radius:8px; padding:12px 14px;
+                            min-height:118px;">
+                    <div style="display:flex; justify-content:space-between;
+                                align-items:baseline;">
+                        <div style="font-size:0.85rem; font-weight:700;
+                                    color:{text_col};">
+                            {b}
+                        </div>
+                        <div style="font-size:0.7rem; color:#94a3b8;">
+                            SKU {c_sku}
+                        </div>
+                    </div>
+                    <div style="font-size:1.4rem; font-weight:700;
+                                color:{primary}; line-height:1.2;
+                                margin-top:2px;">
+                        {c_total}건
+                    </div>
+                    <div style="font-size:0.74rem; color:#64748b;
+                                margin-top:2px;">
+                        ⭐ {c_avg:.2f}
+                    </div>
+                    <div style="display:flex; height:5px; margin-top:8px;
+                                border-radius:3px; overflow:hidden;">
+                        <div style="width:{pos_pct}%; background:#16a34a;"
+                             title="긍정 {c_pos}건"></div>
+                        <div style="width:{neu_pct}%; background:#94a3b8;"
+                             title="중립 {c_neu}건"></div>
+                        <div style="width:{neg_pct}%; background:#dc2626;"
+                             title="부정 {c_neg}건"></div>
+                    </div>
+                    <div style="font-size:0.7rem; color:#64748b;
+                                margin-top:4px; display:flex;
+                                justify-content:space-between;">
+                        <span style="color:#16a34a;">😊 {pos_pct_label:.0f}%</span>
+                        <span style="color:#dc2626;">😠 {neg_pct_label:.0f}%</span>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
 st.markdown("---")
 
@@ -619,8 +774,20 @@ with tab_neg:
 with tab_prod:
     st.markdown("##### 🏷 상품별 별점 & 리뷰량 ranking (브랜드별)")
 
+    # 채널 분리 토글
+    show_channel_split = st.toggle(
+        "📡 채널별 분리해서 보기",
+        value=False,
+        help="ON 시: 같은 상품도 네이버/자사몰/쿠팡 따로 표시 → 채널별 별점 차이 확인",
+        key="prod_rank_channel_split",
+    )
+
+    group_cols = (
+        ["brand", "channel", "product"] if show_channel_split
+        else ["brand", "product"]
+    )
     prod_agg = (
-        filtered.groupby(["brand", "product"])
+        filtered.groupby(group_cols)
         .agg(
             리뷰수=("text", "count"),
             평균별점=("rating", "mean"),
@@ -682,20 +849,44 @@ with tab_prod:
             unsafe_allow_html=True,
         )
 
+        # 채널 분리 모드면 channel 컬럼 포함
+        display_cols = (
+            ["channel", "product", "리뷰수", "평균별점",
+             "긍정수", "중립수", "부정수", "긍정률%", "부정률%"]
+            if show_channel_split else
+            ["product", "리뷰수", "평균별점",
+             "긍정수", "중립수", "부정수", "긍정률%", "부정률%"]
+        )
+        display_sub = sub[display_cols].copy()
+        if show_channel_split:
+            # 채널 정렬: 네이버 → 자사몰 → 쿠팡
+            ch_priority2 = {"네이버": 0, "자사몰": 1, "쿠팡": 2}
+            display_sub["_ch_order"] = display_sub["channel"].map(
+                ch_priority2,
+            ).fillna(99)
+            display_sub = display_sub.sort_values(
+                ["_ch_order", "리뷰수"], ascending=[True, False],
+            ).drop(columns=["_ch_order"])
+
+        col_cfg = {
+            "product": st.column_config.TextColumn("제품명", width="large"),
+            "긍정률%": st.column_config.ProgressColumn(
+                "긍정률", format="%.1f%%", min_value=0, max_value=100,
+            ),
+            "부정률%": st.column_config.ProgressColumn(
+                "부정률", format="%.1f%%", min_value=0, max_value=100,
+            ),
+        }
+        if show_channel_split:
+            col_cfg["channel"] = st.column_config.TextColumn(
+                "채널", width="small",
+            )
+
         st.dataframe(
-            sub[["product", "리뷰수", "평균별점",
-                 "긍정수", "중립수", "부정수", "긍정률%", "부정률%"]],
+            display_sub,
             hide_index=True, width="stretch",
-            height=min(400, 50 + len(sub) * 36),
-            column_config={
-                "product": st.column_config.TextColumn("제품명", width="large"),
-                "긍정률%": st.column_config.ProgressColumn(
-                    "긍정률", format="%.1f%%", min_value=0, max_value=100,
-                ),
-                "부정률%": st.column_config.ProgressColumn(
-                    "부정률", format="%.1f%%", min_value=0, max_value=100,
-                ),
-            },
+            height=min(450, 50 + len(display_sub) * 36),
+            column_config=col_cfg,
         )
 
     st.markdown("---")

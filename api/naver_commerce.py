@@ -309,6 +309,137 @@ class NaverCommerceClient:
             "store", "product", "option", "quantity", "revenue",
         ])
 
+    # ============================================================
+    # 리뷰 (상품후기) 수집
+    # ============================================================
+    def fetch_reviews_df(
+        self, since: date, until: date, store: str,
+        max_pages: int = 50, page_size: int = 100,
+    ) -> pd.DataFrame:
+        """기간 내 상품 리뷰 수집.
+
+        엔드포인트: POST /external/v1/product-reviews/search
+        (네이버 커머스 API — 권한 활성화 필요할 수 있음)
+
+        반환 스키마 (reviews.csv 와 동일):
+            date, channel, brand, product, rating, text
+        """
+        brand = self._brand_of_store(store)
+        start_iso = f"{since.isoformat()}T00:00:00.000+09:00"
+        # 종료일 23:59:59 까지 포함
+        end_dt = datetime.combine(until, datetime.min.time()) + timedelta(
+            hours=23, minutes=59, seconds=59,
+        )
+        end_iso = end_dt.strftime("%Y-%m-%dT%H:%M:%S.000+09:00")
+
+        rows: list[dict] = []
+        page = 1
+        while page <= max_pages:
+            payload = {
+                "startReviewWriteDateTime": start_iso,
+                "endReviewWriteDateTime": end_iso,
+                "page": page,
+                "size": page_size,
+            }
+            try:
+                resp = requests.post(
+                    f"{BASE_URL}/external/v1/product-reviews/search",
+                    headers=self._auth_headers(),
+                    json=payload,
+                    timeout=30,
+                )
+                resp.raise_for_status()
+                data = resp.json() or {}
+            except requests.HTTPError as e:
+                # 404 = endpoint 없음 / 403 = 권한 없음 → 빈 결과 반환
+                code = e.response.status_code if e.response is not None else 0
+                if code in (403, 404):
+                    raise RuntimeError(
+                        f"네이버 리뷰 API 접근 불가 (HTTP {code}). "
+                        f"커머스 API 콘솔에서 '상품 리뷰' 권한 활성화 필요."
+                    )
+                raise
+
+            # 응답 형식 대응 (data.contents 또는 contents 직접)
+            content = data.get("data") if isinstance(data, dict) else None
+            if isinstance(content, dict):
+                items = content.get("contents", [])
+                has_next = content.get("hasNext") or (
+                    content.get("page", 0) < content.get("totalPages", 0)
+                )
+            else:
+                items = data.get("contents", []) if isinstance(data, dict) else []
+                has_next = bool(items) and len(items) >= page_size
+
+            for r in items:
+                # 날짜 추출 (YYYY-MM-DD)
+                write_dt = (
+                    r.get("writeDateTime")
+                    or r.get("createDateTime")
+                    or r.get("reviewWriteDateTime")
+                    or ""
+                )
+                d_str = str(write_dt)[:10] if write_dt else ""
+                if not d_str:
+                    continue
+
+                # 별점
+                rating = r.get("reviewScore") or r.get("score") or r.get("rating") or 0
+                try:
+                    rating = int(float(rating))
+                except (TypeError, ValueError):
+                    rating = 0
+                if not (1 <= rating <= 5):
+                    continue
+
+                # 본문
+                text = (
+                    r.get("reviewContent")
+                    or r.get("content")
+                    or r.get("text")
+                    or ""
+                )
+                text = str(text).strip()
+                if not text:
+                    continue
+
+                # 상품명
+                product = (
+                    r.get("productName")
+                    or r.get("originProductName")
+                    or r.get("productItemName")
+                    or ""
+                )
+
+                rows.append({
+                    "date": d_str,
+                    "channel": "네이버",
+                    "brand": brand,
+                    "product": str(product).strip(),
+                    "rating": rating,
+                    "text": text,
+                })
+
+            if not has_next or not items:
+                break
+            page += 1
+
+        return pd.DataFrame(rows, columns=[
+            "date", "channel", "brand", "product", "rating", "text",
+        ])
+
+    @staticmethod
+    def _brand_of_store(store: str) -> str:
+        """store 라벨 → 브랜드명."""
+        s = str(store).replace(" ", "")
+        if "똑똑" in s:
+            return "똑똑연구소"
+        if "롤라루" in s:
+            return "롤라루"
+        if "루티니" in s:
+            return "루티니스트"
+        return "기타"
+
 
 # ---------- 멀티 스토어 로더 ----------
 

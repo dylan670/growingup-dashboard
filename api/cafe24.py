@@ -372,6 +372,180 @@ class Cafe24Client:
                 })
         return results
 
+    # ============================================================
+    # 리뷰 (상품후기) 수집
+    # ============================================================
+    def fetch_reviews_df(
+        self, since: date, until: date, store: str,
+        board_no: int = 4, limit: int = 100,
+    ) -> pd.DataFrame:
+        """기간 내 상품 후기 수집.
+
+        시도 순서:
+            1. /api/v2/admin/reviews        (review API 있는 몰)
+            2. /api/v2/admin/boards/{board_no}/articles  (게시판 fallback)
+               board_no=4 가 기본 '상품후기' (몰마다 다를 수 있음)
+
+        반환 스키마 (reviews.csv 와 동일):
+            date, channel, brand, product, rating, text
+        """
+        brand = self._brand_of_store(store)
+
+        # 상품번호 → 이름 매핑 (리뷰에 상품번호만 와도 이름 추출용)
+        product_name_map: dict[int, str] = {}
+        try:
+            for p in self.get_products():
+                pno = p.get("product_no")
+                pname = (p.get("product_name") or "").strip()
+                if pno and pname:
+                    product_name_map[int(pno)] = pname
+        except Exception:
+            pass
+
+        rows: list[dict] = []
+
+        # ---- 시도 1: /admin/reviews ----
+        review_endpoint_ok = False
+        try:
+            offset = 0
+            while True:
+                params = {
+                    "limit": limit,
+                    "offset": offset,
+                    "start_date": since.isoformat(),
+                    "end_date": until.isoformat(),
+                }
+                res = self._request("GET", "/reviews", params=params) or {}
+                batch = res.get("reviews", []) or []
+                review_endpoint_ok = True
+                for r in batch:
+                    rows.append(self._normalize_review(r, brand, product_name_map))
+                if len(batch) < limit:
+                    break
+                offset += limit
+                if offset > 10000:
+                    break
+        except requests.HTTPError as e:
+            code = e.response.status_code if e.response is not None else 0
+            if code not in (404, 405):
+                raise
+
+        # ---- 시도 2: 게시판 articles (review endpoint 없을 때만) ----
+        if not review_endpoint_ok:
+            offset = 0
+            while True:
+                params = {
+                    "limit": limit,
+                    "offset": offset,
+                    "start_date": since.isoformat(),
+                    "end_date": until.isoformat(),
+                }
+                try:
+                    res = self._request(
+                        "GET", f"/boards/{board_no}/articles", params=params,
+                    ) or {}
+                except requests.HTTPError as e:
+                    code = e.response.status_code if e.response is not None else 0
+                    raise RuntimeError(
+                        f"Cafe24 리뷰 API 접근 불가 (HTTP {code}). "
+                        f"OAuth scope 'mall.read_community' 필요 또는 "
+                        f"게시판 번호 (현재 board_no={board_no}) 확인."
+                    )
+                batch = res.get("articles", []) or []
+                for r in batch:
+                    rows.append(self._normalize_review(r, brand, product_name_map))
+                if len(batch) < limit:
+                    break
+                offset += limit
+                if offset > 10000:
+                    break
+
+        # None 행 제거
+        rows = [r for r in rows if r is not None]
+        return pd.DataFrame(rows, columns=[
+            "date", "channel", "brand", "product", "rating", "text",
+        ])
+
+    @staticmethod
+    def _normalize_review(
+        r: dict, brand: str, product_name_map: dict[int, str],
+    ) -> dict | None:
+        """카페24 리뷰 1건 → reviews.csv 스키마."""
+        # 날짜
+        d_str = (
+            r.get("created_date")
+            or r.get("written_date")
+            or r.get("write_date")
+            or r.get("input_date")
+            or ""
+        )
+        d_str = str(d_str)[:10]
+        if not d_str:
+            return None
+
+        # 별점
+        rating = (
+            r.get("rating")
+            or r.get("star_score")
+            or r.get("score")
+            or r.get("review_score")
+            or 0
+        )
+        try:
+            rating = int(float(rating))
+        except (TypeError, ValueError):
+            rating = 0
+        if not (1 <= rating <= 5):
+            return None
+
+        # 본문
+        text = (
+            r.get("content")
+            or r.get("review_content")
+            or r.get("article_content")
+            or ""
+        )
+        # HTML 태그 간단 제거
+        import re as _re
+        text = _re.sub(r"<[^>]+>", " ", str(text))
+        text = _re.sub(r"\s+", " ", text).strip()
+        if not text:
+            return None
+
+        # 상품명
+        product = (
+            r.get("product_name")
+            or r.get("item_name")
+            or ""
+        )
+        if not product:
+            pno = r.get("product_no")
+            if pno:
+                try:
+                    product = product_name_map.get(int(pno), "")
+                except (TypeError, ValueError):
+                    pass
+
+        return {
+            "date": d_str,
+            "channel": "자사몰",
+            "brand": brand,
+            "product": str(product).strip(),
+            "rating": rating,
+            "text": text,
+        }
+
+    @staticmethod
+    def _brand_of_store(store: str) -> str:
+        s = str(store).replace(" ", "")
+        if "똑똑" in s:
+            return "똑똑연구소"
+        if "롤라루" in s:
+            return "롤라루"
+        if "루티니" in s:
+            return "루티니스트"
+        return "기타"
+
 
 # ==========================================================
 # 멀티 스토어 로더
