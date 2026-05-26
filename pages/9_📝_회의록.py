@@ -1,36 +1,33 @@
-"""회의록 — Notion API 자동 연동 + 팀 필터 + iframe 보조.
+"""회의록 + 워크스페이스 — Notion API 자동 연동 (다중 DB).
 
-운영:
-  - Notion API token + DB ID 있으면 → 자동 조회 + 카드 + 본문 (기본)
-  - 팀 필터: 그로잉업팀만 / 전체 보기 토글
-  - 보조: 노션 원본 페이지 열기 버튼 (로그인 상태)
+연결된 모든 DB 자동 탐색 후 탭으로 표시:
+  📝 회의록 / ✅ 할 일 / 📚 지식 / 🗓 캘린더 / 기타
 """
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from utils.ui import setup_page, TEXT_MAIN, TEXT_MUTED, TEXT_FAINT
 from api.notion_meetings import (
-    load_meetings, load_page_content, test_connection,
+    list_accessible_databases, query_database,
+    load_page_content, test_connection,
     save_notion_credentials, _get_creds,
 )
 
 
 setup_page(
-    page_title="회의록",
+    page_title="회의록 / 워크스페이스",
     page_icon="📝",
-    header_title="📝 회의록",
-    header_subtitle="Notion 회의록 DB — API 자동 연동",
+    header_title="📝 회의록 · 워크스페이스",
+    header_subtitle="Notion 연결된 DB 자동 표시 — API 모드",
 )
 
 
 ROOT = Path(__file__).parent.parent
-EMBED_URL_FILE = ROOT / "data" / "notion_meetings_url.txt"
 
 
 # ==========================================================
@@ -38,134 +35,138 @@ EMBED_URL_FILE = ROOT / "data" / "notion_meetings_url.txt"
 # ==========================================================
 token, db_id = _get_creds()
 
-if not token or not db_id:
-    st.warning(
-        "⚠️ Notion API 자격증명이 없습니다.\n\n"
-        "켈리님께 받은 token + DB URL 입력해주세요."
-    )
+if not token:
+    st.warning("⚠️ Notion API token 이 없습니다.")
     with st.form("notion_setup"):
         t = st.text_input("Notion Integration Token", type="password",
                           placeholder="ntn_xxxxxxxxxxxx")
-        d = st.text_input("회의록 DB URL 또는 ID",
+        d = st.text_input("회의록 DB URL 또는 ID (선택)",
                           placeholder="https://www.notion.so/openhan/...")
         if st.form_submit_button("💾 저장", type="primary"):
-            if not t or not d:
-                st.error("token + DB URL 모두 입력 필요")
+            if not t:
+                st.error("token 입력 필요")
             else:
-                # URL 에서 DB ID 자동 추출
                 import re
-                m = re.search(r"([0-9a-f]{32})", d)
-                clean_db = m.group(1) if m else d.replace("-", "").strip()
+                clean_db = ""
+                if d:
+                    m = re.search(r"([0-9a-f]{32})", d)
+                    clean_db = m.group(1) if m else d.replace("-", "").strip()
                 save_notion_credentials(t, clean_db)
-                st.success("저장 완료 — 페이지 새로고침")
+                st.success("저장 — 새로고침")
                 st.rerun()
+
+    st.markdown("""
+    ---
+    ### ☁️ Streamlit Cloud 에 secrets 등록 안내
+    Cloud 에서도 작동하려면:
+    1. https://share.streamlit.io → 본인 앱 → **Settings → Secrets**
+    2. 다음 추가:
+    ```
+    NOTION_TOKEN = "ntn_xxxxxxxxxxxx"
+    ```
+    3. 저장 → 자동 재배포
+    """)
     st.stop()
 
 
 # ==========================================================
-# 연결 상태 + 컨트롤
+# 연결 테스트 + 모든 DB 탐색
 # ==========================================================
-ok, msg = test_connection()
-if not ok:
-    st.error(f"❌ Notion API 오류: {msg}")
-    if st.button("⚙️ 재설정"):
-        # .env 에서 NOTION_* 만 비우기
-        env_path = ROOT / ".env"
-        if env_path.exists():
-            lines = env_path.read_text(encoding="utf-8").splitlines()
-            new_lines = [
-                l for l in lines
-                if not l.startswith("NOTION_TOKEN=")
-                and not l.startswith("NOTION_MEETINGS_DB_ID=")
-            ]
-            env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+@st.cache_data(ttl=300, show_spinner="📥 Notion DB 탐색 중...")
+def _cached_databases():
+    return list_accessible_databases()
+
+
+@st.cache_data(ttl=300, show_spinner="📥 DB 행 조회 중...")
+def _cached_query(db_id_arg: str):
+    return query_database(db_id_arg, max_count=200)
+
+
+databases = _cached_databases()
+
+if not databases:
+    st.error(
+        "❌ 접근 가능한 DB 가 없습니다. "
+        "노션에서 integration 을 DB 에 연결했는지 확인해주세요."
+    )
+    if st.button("🔄 다시 시도"):
+        st.cache_data.clear()
         st.rerun()
     st.stop()
 
 
 # ==========================================================
-# 회의록 조회 (캐시)
+# 상단 상태바
 # ==========================================================
-@st.cache_data(ttl=300, show_spinner="📥 Notion 회의록 조회 중...")
-def _cached_meetings():
-    return load_meetings(max_count=100)
-
-
-try:
-    meetings = _cached_meetings()
-except Exception as e:
-    st.error(f"조회 실패: {e}")
-    st.stop()
-
-if not meetings:
-    st.info("📭 회의록 없음")
-    st.stop()
-
-
-# ==========================================================
-# 팀 필터
-# ==========================================================
-# 모든 팀 추출
-all_teams = set()
-for m in meetings:
-    team = m.get("properties", {}).get("팀") or m.get("properties", {}).get("Team", "")
-    if team:
-        all_teams.add(str(team).strip())
-
-team_options = ["그로잉업"] + sorted(t for t in all_teams if t != "그로잉업")
-team_options = ["전체"] + team_options
-
-control_col_a, control_col_b, control_col_c = st.columns([2, 2, 1])
-with control_col_a:
-    selected_team = st.selectbox(
-        "🏷️ 팀 필터",
-        team_options,
-        index=team_options.index("그로잉업") if "그로잉업" in team_options else 0,
+header_a, header_b = st.columns([4, 1])
+with header_a:
+    st.markdown(
+        f"<div style='padding:8px 14px; background:#dcfce7; border-left:4px solid #16a34a; "
+        f"border-radius:6px; font-size:0.85rem;'>"
+        f"🟢 <b>API 모드</b> — Notion 연결됨 · <b>{len(databases)}개 DB</b> 탐색됨"
+        f"</div>",
+        unsafe_allow_html=True,
     )
-with control_col_b:
-    confirm_filter = st.selectbox(
-        "✅ 확정 상태",
-        ["전체", "confirm 만", "미확정 만"],
-        index=0,
-    )
-with control_col_c:
+with header_b:
     if st.button("🔄 새로고침", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
-# 필터 적용
-filtered = []
-for m in meetings:
-    props = m.get("properties", {})
-    team = str(props.get("팀") or props.get("Team", "")).strip()
-    if selected_team != "전체" and team != selected_team:
-        continue
-    confirmed = props.get("confirm")
-    if confirm_filter == "confirm 만" and not confirmed:
-        continue
-    if confirm_filter == "미확정 만" and confirmed:
-        continue
-    filtered.append(m)
-
-
-st.markdown(
-    f"<div style='padding:8px 14px; background:#dcfce7; border-left:4px solid #16a34a; "
-    f"border-radius:6px; font-size:0.85rem;'>"
-    f"🟢 <b>API 모드</b> — {msg} · 전체 {len(meetings)}건 중 "
-    f"<b>{len(filtered)}건</b> 표시"
-    f"</div>",
-    unsafe_allow_html=True,
-)
 st.write("")
 
 
-if not filtered:
-    st.info("선택한 필터에 맞는 회의록이 없습니다.")
-    st.stop()
+# ==========================================================
+# DB 타입 분류 + 그로잉업팀 관련만 필터링
+# ==========================================================
+def _classify_db(title: str) -> tuple[str, str] | None:
+    """DB 제목 → (탭 라벨, 아이콘) 또는 None (관련 없음)."""
+    t = title.lower().replace(" ", "")
+    if "회의록" in title or "meeting" in t:
+        return ("회의록", "📝")
+    if ("할 일" in title or "할일" in title or
+            "task" in t or "todo" in t or "to-do" in t):
+        return ("할 일", "✅")
+    if "지식" in title or "knowledge" in t:
+        return ("지식", "📚")
+    if "캘린더" in title or "calendar" in t or "일정" in title:
+        return ("캘린더", "🗓")
+    return None   # 관련 없는 DB → 제외
+
+
+# 키워드 매칭된 DB 만 + 중복 제거 (같은 title 두 개 있으면 첫 번째만)
+classified = []
+seen_labels: dict[str, str] = {}   # label → db_id (중복 방지)
+
+for db in databases:
+    result = _classify_db(db["title"])
+    if result is None:
+        continue
+    label, icon = result
+    # "그로잉업팀 캘린더" 같이 그로잉업 keyword 있으면 우선
+    is_growingup_specific = "그로잉업" in db["title"]
+    existing_id = seen_labels.get(label)
+    if existing_id and not is_growingup_specific:
+        # 이미 더 관련 있는 것 있으면 skip
+        continue
+    classified = [c for c in classified if c["label"] != label] + [{
+        **db, "label": label, "icon": icon,
+    }]
+    seen_labels[label] = db["id"]
+
+# 우선순위 정렬: 회의록 → 할 일 → 캘린더 → 지식
+order = {"회의록": 0, "할 일": 1, "캘린더": 2, "지식": 3}
+classified.sort(key=lambda x: order.get(x["label"], 99))
 
 
 # ==========================================================
-# 헬퍼
+# 탭 생성
+# ==========================================================
+tab_labels = [f"{c['icon']} {c['label']}" for c in classified]
+tabs = st.tabs(tab_labels)
+
+
+# ==========================================================
+# 헬퍼 — 회의록 카드 렌더링
 # ==========================================================
 def _fmt_iso(iso: str) -> str:
     if not iso:
@@ -199,147 +200,188 @@ def _render_blocks(blocks: list[dict]) -> None:
         st.markdown("\n\n".join(md_parts))
 
 
-# ==========================================================
-# Notion 스타일 카드 CSS
-# ==========================================================
-st.markdown("""
-<style>
-.nt-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 24px 32px;
-  margin-bottom: 16px;
-}
-.nt-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 18px 0;
-  line-height: 1.2;
-}
-.nt-row { display: flex; gap: 12px; padding: 4px 0; font-size: 0.88rem; }
-.nt-key { color: #64748b; min-width: 100px; }
-.nt-val { color: #0f172a; flex: 1; }
-.nt-chip {
-  display: inline-block; padding: 2px 10px; border-radius: 4px;
-  font-size: 0.8rem; font-weight: 500; margin-right: 6px;
-  background: #fef3c7; color: #92400e;
-}
-.nt-chip.team { background: #fce7f3; color: #be185d; }
-.nt-chip.person { background: #e0e7ff; color: #4338ca; border-radius: 14px; }
-.nt-chip.confirmed { background: #dcfce7; color: #166534; }
-</style>
-""", unsafe_allow_html=True)
-
-
-def _format_prop_value(val, key: str) -> str:
-    """속성 → HTML chip."""
-    if val is None or val == "":
+def _normalize_prop_value(v):
+    """display 용 값 정규화 (list → 쉼표, dict → 무시 등)."""
+    if v is None:
         return ""
-    cls = "nt-chip"
-    if "팀" in key:
-        cls = "nt-chip team"
-    elif "참석" in key or "팀장" in key:
-        cls = "nt-chip person"
-
-    if isinstance(val, bool):
-        if val:
-            return '<span class="nt-chip confirmed">✓ 확정</span>'
-        return '<span class="nt-chip" style="background:#fef3c7;color:#92400e;">미확정</span>'
-
-    if isinstance(val, list):
-        if not val:
-            return ""
-        return "".join(f'<span class="{cls}">{v}</span>' for v in val)
-
-    s = str(val).strip()
-    if not s:
-        return ""
-    # 날짜 ISO 면 보기 좋게
-    if "T" in s and ":" in s and "-" in s:
-        s = _fmt_iso(s)
-    # 쉼표로 split (multi)
-    if "," in s and ("참석" in key or "팀장" in key):
-        parts = [p.strip() for p in s.split(",")]
-        return "".join(f'<span class="{cls}">{p}</span>' for p in parts)
-    return f'<span class="{cls}">{s}</span>'
+    if isinstance(v, bool):
+        return "✓" if v else ""
+    if isinstance(v, list):
+        return ", ".join(str(x) for x in v if x)
+    s = str(v).strip()
+    if "T" in s and ":" in s and len(s) > 10:
+        return _fmt_iso(s)
+    return s
 
 
 # ==========================================================
-# 회의록 목록 — 카드 (최신순)
+# 회의록 — 카드 + 본문 (특별 처리)
 # ==========================================================
-st.markdown(f"##### 📋 회의록 ({len(filtered)}건, 최신순)")
-st.write("")
+def render_meetings_view(db_id_arg: str):
+    rows = _cached_query(db_id_arg)
+    if not rows:
+        st.info("📭 회의록 없음")
+        return
 
-for i, m in enumerate(filtered):
-    title = m.get("title") or "(제목 없음)"
-    created = _fmt_iso(m.get("created_at", ""))
-    notion_url = m.get("url", "")
-    props = m.get("properties", {})
+    # 팀 필터
+    teams = sorted({
+        str(r.get("properties", {}).get("팀") or "").strip()
+        for r in rows
+        if r.get("properties", {}).get("팀")
+    })
+    team_options = ["전체"] + (["그로잉업"] if "그로잉업" in teams else []) + \
+                   [t for t in teams if t != "그로잉업"]
 
-    # 첫 1개만 자동 펼침
-    with st.expander(f"📅 **{title}**  ·  {created}", expanded=(i == 0)):
-        # 속성 카드
-        prop_rows_html = ""
-        for k, v in props.items():
-            html_val = _format_prop_value(v, k)
-            if not html_val:
-                continue
-            prop_rows_html += (
-                f'<div class="nt-row">'
-                f'<div class="nt-key">{k}</div>'
-                f'<div class="nt-val">{html_val}</div>'
-                f'</div>'
-            )
-
-        st.markdown(
-            f"""
-<div class="nt-card">
-  {prop_rows_html}
-</div>
-""",
-            unsafe_allow_html=True,
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        selected_team = st.selectbox(
+            "🏷️ 팀 필터",
+            team_options,
+            index=team_options.index("그로잉업") if "그로잉업" in team_options else 0,
+            key=f"team_filter_{db_id_arg}",
         )
+    with col_b:
+        confirm_only = st.checkbox("✅ 확정만", key=f"confirm_{db_id_arg}")
 
-        # 노션 원본 열기 버튼
-        if notion_url:
-            st.markdown(
-                f"<div style='margin: 0 0 12px 0;'>"
-                f"<a href='{notion_url}' target='_blank' "
-                f"style='font-size:0.82rem; color:#2563eb;'>"
-                f"🔗 노션 원본에서 열기 (캘린더/DB embed/댓글 포함 전체 보기)</a>"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
+    filtered = [
+        r for r in rows
+        if (selected_team == "전체" or
+            str(r.get("properties", {}).get("팀") or "").strip() == selected_team)
+        and (not confirm_only or r.get("properties", {}).get("confirm"))
+    ]
 
-        # 본문 (Notion blocks → markdown)
-        try:
-            blocks = load_page_content(m["id"])
-            if blocks:
-                st.divider()
-                _render_blocks(blocks)
-            else:
-                st.caption(":grey[본문 비어있음]")
-        except Exception as e:
-            st.warning(f"본문 조회 실패: {e}")
+    st.caption(f"전체 {len(rows)}건 중 **{len(filtered)}건** 표시")
+    st.write("")
+
+    if not filtered:
+        st.info("필터 조건에 맞는 회의록 없음")
+        return
+
+    # 정렬 — 최신순
+    filtered.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+
+    for i, m in enumerate(filtered):
+        title = m.get("title") or "(제목 없음)"
+        created = _fmt_iso(m.get("created_at", ""))
+        notion_url = m.get("url", "")
+        props = m.get("properties", {})
+
+        with st.expander(f"📅 **{title}**  ·  {created}", expanded=(i == 0)):
+            # 속성 카드
+            for k, v in props.items():
+                if not v:
+                    continue
+                norm = _normalize_prop_value(v)
+                if not norm:
+                    continue
+                st.markdown(
+                    f"<div style='display:flex; gap:12px; padding:3px 0; font-size:0.88rem;'>"
+                    f"<div style='color:{TEXT_FAINT}; min-width:100px;'>{k}</div>"
+                    f"<div style='color:{TEXT_MAIN};'>{norm}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+            if notion_url:
+                st.markdown(
+                    f"<div style='margin: 8px 0; font-size:0.82rem;'>"
+                    f"<a href='{notion_url}' target='_blank' style='color:#2563eb;'>"
+                    f"🔗 노션 원본에서 열기</a></div>",
+                    unsafe_allow_html=True,
+                )
+
+            try:
+                blocks = load_page_content(m["id"])
+                if blocks:
+                    st.divider()
+                    _render_blocks(blocks)
+            except Exception as e:
+                st.warning(f"본문 조회 실패: {e}")
 
 
 # ==========================================================
-# 하단 — 보조 도구
+# 일반 DB — 표 형태
+# ==========================================================
+def render_table_view(db_id_arg: str, label: str):
+    rows = _cached_query(db_id_arg)
+    if not rows:
+        st.info(f"📭 {label} 데이터 없음")
+        return
+
+    # 모든 property 키 수집
+    all_keys = set()
+    for r in rows:
+        all_keys.update(r.get("properties", {}).keys())
+
+    # DataFrame 변환
+    data = []
+    for r in rows:
+        record = {"제목": r.get("title") or "(제목 없음)"}
+        for k in all_keys:
+            v = r.get("properties", {}).get(k)
+            record[k] = _normalize_prop_value(v)
+        record["_url"] = r.get("url", "")
+        data.append(record)
+
+    df = pd.DataFrame(data)
+
+    # 최신순
+    if "created_at" not in df.columns and rows:
+        df["_created"] = [r.get("created_at", "") for r in rows]
+        df = df.sort_values("_created", ascending=False).drop(columns=["_created"])
+
+    # URL 컬럼은 link 로 표시
+    if "_url" in df.columns:
+        col_cfg = {
+            "_url": st.column_config.LinkColumn(
+                "노션 열기", display_text="🔗 열기", width="small",
+            ),
+        }
+    else:
+        col_cfg = {}
+
+    st.caption(f"{len(df)}건")
+    st.dataframe(
+        df, width="stretch", hide_index=True,
+        column_config=col_cfg,
+        height=min(700, 60 + len(df) * 36),
+    )
+
+
+# ==========================================================
+# 탭별 렌더링
+# ==========================================================
+for tab, c in zip(tabs, classified):
+    with tab:
+        st.markdown(f"##### {c['icon']} {c['title']}")
+        if c["label"] == "회의록":
+            render_meetings_view(c["id"])
+        else:
+            render_table_view(c["id"], c["label"])
+
+
+# ==========================================================
+# 하단 — 설정
 # ==========================================================
 st.markdown("---")
 with st.expander("⚙️ 설정 / 도움말", expanded=False):
     st.markdown(f"""
-    **현재 연결**: ✓ Notion API 모드
-    **회의록 DB**: `{db_id}`
-    **조회**: 매 5분 자동 캐싱 (위 🔄 새로고침 으로 강제 갱신)
-
-    **추가 페이지 연결하고 싶을 때**:
-    켈리님께 부탁 → 노션 페이지 우상단 "..." → "연결" →
-    "그로잉업팀 대시보드" 추가하면 그 페이지도 API 로 조회 가능.
+    **연결된 DB ({len(classified)}개)**:
     """)
-    if st.button("🗑️ 자격증명 초기화 (재설정)"):
+    for c in classified:
+        st.markdown(f"- {c['icon']} **{c['title']}** ([🔗 노션 원본]({c['url']}))")
+
+    st.markdown("""
+
+    **추가 DB 연결**: 노션 페이지 우상단 "..." → "연결" → "그로잉업팀 대시보드" 추가
+
+    **Cloud secrets** (Cloud 에서 작동 필요):
+    ```
+    NOTION_TOKEN = "ntn_xxxxxxxxxx"
+    ```
+    https://share.streamlit.io → Settings → Secrets 에 추가.
+    """)
+    if st.button("🗑️ 자격증명 초기화"):
         env_path = ROOT / ".env"
         if env_path.exists():
             lines = env_path.read_text(encoding="utf-8").splitlines()

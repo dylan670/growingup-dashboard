@@ -217,6 +217,91 @@ def load_page_content(page_id: str, max_blocks: int = 200) -> list[dict]:
     return blocks
 
 
+def list_accessible_databases() -> list[dict]:
+    """Integration 이 접근 가능한 모든 DB 검색.
+
+    반환: [{'id', 'title', 'url'}, ...]
+    """
+    token, _ = _get_creds()
+    if not token:
+        return []
+
+    url = f"{NOTION_API_BASE}/search"
+    payload = {
+        "filter": {"value": "database", "property": "object"},
+        "page_size": 100,
+    }
+    try:
+        resp = requests.post(url, headers=_headers(token), json=payload, timeout=20)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return []
+
+    rows: list[dict] = []
+    for db in data.get("results", []):
+        title_parts = db.get("title", []) or []
+        title = "".join(p.get("plain_text", "") for p in title_parts) or "(제목 없음)"
+        rows.append({
+            "id": db.get("id", ""),
+            "title": title,
+            "url": db.get("url", ""),
+            "properties_schema": db.get("properties", {}),
+        })
+    return rows
+
+
+def query_database(db_id: str, max_count: int = 100) -> list[dict]:
+    """특정 DB 의 모든 행 조회. 일반 DB(회의록/할일/지식/캘린더 등) 지원.
+
+    반환: [{'id', 'title', 'url', 'created_at', 'properties': {...}}, ...]
+    """
+    token, _ = _get_creds()
+    if not token:
+        return []
+
+    url = f"{NOTION_API_BASE}/databases/{db_id}/query"
+    rows: list[dict] = []
+    cursor: str | None = None
+
+    while True:
+        payload: dict = {"page_size": min(max_count - len(rows), 100)}
+        if cursor:
+            payload["start_cursor"] = cursor
+        try:
+            resp = requests.post(url, headers=_headers(token), json=payload, timeout=20)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception:
+            break
+
+        for page in data.get("results", []):
+            props = page.get("properties", {})
+            title = ""
+            parsed: dict = {}
+            for key, val in props.items():
+                if val.get("type") == "title":
+                    title = _extract_title(val)
+                else:
+                    parsed[key] = _parse_property(val)
+            rows.append({
+                "id": page.get("id", ""),
+                "title": title,
+                "created_at": page.get("created_time", ""),
+                "last_edited_at": page.get("last_edited_time", ""),
+                "url": page.get("url", ""),
+                "properties": parsed,
+            })
+            if len(rows) >= max_count:
+                return rows
+
+        if not data.get("has_more"):
+            break
+        cursor = data.get("next_cursor")
+
+    return rows
+
+
 def test_connection() -> tuple[bool, str]:
     """Notion API 연결 테스트."""
     token, db_id = _get_creds()
