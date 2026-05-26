@@ -1,215 +1,353 @@
-"""회의록 — Notion 공개 페이지 iframe 임베드.
+"""회의록 — Notion API 자동 연동 + 팀 필터 + iframe 보조.
 
 운영:
-  노션 페이지 우상단 '공유' → '웹에 게시' → URL 받기 → 여기에 등록
-  → 대시보드에서 노션 페이지 그대로 100% 표시 (실시간 갱신)
+  - Notion API token + DB ID 있으면 → 자동 조회 + 카드 + 본문 (기본)
+  - 팀 필터: 그로잉업팀만 / 전체 보기 토글
+  - 보조: 노션 원본 페이지 열기 버튼 (로그인 상태)
 """
 from __future__ import annotations
 
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
 
-from utils.ui import setup_page, TEXT_MAIN, TEXT_MUTED
+from utils.ui import setup_page, TEXT_MAIN, TEXT_MUTED, TEXT_FAINT
+from api.notion_meetings import (
+    load_meetings, load_page_content, test_connection,
+    save_notion_credentials, _get_creds,
+)
 
 
 setup_page(
     page_title="회의록",
     page_icon="📝",
     header_title="📝 회의록",
-    header_subtitle="Notion 회의록 페이지 — 실시간 임베드 (100% 일치)",
+    header_subtitle="Notion 회의록 DB — API 자동 연동",
 )
 
 
 ROOT = Path(__file__).parent.parent
-CONFIG_FILE = ROOT / "data" / "notion_meetings_url.txt"
+EMBED_URL_FILE = ROOT / "data" / "notion_meetings_url.txt"
 
 
 # ==========================================================
-# URL 저장/로드
+# 자격증명 확인
 # ==========================================================
-def _load_url() -> str:
-    # 우선순위: 환경변수 → 로컬 파일
-    env_url = os.getenv("NOTION_MEETINGS_PUBLIC_URL", "").strip()
-    if env_url:
-        return env_url
-    if CONFIG_FILE.exists():
-        try:
-            return CONFIG_FILE.read_text(encoding="utf-8").strip()
-        except Exception:
-            pass
-    return ""
+token, db_id = _get_creds()
 
-
-def _normalize_to_embed_url(url: str) -> str:
-    """일반 notion.site URL → 임베드 전용 /ebd/ URL.
-
-    예:
-      https://workspace.notion.site/page-title-32hexchars
-      https://workspace.notion.site/32hexchars
-      → https://workspace.notion.site/ebd/32hexchars
-    이미 /ebd/ 형식이면 그대로 (단 // 같은 오타는 교정).
-    """
-    import re
-    s = url.strip().rstrip("/")
-    # 슬래시 연속 교정 (https:// 는 보존)
-    s = re.sub(r"(?<!:)/+", "/", s)
-
-    # page ID 추출 — URL 마지막 path segment 의 끝부분 32자리 hex
-    # 슬러그-pageid 패턴 ('5-3-abc...32hex') 도 정확히 처리
-    m = re.search(r"([0-9a-f]{32})(?:[/?#]|$)", s)
-    if not m:
-        # 하이픈 포함 36자 UUID 패턴 (8-4-4-4-12)
-        m2 = re.search(
-            r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
-            s,
-        )
-        if not m2:
-            return s
-        page_id = m2.group(1).replace("-", "")
-    else:
-        page_id = m.group(1)
-
-    # workspace 추출
-    wm = re.match(r"(https?://[^/]+)/", s)
-    if not wm:
-        return s
-    base = wm.group(1)
-    return f"{base}/ebd/{page_id}"
-
-
-def _save_url(url: str) -> None:
-    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_FILE.write_text(_normalize_to_embed_url(url), encoding="utf-8")
-
-
-def _clear_url() -> None:
-    if CONFIG_FILE.exists():
-        CONFIG_FILE.unlink()
-
-
-# ==========================================================
-# URL 입력 / embed
-# ==========================================================
-notion_url = _load_url()
-
-if not notion_url:
-    st.info(
-        "📢 노션 회의록 페이지 URL 을 등록하면 대시보드에 그대로 임베드됩니다.\n\n"
-        "**준비 — 노션 페이지 공개 발행**\n"
-        "1. 노션 회의록 페이지 우상단 **\"공유\"** 클릭\n"
-        "2. **\"웹에 게시\"** 토글 활성화\n"
-        "3. 옵션: 검색 엔진 표시 끔 / 편집 허용 끔 / 댓글 허용 자유\n"
-        "4. **\"링크 복사\"** 클릭\n"
-        "5. 복사한 URL (`https://...notion.site/...`) 을 아래에 붙여넣기"
+if not token or not db_id:
+    st.warning(
+        "⚠️ Notion API 자격증명이 없습니다.\n\n"
+        "켈리님께 받은 token + DB URL 입력해주세요."
     )
-
-    with st.form("notion_url_setup"):
-        url_input = st.text_input(
-            "Notion 공개 페이지 URL",
-            placeholder="https://openhan.notion.site/...",
-        )
+    with st.form("notion_setup"):
+        t = st.text_input("Notion Integration Token", type="password",
+                          placeholder="ntn_xxxxxxxxxxxx")
+        d = st.text_input("회의록 DB URL 또는 ID",
+                          placeholder="https://www.notion.so/openhan/...")
         if st.form_submit_button("💾 저장", type="primary"):
-            if not url_input.strip().startswith("http"):
-                st.error("URL 형식 오류")
+            if not t or not d:
+                st.error("token + DB URL 모두 입력 필요")
             else:
-                _save_url(url_input.strip())
+                # URL 에서 DB ID 자동 추출
+                import re
+                m = re.search(r"([0-9a-f]{32})", d)
+                clean_db = m.group(1) if m else d.replace("-", "").strip()
+                save_notion_credentials(t, clean_db)
                 st.success("저장 완료 — 페이지 새로고침")
                 st.rerun()
     st.stop()
 
 
 # ==========================================================
-# 노션 원본 (notion.so) URL — 로그인 상태로 열기용
+# 연결 상태 + 컨트롤
 # ==========================================================
-def _to_notion_so_url(embed_url: str) -> str:
-    """ebd URL → notion.so URL (사용자 로그인 상태로 열림)."""
-    import re
-    m = re.search(r"([0-9a-f]{32})", embed_url)
-    if not m:
-        return embed_url
-    page_id = m.group(1)
-    # 워크스페이스 추출
-    wm = re.match(r"https?://([^.]+)\.notion\.site", embed_url)
-    workspace = wm.group(1) if wm else "openhan"
-    return f"https://www.notion.so/{workspace}/{page_id}"
-
-
-notion_so_url = _to_notion_so_url(notion_url)
+ok, msg = test_connection()
+if not ok:
+    st.error(f"❌ Notion API 오류: {msg}")
+    if st.button("⚙️ 재설정"):
+        # .env 에서 NOTION_* 만 비우기
+        env_path = ROOT / ".env"
+        if env_path.exists():
+            lines = env_path.read_text(encoding="utf-8").splitlines()
+            new_lines = [
+                l for l in lines
+                if not l.startswith("NOTION_TOKEN=")
+                and not l.startswith("NOTION_MEETINGS_DB_ID=")
+            ]
+            env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        st.rerun()
+    st.stop()
 
 
 # ==========================================================
-# 상단 — 노션 원본 열기 큼직한 버튼 (로그인 상태로)
+# 회의록 조회 (캐시)
 # ==========================================================
+@st.cache_data(ttl=300, show_spinner="📥 Notion 회의록 조회 중...")
+def _cached_meetings():
+    return load_meetings(max_count=100)
+
+
+try:
+    meetings = _cached_meetings()
+except Exception as e:
+    st.error(f"조회 실패: {e}")
+    st.stop()
+
+if not meetings:
+    st.info("📭 회의록 없음")
+    st.stop()
+
+
+# ==========================================================
+# 팀 필터
+# ==========================================================
+# 모든 팀 추출
+all_teams = set()
+for m in meetings:
+    team = m.get("properties", {}).get("팀") or m.get("properties", {}).get("Team", "")
+    if team:
+        all_teams.add(str(team).strip())
+
+team_options = ["그로잉업"] + sorted(t for t in all_teams if t != "그로잉업")
+team_options = ["전체"] + team_options
+
+control_col_a, control_col_b, control_col_c = st.columns([2, 2, 1])
+with control_col_a:
+    selected_team = st.selectbox(
+        "🏷️ 팀 필터",
+        team_options,
+        index=team_options.index("그로잉업") if "그로잉업" in team_options else 0,
+    )
+with control_col_b:
+    confirm_filter = st.selectbox(
+        "✅ 확정 상태",
+        ["전체", "confirm 만", "미확정 만"],
+        index=0,
+    )
+with control_col_c:
+    if st.button("🔄 새로고침", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
+# 필터 적용
+filtered = []
+for m in meetings:
+    props = m.get("properties", {})
+    team = str(props.get("팀") or props.get("Team", "")).strip()
+    if selected_team != "전체" and team != selected_team:
+        continue
+    confirmed = props.get("confirm")
+    if confirm_filter == "confirm 만" and not confirmed:
+        continue
+    if confirm_filter == "미확정 만" and confirmed:
+        continue
+    filtered.append(m)
+
+
 st.markdown(
-    f"""
-<a href="{notion_so_url}" target="_blank" style="text-decoration:none;">
-<div style="
-    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-    color: white;
-    padding: 20px 28px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(37,99,235,0.25);
-    cursor: pointer;
-    transition: transform 0.1s;
-">
-  <div>
-    <div style="font-size:1.05rem; font-weight:700;">🔗 노션 원본에서 열기 (로그인 상태)</div>
-    <div style="font-size:0.82rem; opacity:0.9; margin-top:4px;">
-      비공개 DB · 캘린더 · 모든 임베드까지 100% 표시 (새 탭에서 열림)
-    </div>
-  </div>
-  <div style="font-size:1.5rem;">→</div>
-</div>
-</a>
-""",
+    f"<div style='padding:8px 14px; background:#dcfce7; border-left:4px solid #16a34a; "
+    f"border-radius:6px; font-size:0.85rem;'>"
+    f"🟢 <b>API 모드</b> — {msg} · 전체 {len(meetings)}건 중 "
+    f"<b>{len(filtered)}건</b> 표시"
+    f"</div>",
     unsafe_allow_html=True,
 )
-
-
-# ==========================================================
-# iframe embed (공개 부분 미리보기)
-# ==========================================================
-col_a, col_b, col_c = st.columns([4, 1, 1])
-with col_a:
-    st.markdown(
-        f"<div style='padding:8px 14px; background:#dcfce7; border-left:4px solid #16a34a; "
-        f"border-radius:6px; font-size:0.85rem;'>"
-        f"🟢 <b>대시보드 미리보기</b> — 공개된 부분만 (댓글/회의록 OK · "
-        f"비공개 DB 는 위 '노션 원본 열기' 사용)"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-with col_b:
-    if st.button("🔄 새로고침", use_container_width=True):
-        st.rerun()
-with col_c:
-    if st.button("⚙️ URL 변경", use_container_width=True):
-        _clear_url()
-        st.rerun()
-
 st.write("")
 
-# 높이 조절 슬라이더
-height = st.slider(
-    "iframe 높이 (px)",
-    min_value=600,
-    max_value=3000,
-    value=1400,
-    step=100,
-    key="iframe_height",
-)
 
-# iframe 임베드 — Notion 공개 페이지
-components.iframe(notion_url, height=height, scrolling=True)
+if not filtered:
+    st.info("선택한 필터에 맞는 회의록이 없습니다.")
+    st.stop()
 
-st.caption(
-    "💡 iframe 안에서 '사용 권한 없음' 보이는 부분 = 비공개 DB. "
-    "전체 보시려면 상단 **'🔗 노션 원본에서 열기'** 클릭하세요 (브라우저 로그인 그대로 사용)."
-)
+
+# ==========================================================
+# 헬퍼
+# ==========================================================
+def _fmt_iso(iso: str) -> str:
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        return (dt + timedelta(hours=9)).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return iso[:16]
+
+
+def _render_blocks(blocks: list[dict]) -> None:
+    md_parts: list[str] = []
+    for b in blocks:
+        btype, text = b.get("type", ""), b.get("text", "")
+        if not text and btype != "divider":
+            continue
+        if btype == "heading_1": md_parts.append(f"### {text}")
+        elif btype == "heading_2": md_parts.append(f"#### {text}")
+        elif btype == "heading_3": md_parts.append(f"##### {text}")
+        elif btype == "bulleted_list_item": md_parts.append(f"- {text}")
+        elif btype == "numbered_list_item": md_parts.append(f"1. {text}")
+        elif btype == "to_do":
+            md_parts.append(f"{'✅' if b.get('checked') else '⬜'} {text}")
+        elif btype == "quote": md_parts.append(f"> {text}")
+        elif btype == "code": md_parts.append(f"```\n{text}\n```")
+        elif btype == "divider": md_parts.append("---")
+        elif btype == "callout": md_parts.append(f"> 💡 {text}")
+        else: md_parts.append(text)
+    if md_parts:
+        st.markdown("\n\n".join(md_parts))
+
+
+# ==========================================================
+# Notion 스타일 카드 CSS
+# ==========================================================
+st.markdown("""
+<style>
+.nt-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px 32px;
+  margin-bottom: 16px;
+}
+.nt-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 18px 0;
+  line-height: 1.2;
+}
+.nt-row { display: flex; gap: 12px; padding: 4px 0; font-size: 0.88rem; }
+.nt-key { color: #64748b; min-width: 100px; }
+.nt-val { color: #0f172a; flex: 1; }
+.nt-chip {
+  display: inline-block; padding: 2px 10px; border-radius: 4px;
+  font-size: 0.8rem; font-weight: 500; margin-right: 6px;
+  background: #fef3c7; color: #92400e;
+}
+.nt-chip.team { background: #fce7f3; color: #be185d; }
+.nt-chip.person { background: #e0e7ff; color: #4338ca; border-radius: 14px; }
+.nt-chip.confirmed { background: #dcfce7; color: #166534; }
+</style>
+""", unsafe_allow_html=True)
+
+
+def _format_prop_value(val, key: str) -> str:
+    """속성 → HTML chip."""
+    if val is None or val == "":
+        return ""
+    cls = "nt-chip"
+    if "팀" in key:
+        cls = "nt-chip team"
+    elif "참석" in key or "팀장" in key:
+        cls = "nt-chip person"
+
+    if isinstance(val, bool):
+        if val:
+            return '<span class="nt-chip confirmed">✓ 확정</span>'
+        return '<span class="nt-chip" style="background:#fef3c7;color:#92400e;">미확정</span>'
+
+    if isinstance(val, list):
+        if not val:
+            return ""
+        return "".join(f'<span class="{cls}">{v}</span>' for v in val)
+
+    s = str(val).strip()
+    if not s:
+        return ""
+    # 날짜 ISO 면 보기 좋게
+    if "T" in s and ":" in s and "-" in s:
+        s = _fmt_iso(s)
+    # 쉼표로 split (multi)
+    if "," in s and ("참석" in key or "팀장" in key):
+        parts = [p.strip() for p in s.split(",")]
+        return "".join(f'<span class="{cls}">{p}</span>' for p in parts)
+    return f'<span class="{cls}">{s}</span>'
+
+
+# ==========================================================
+# 회의록 목록 — 카드 (최신순)
+# ==========================================================
+st.markdown(f"##### 📋 회의록 ({len(filtered)}건, 최신순)")
+st.write("")
+
+for i, m in enumerate(filtered):
+    title = m.get("title") or "(제목 없음)"
+    created = _fmt_iso(m.get("created_at", ""))
+    notion_url = m.get("url", "")
+    props = m.get("properties", {})
+
+    # 첫 1개만 자동 펼침
+    with st.expander(f"📅 **{title}**  ·  {created}", expanded=(i == 0)):
+        # 속성 카드
+        prop_rows_html = ""
+        for k, v in props.items():
+            html_val = _format_prop_value(v, k)
+            if not html_val:
+                continue
+            prop_rows_html += (
+                f'<div class="nt-row">'
+                f'<div class="nt-key">{k}</div>'
+                f'<div class="nt-val">{html_val}</div>'
+                f'</div>'
+            )
+
+        st.markdown(
+            f"""
+<div class="nt-card">
+  {prop_rows_html}
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+
+        # 노션 원본 열기 버튼
+        if notion_url:
+            st.markdown(
+                f"<div style='margin: 0 0 12px 0;'>"
+                f"<a href='{notion_url}' target='_blank' "
+                f"style='font-size:0.82rem; color:#2563eb;'>"
+                f"🔗 노션 원본에서 열기 (캘린더/DB embed/댓글 포함 전체 보기)</a>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+        # 본문 (Notion blocks → markdown)
+        try:
+            blocks = load_page_content(m["id"])
+            if blocks:
+                st.divider()
+                _render_blocks(blocks)
+            else:
+                st.caption(":grey[본문 비어있음]")
+        except Exception as e:
+            st.warning(f"본문 조회 실패: {e}")
+
+
+# ==========================================================
+# 하단 — 보조 도구
+# ==========================================================
+st.markdown("---")
+with st.expander("⚙️ 설정 / 도움말", expanded=False):
+    st.markdown(f"""
+    **현재 연결**: ✓ Notion API 모드
+    **회의록 DB**: `{db_id}`
+    **조회**: 매 5분 자동 캐싱 (위 🔄 새로고침 으로 강제 갱신)
+
+    **추가 페이지 연결하고 싶을 때**:
+    켈리님께 부탁 → 노션 페이지 우상단 "..." → "연결" →
+    "그로잉업팀 대시보드" 추가하면 그 페이지도 API 로 조회 가능.
+    """)
+    if st.button("🗑️ 자격증명 초기화 (재설정)"):
+        env_path = ROOT / ".env"
+        if env_path.exists():
+            lines = env_path.read_text(encoding="utf-8").splitlines()
+            new_lines = [
+                l for l in lines
+                if not l.startswith("NOTION_TOKEN=")
+                and not l.startswith("NOTION_MEETINGS_DB_ID=")
+            ]
+            env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        st.cache_data.clear()
+        st.rerun()
