@@ -43,9 +43,46 @@ def _load_url() -> str:
     return ""
 
 
+def _normalize_to_embed_url(url: str) -> str:
+    """일반 notion.site URL → 임베드 전용 /ebd/ URL.
+
+    예:
+      https://workspace.notion.site/page-title-32hexchars
+      https://workspace.notion.site/32hexchars
+      → https://workspace.notion.site/ebd/32hexchars
+    이미 /ebd/ 형식이면 그대로 (단 // 같은 오타는 교정).
+    """
+    import re
+    s = url.strip().rstrip("/")
+    # 슬래시 연속 교정 (https:// 는 보존)
+    s = re.sub(r"(?<!:)/+", "/", s)
+
+    # page ID 추출 — URL 마지막 path segment 의 끝부분 32자리 hex
+    # 슬러그-pageid 패턴 ('5-3-abc...32hex') 도 정확히 처리
+    m = re.search(r"([0-9a-f]{32})(?:[/?#]|$)", s)
+    if not m:
+        # 하이픈 포함 36자 UUID 패턴 (8-4-4-4-12)
+        m2 = re.search(
+            r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
+            s,
+        )
+        if not m2:
+            return s
+        page_id = m2.group(1).replace("-", "")
+    else:
+        page_id = m.group(1)
+
+    # workspace 추출
+    wm = re.match(r"(https?://[^/]+)/", s)
+    if not wm:
+        return s
+    base = wm.group(1)
+    return f"{base}/ebd/{page_id}"
+
+
 def _save_url(url: str) -> None:
     CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_FILE.write_text(url.strip(), encoding="utf-8")
+    CONFIG_FILE.write_text(_normalize_to_embed_url(url), encoding="utf-8")
 
 
 def _clear_url() -> None:
