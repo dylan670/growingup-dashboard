@@ -51,7 +51,11 @@ def _load_reviews() -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date", "text"])
     df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
-    df["brand"] = df["product"].apply(_infer_brand_from_product)
+    # brand 컬럼이 CSV 에 직접 있으면 그대로 사용 (정확). 없으면 product 추론.
+    if "brand" in df.columns:
+        df["brand"] = df["brand"].fillna("기타").astype(str)
+    else:
+        df["brand"] = df["product"].apply(_infer_brand_from_product)
     return df
 
 
@@ -65,11 +69,12 @@ def _infer_brand_from_product(product: str) -> str:
         if kw in p:
             return "똑똑연구소"
     # 롤라루 키워드
-    for kw in ["롤라루", "캐리어", "여행", "기내용"]:
+    for kw in ["롤라루", "캐리어", "여행", "기내용", "백팩"]:
         if kw in p:
             return "롤라루"
     # 루티니스트 키워드
-    for kw in ["루티니", "런닝", "러닝", "운동복"]:
+    for kw in ["루티니", "런닝", "러닝", "운동복", "운동조끼",
+               "트레일", "장갑", "마라톤"]:
         if kw in p:
             return "루티니스트"
     return "기타"
@@ -277,6 +282,86 @@ k4.metric("😐 중립", f"{neu_count}")
 k5.metric("😠 부정", f"{neg_count}",
           delta=f"{neg_share:.1f}%",
           delta_color="inverse")
+
+st.markdown("---")
+
+
+# ==========================================================
+# 브랜드별 요약 카드 (한눈에 보기)
+# ==========================================================
+st.markdown("##### 🏷 브랜드별 리뷰 요약")
+
+brand_summary = (
+    filtered.groupby("brand")
+    .agg(
+        리뷰수=("text", "count"),
+        평균별점=("rating", "mean"),
+        긍정=("감성", lambda s: (s == "긍정").sum()),
+        중립=("감성", lambda s: (s == "중립").sum()),
+        부정=("감성", lambda s: (s == "부정").sum()),
+        고유SKU=("product", "nunique"),
+    )
+    .reset_index()
+)
+brand_summary["긍정률%"] = (brand_summary["긍정"] / brand_summary["리뷰수"] * 100).round(1)
+brand_summary["부정률%"] = (brand_summary["부정"] / brand_summary["리뷰수"] * 100).round(1)
+
+# 우선순위 정렬: 똑똑연구소 → 롤라루 → 루티니스트 → 기타
+brand_order = {"똑똑연구소": 0, "롤라루": 1, "루티니스트": 2, "기타": 99}
+brand_summary["_order"] = brand_summary["brand"].map(brand_order).fillna(50)
+brand_summary = brand_summary.sort_values("_order").reset_index(drop=True)
+
+# 브랜드별 카드 (BRAND_COLORS 사용)
+brand_cols = st.columns(max(1, len(brand_summary)))
+for i, row in brand_summary.iterrows():
+    bname = row["brand"]
+    bcolor = BRAND_COLORS.get(bname, {})
+    primary = bcolor.get("primary", "#64748b")
+    bg_soft = bcolor.get("bg_soft", "#f1f5f9")
+    text_color = bcolor.get("text", "#0f172a")
+
+    # 감성 비율 막대 (긍정/중립/부정 가로 바)
+    total = row["리뷰수"] or 1
+    pos_pct = row["긍정"] / total * 100
+    neu_pct = row["중립"] / total * 100
+    neg_pct = row["부정"] / total * 100
+
+    with brand_cols[i]:
+        st.markdown(
+            f"""
+            <div style="background:{bg_soft}; border-left:4px solid {primary};
+                        border-radius:8px; padding:14px 16px;">
+                <div style="font-size:0.95rem; font-weight:700;
+                            color:{text_color}; margin-bottom:6px;">
+                    {bname}
+                </div>
+                <div style="font-size:1.6rem; font-weight:700;
+                            color:{primary}; line-height:1.2;">
+                    {row['리뷰수']}건
+                </div>
+                <div style="font-size:0.8rem; color:#64748b;
+                            margin-top:4px;">
+                    ⭐ {row['평균별점']:.2f} · SKU {int(row['고유SKU'])}개
+                </div>
+                <div style="display:flex; height:6px; margin-top:10px;
+                            border-radius:3px; overflow:hidden;">
+                    <div style="width:{pos_pct}%; background:#16a34a;"
+                         title="긍정 {int(row['긍정'])}건"></div>
+                    <div style="width:{neu_pct}%; background:#94a3b8;"
+                         title="중립 {int(row['중립'])}건"></div>
+                    <div style="width:{neg_pct}%; background:#dc2626;"
+                         title="부정 {int(row['부정'])}건"></div>
+                </div>
+                <div style="font-size:0.74rem; color:#64748b;
+                            margin-top:6px; display:flex;
+                            justify-content:space-between;">
+                    <span style="color:#16a34a;">😊 {row['긍정률%']}%</span>
+                    <span style="color:#dc2626;">😠 {row['부정률%']}%</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 st.markdown("---")
 
@@ -529,10 +614,10 @@ with tab_neg:
 
 
 # ==========================================================
-# TAB 4 — 상품별 ranking (별점/리뷰 수)
+# TAB 4 — 상품별 ranking (브랜드별 분리)
 # ==========================================================
 with tab_prod:
-    st.markdown("##### 🏷 상품별 별점 & 리뷰량 ranking")
+    st.markdown("##### 🏷 상품별 별점 & 리뷰량 ranking (브랜드별)")
 
     prod_agg = (
         filtered.groupby(["brand", "product"])
@@ -540,6 +625,7 @@ with tab_prod:
             리뷰수=("text", "count"),
             평균별점=("rating", "mean"),
             긍정수=("감성", lambda s: (s == "긍정").sum()),
+            중립수=("감성", lambda s: (s == "중립").sum()),
             부정수=("감성", lambda s: (s == "부정").sum()),
             감성점수=("감성점수", "mean"),
         )
@@ -554,53 +640,104 @@ with tab_prod:
     prod_agg["평균별점"] = prod_agg["평균별점"].round(2)
     prod_agg["감성점수"] = prod_agg["감성점수"].round(2)
 
-    prod_agg = prod_agg.sort_values(
-        ["리뷰수", "평균별점"], ascending=[False, False]
+    # ============================================
+    # 브랜드별 sub-table — 명확한 시각적 구분
+    # ============================================
+    brand_order_local = {"똑똑연구소": 0, "롤라루": 1, "루티니스트": 2, "기타": 99}
+    brands_in_data = sorted(
+        prod_agg["brand"].unique(),
+        key=lambda b: brand_order_local.get(b, 50),
     )
 
-    # 표시
-    st.dataframe(
-        prod_agg[
-            ["brand", "product", "리뷰수", "평균별점",
-             "긍정수", "부정수", "긍정률%", "부정률%"]
-        ],
-        hide_index=True, width="stretch",
-        height=min(500, 60 + len(prod_agg) * 36),
-        column_config={
-            "긍정률%": st.column_config.ProgressColumn(
-                "긍정률", format="%.1f%%", min_value=0, max_value=100,
-            ),
-            "부정률%": st.column_config.ProgressColumn(
-                "부정률", format="%.1f%%", min_value=0, max_value=100,
-            ),
-        },
-    )
+    for b in brands_in_data:
+        sub = prod_agg[prod_agg["brand"] == b].sort_values(
+            ["리뷰수", "평균별점"], ascending=[False, False]
+        )
+        if sub.empty:
+            continue
 
-    # 그래프 — 리뷰 수 × 평균 별점 산점도
+        bcolor = BRAND_COLORS.get(b, {})
+        primary = bcolor.get("primary", "#64748b")
+        bg_soft = bcolor.get("bg_soft", "#f1f5f9")
+
+        # 브랜드 헤더
+        b_total = int(sub["리뷰수"].sum())
+        b_avg = sub["평균별점"].mean()
+        st.markdown(
+            f"""
+            <div style="background:{bg_soft}; border-left:5px solid {primary};
+                        border-radius:8px; padding:10px 14px; margin-top:14px;
+                        margin-bottom:8px;">
+                <div style="font-size:1.05rem; font-weight:700;
+                            color:{primary};">
+                    🏷 {b}
+                    <span style="font-size:0.82rem; color:#64748b;
+                                 font-weight:500; margin-left:8px;">
+                        · {len(sub)}개 SKU · 총 {b_total}건 리뷰
+                        · 평균 ⭐{b_avg:.2f}
+                    </span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.dataframe(
+            sub[["product", "리뷰수", "평균별점",
+                 "긍정수", "중립수", "부정수", "긍정률%", "부정률%"]],
+            hide_index=True, width="stretch",
+            height=min(400, 50 + len(sub) * 36),
+            column_config={
+                "product": st.column_config.TextColumn("제품명", width="large"),
+                "긍정률%": st.column_config.ProgressColumn(
+                    "긍정률", format="%.1f%%", min_value=0, max_value=100,
+                ),
+                "부정률%": st.column_config.ProgressColumn(
+                    "부정률", format="%.1f%%", min_value=0, max_value=100,
+                ),
+            },
+        )
+
+    st.markdown("---")
+
+    # ============================================
+    # 통합 산점도 — 브랜드별 색상 구분
+    # ============================================
     if len(prod_agg) > 1:
-        st.markdown("##### 📊 리뷰량 × 별점 산점도")
+        st.markdown("##### 📊 리뷰량 × 별점 산점도 (브랜드별 색상)")
+        prod_agg_sorted = prod_agg.sort_values("리뷰수", ascending=False)
         fig = px.scatter(
-            prod_agg, x="리뷰수", y="평균별점",
+            prod_agg_sorted, x="리뷰수", y="평균별점",
             size="리뷰수", color="brand",
             color_discrete_map={
                 b: BRAND_COLORS.get(b, {}).get("primary", "#94a3b8")
-                for b in prod_agg["brand"].unique()
+                for b in prod_agg_sorted["brand"].unique()
             },
-            hover_data=["product", "긍정률%", "부정률%"],
+            hover_data={"product": True, "긍정률%": True, "부정률%": True,
+                        "리뷰수": True, "brand": False},
+            size_max=40,
         )
         fig.update_layout(
-            height=400, margin=dict(l=10, r=10, t=10, b=10),
+            height=450, margin=dict(l=10, r=10, t=10, b=10),
             xaxis_title="리뷰 수", yaxis_title="평균 별점",
+            legend=dict(title="브랜드", orientation="h", y=1.1),
         )
         # 기준선
         fig.add_hline(y=4.0, line_dash="dot", line_color="#94a3b8",
-                      annotation_text="별점 4.0")
+                      annotation_text="별점 4.0 기준")
+        fig.add_vline(
+            x=prod_agg["리뷰수"].median(),
+            line_dash="dot", line_color="#cbd5e1",
+            annotation_text="리뷰 수 중앙값",
+        )
         st.plotly_chart(fig, use_container_width=True)
 
         st.caption(
-            "💡 우상단 = 리뷰 많고 별점 높음 (베스트셀러) · "
-            "우하단 = 리뷰 많지만 별점 낮음 (개선 시급) · "
-            "좌측 = 리뷰 적은 SKU (마케팅 부족 또는 신상품)"
+            "💡 **사분면 해석** · "
+            "**우상단** = 베스트셀러 (리뷰 많고 별점 높음, 확장 후보) · "
+            "**우하단** = 개선 시급 (매출은 나는데 만족도 낮음) · "
+            "**좌상단** = 잠재력 (별점 좋은데 노출 부족, 마케팅 강화) · "
+            "**좌하단** = 단종 검토"
         )
 
 
