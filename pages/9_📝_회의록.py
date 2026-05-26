@@ -300,6 +300,167 @@ def render_meetings_view(db_id_arg: str):
 
 
 # ==========================================================
+# 캘린더 — 달력 그리드 뷰 (streamlit-calendar)
+# ==========================================================
+def render_calendar_view(db_id_arg: str):
+    """노션 캘린더 DB → FullCalendar 달력 표시."""
+    try:
+        from streamlit_calendar import calendar
+    except ImportError:
+        st.warning(
+            "streamlit-calendar 가 설치되지 않았습니다. "
+            "`pip install streamlit-calendar` 후 재시작."
+        )
+        return
+
+    rows = _cached_query(db_id_arg)
+    if not rows:
+        st.info("📭 캘린더 항목 없음")
+        return
+
+    # 담당자별 색상 매핑
+    PALETTE = ["#2563eb", "#f59e0b", "#16a34a", "#dc2626", "#8b5cf6",
+               "#ec4899", "#0ea5e9", "#14b8a6", "#f97316", "#64748b"]
+    assignee_color: dict[str, str] = {}
+    idx = 0
+
+    def _color_for(name: str) -> str:
+        nonlocal idx
+        if name not in assignee_color:
+            assignee_color[name] = PALETTE[idx % len(PALETTE)]
+            idx += 1
+        return assignee_color[name]
+
+    # 이벤트 변환
+    events = []
+    for r in rows:
+        title = r.get("title") or "(제목 없음)"
+        props = r.get("properties", {})
+        # 날짜 컬럼 우선순위
+        date_val = (
+            props.get("날짜")
+            or props.get("마감일시")
+            or props.get("마감일")
+            or props.get("Date")
+            or props.get("date")
+            or r.get("created_at", "")
+        )
+        if not date_val:
+            continue
+        date_str = str(date_val).strip()
+        if not date_str:
+            continue
+
+        # 담당자
+        assignee = props.get("담당자") or props.get("Assignee") or ""
+        if isinstance(assignee, list):
+            assignee = assignee[0] if assignee else ""
+        assignee = str(assignee).strip()
+
+        # 완료여부
+        done = props.get("완료여부") or props.get("보정완료") or props.get("Done")
+        done_bool = bool(done) and str(done).lower() not in ("no", "false", "0", "")
+
+        # 색상
+        color = _color_for(assignee) if assignee else "#94a3b8"
+        if done_bool:
+            # 완료된 건 흐릿하게
+            color = color + "88"   # alpha hex (low opacity)
+
+        event_title = f"{title}"
+        if assignee:
+            event_title = f"[{assignee}] {title}"
+
+        events.append({
+            "title": event_title,
+            "start": date_str,
+            "backgroundColor": color,
+            "borderColor": color,
+            "extendedProps": {
+                "url": r.get("url", ""),
+                "assignee": assignee,
+                "done": done_bool,
+            },
+        })
+
+    if not events:
+        st.info("📭 날짜가 있는 항목이 없습니다.")
+        return
+
+    # 뷰 모드 선택
+    view_mode = st.radio(
+        "📅 뷰 모드",
+        ["월간", "주간", "리스트"],
+        horizontal=True,
+        key=f"cal_view_{db_id_arg}",
+    )
+    view_map = {
+        "월간": "dayGridMonth",
+        "주간": "timeGridWeek",
+        "리스트": "listMonth",
+    }
+    initial_view = view_map[view_mode]
+
+    calendar_options = {
+        "headerToolbar": {
+            "left": "today prev,next",
+            "center": "title",
+            "right": "dayGridMonth,timeGridWeek,listMonth",
+        },
+        "initialView": initial_view,
+        "selectable": False,
+        "editable": False,
+        "locale": "ko",
+        "buttonText": {
+            "today": "오늘",
+            "month": "월",
+            "week": "주",
+            "list": "리스트",
+        },
+        "height": 700,
+        "firstDay": 0,  # 일요일 시작
+    }
+
+    custom_css = """
+.fc-event-title { font-weight: 500; font-size: 0.82rem; }
+.fc-event { cursor: pointer; padding: 2px 4px; }
+.fc-toolbar-title { font-size: 1.1rem; font-weight: 700; }
+.fc-button { font-size: 0.82rem; padding: 4px 10px; }
+"""
+
+    state = calendar(
+        events=events,
+        options=calendar_options,
+        custom_css=custom_css,
+        key=f"calendar_{db_id_arg}",
+    )
+
+    # 클릭한 이벤트 정보 표시
+    if state and state.get("eventClick"):
+        clicked = state["eventClick"].get("event", {})
+        url = clicked.get("extendedProps", {}).get("url", "")
+        st.markdown(
+            f"**{clicked.get('title', '')}**  · "
+            f"[🔗 노션에서 열기]({url})"
+            if url else f"**{clicked.get('title', '')}**"
+        )
+
+    # 담당자별 범례
+    if assignee_color:
+        st.write("")
+        legend_html = "<div style='display:flex; gap:10px; flex-wrap:wrap; font-size:0.82rem;'>"
+        for name, color in assignee_color.items():
+            if name:
+                legend_html += (
+                    f"<div style='display:flex; align-items:center; gap:6px;'>"
+                    f"<div style='width:14px; height:14px; background:{color}; border-radius:3px;'></div>"
+                    f"{name}</div>"
+                )
+        legend_html += "</div>"
+        st.markdown(legend_html, unsafe_allow_html=True)
+
+
+# ==========================================================
 # 일반 DB — 표 형태
 # ==========================================================
 def render_table_view(db_id_arg: str, label: str):
@@ -356,6 +517,8 @@ for tab, c in zip(tabs, classified):
         st.markdown(f"##### {c['icon']} {c['title']}")
         if c["label"] == "회의록":
             render_meetings_view(c["id"])
+        elif c["label"] == "캘린더":
+            render_calendar_view(c["id"])
         else:
             render_table_view(c["id"], c["label"])
 
