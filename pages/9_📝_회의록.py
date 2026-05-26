@@ -122,16 +122,67 @@ if not notion_url:
 
 
 # ==========================================================
-# iframe embed
+# 노션 원본 (notion.so) URL — 로그인 상태로 열기용
+# ==========================================================
+def _to_notion_so_url(embed_url: str) -> str:
+    """ebd URL → notion.so URL (사용자 로그인 상태로 열림)."""
+    import re
+    m = re.search(r"([0-9a-f]{32})", embed_url)
+    if not m:
+        return embed_url
+    page_id = m.group(1)
+    # 워크스페이스 추출
+    wm = re.match(r"https?://([^.]+)\.notion\.site", embed_url)
+    workspace = wm.group(1) if wm else "openhan"
+    return f"https://www.notion.so/{workspace}/{page_id}"
+
+
+notion_so_url = _to_notion_so_url(notion_url)
+
+
+# ==========================================================
+# 상단 — 노션 원본 열기 큼직한 버튼 (로그인 상태로)
+# ==========================================================
+st.markdown(
+    f"""
+<a href="{notion_so_url}" target="_blank" style="text-decoration:none;">
+<div style="
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    color: white;
+    padding: 20px 28px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+    cursor: pointer;
+    transition: transform 0.1s;
+">
+  <div>
+    <div style="font-size:1.05rem; font-weight:700;">🔗 노션 원본에서 열기 (로그인 상태)</div>
+    <div style="font-size:0.82rem; opacity:0.9; margin-top:4px;">
+      비공개 DB · 캘린더 · 모든 임베드까지 100% 표시 (새 탭에서 열림)
+    </div>
+  </div>
+  <div style="font-size:1.5rem;">→</div>
+</div>
+</a>
+""",
+    unsafe_allow_html=True,
+)
+
+
+# ==========================================================
+# iframe embed (공개 부분 미리보기)
 # ==========================================================
 col_a, col_b, col_c = st.columns([4, 1, 1])
 with col_a:
     st.markdown(
         f"<div style='padding:8px 14px; background:#dcfce7; border-left:4px solid #16a34a; "
         f"border-radius:6px; font-size:0.85rem;'>"
-        f"🟢 <b>임베드 모드</b> — 노션 페이지 실시간 표시 · "
-        f"<a href='{notion_url}' target='_blank' style='color:#2563eb;'>"
-        f"🔗 새 탭에서 열기</a>"
+        f"🟢 <b>대시보드 미리보기</b> — 공개된 부분만 (댓글/회의록 OK · "
+        f"비공개 DB 는 위 '노션 원본 열기' 사용)"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -159,6 +210,6 @@ height = st.slider(
 components.iframe(notion_url, height=height, scrolling=True)
 
 st.caption(
-    "💡 노션에서 페이지 수정하면 새로고침 시 자동 반영됩니다. "
-    "댓글/캘린더/DB embed 도 그대로 작동."
+    "💡 iframe 안에서 '사용 권한 없음' 보이는 부분 = 비공개 DB. "
+    "전체 보시려면 상단 **'🔗 노션 원본에서 열기'** 클릭하세요 (브라우저 로그인 그대로 사용)."
 )
