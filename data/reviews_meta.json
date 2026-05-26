@@ -1,0 +1,6 @@
+{
+  "source": "demo",
+  "generated_at": "2026-05-26T14:00:00",
+  "count": 220,
+  "note": "generate_demo_reviews.py 가 만든 가상 데이터. 실 sync 성공 시 자동으로 'live' 로 전환됨."
+}

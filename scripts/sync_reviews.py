@@ -183,6 +183,20 @@ def main() -> int:
             "데모 데이터는 data/reviews.csv 에 보존됨.")
         return 4 if total_fail > 0 else 0
 
+    # 실데이터 수집 성공 → meta marker 를 'live' 로 전환
+    import json as _json
+    meta = {
+        "source": "live",
+        "last_sync_at": datetime.now().isoformat(),
+        "last_sync_total": grand_total,
+        "last_sync_added": grand_added,
+        "last_sync_failed": total_fail,
+    }
+    (ROOT / "data" / "reviews_meta.json").write_text(
+        _json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    log(f"[OK] reviews_meta.json → source='live'")
+
     return 0 if total_fail == 0 else 2
 
 

@@ -217,7 +217,19 @@ def main():
     # 컬럼 순서 명시
     df = df[["date", "channel", "brand", "product", "rating", "text"]]
     df.to_csv(REVIEWS_FILE, index=False, encoding="utf-8-sig")
-    print(f"[OK] {REVIEWS_FILE.name} 생성 — {len(df)}건")
+    # 데모 marker 기록 (페이지 상단 배지 표시용)
+    import json as _json
+    meta = {
+        "source": "demo",
+        "generated_at": datetime.now().isoformat(),
+        "count": len(df),
+        "note": "generate_demo_reviews.py 가 만든 가상 데이터. "
+                "실 sync 성공 시 자동으로 'live' 로 전환됨.",
+    }
+    (ROOT / "data" / "reviews_meta.json").write_text(
+        _json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    print(f"[OK] {REVIEWS_FILE.name} 생성 — {len(df)}건 (source=demo)")
 
     print("\n=== 브랜드별 리뷰 ===")
     print(df["brand"].value_counts().to_string())

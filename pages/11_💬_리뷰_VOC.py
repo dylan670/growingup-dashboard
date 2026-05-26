@@ -217,6 +217,67 @@ enriched = _enrich_reviews(reviews)
 
 
 # ==========================================================
+# 데모 데이터 배지 (실 sync 성공 시 자동 사라짐)
+# ==========================================================
+def _load_reviews_meta() -> dict:
+    """data/reviews_meta.json 로드. 없으면 빈 dict."""
+    import json
+    p = ROOT / "data" / "reviews_meta.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+_meta = _load_reviews_meta()
+_source = (_meta.get("source") or "").lower()
+
+if _source == "demo":
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(90deg, #fef3c7 0%, #fffbeb 100%);
+                    border: 1px solid #f59e0b; border-left: 6px solid #f59e0b;
+                    border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;">
+            <div style="display:flex; align-items:center; gap:10px;
+                        font-size:0.95rem; font-weight:700; color:#b45309;">
+                🚧 데모 데이터입니다 — 화면의 모든 숫자는 가상입니다
+            </div>
+            <div style="font-size:0.82rem; color:#92400e; margin-top:6px;
+                        line-height:1.5;">
+                네이버 커머스 API '상품 리뷰' 스코프 + 카페24
+                <code>mall.read_community</code> scope 가 활성화되면
+                <code>sync_reviews.py</code> 가 실데이터로 자동 교체하고 이 배지가 사라집니다.
+                <br>
+                <span style="font-size:0.74rem; color:#a16207;">
+                    데모 생성일: {_meta.get('generated_at', 'unknown')[:19]}
+                    · {_meta.get('count', '?')}건
+                </span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+elif _source == "live":
+    last_sync = _meta.get("last_sync_at", "")[:19]
+    total = _meta.get("last_sync_total", 0)
+    st.markdown(
+        f"""
+        <div style="background: #dcfce7; border-left: 4px solid #16a34a;
+                    border-radius: 8px; padding: 10px 16px; margin-bottom: 14px;
+                    font-size: 0.85rem;">
+            🟢 <b>실데이터</b> — 마지막 sync: {last_sync}
+            <span style="color:#64748b; margin-left:8px;">
+                ({total}건 수집)
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ==========================================================
 # 사이드바 필터
 # ==========================================================
 st.sidebar.markdown("#### 🔎 필터")
