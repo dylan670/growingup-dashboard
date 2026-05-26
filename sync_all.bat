@@ -31,6 +31,9 @@ REM 2. 쿠팡 광고 CSV 파싱 (폴더에 업로드된 파일 있으면 처리,
 REM 2-1. 쿠팡 판매 CSV 파싱 (로켓배송 제품별 판매 — 수동 업로드)
 ".venv\Scripts\python.exe" "scripts\sync_coupang_sales_csv.py"
 
+REM 2-2. Notion DB 캐시 — 페이지 즉시 로드용 (회의록/캘린더)
+".venv\Scripts\python.exe" "scripts\sync_notion_cache.py" --quiet
+
 REM 3. Precompute
 ".venv\Scripts\python.exe" "scripts\precompute.py"
 

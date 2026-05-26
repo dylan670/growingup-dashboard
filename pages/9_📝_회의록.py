@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from api.notion_meetings import (
     list_accessible_databases, query_database,
     load_page_content, test_connection,
     save_notion_credentials, _get_creds,
+    _extract_date_full,
+    cache_load, cache_save, cache_age_seconds,
 )
 
 
@@ -70,19 +73,131 @@ if not token:
 
 
 # ==========================================================
-# 연결 테스트 + 모든 DB 탐색
+# 캐시 우선 로드 — 디스크 캐시에서 즉시 표시, 노션 API 호출 없음
 # ==========================================================
-@st.cache_data(ttl=300, show_spinner="📥 Notion DB 탐색 중...")
+def _cache_key_for_db(db_id_arg: str) -> str:
+    return f"rows_{db_id_arg.replace('-', '')}"
+
+
+@st.cache_data(ttl=60, show_spinner=False)
 def _cached_databases():
-    return list_accessible_databases()
+    """디스크 캐시 → 노션 API 순서."""
+    cached, saved_at = cache_load("databases")
+    if cached:
+        return cached, saved_at
+    # 디스크 캐시 없으면 노션 API
+    fresh = list_accessible_databases()
+    if fresh:
+        cache_save("databases", fresh)
+    return fresh, None
 
 
-@st.cache_data(ttl=300, show_spinner="📥 DB 행 조회 중...")
+@st.cache_data(ttl=60, show_spinner=False)
 def _cached_query(db_id_arg: str):
-    return query_database(db_id_arg, max_count=200)
+    """일반 쿼리 — 디스크 캐시 우선."""
+    cached, _ = cache_load(_cache_key_for_db(db_id_arg))
+    if cached is not None:
+        return cached
+    return query_database(db_id_arg, max_count=200, include_raw=True)
 
 
-databases = _cached_databases()
+@st.cache_data(ttl=60, show_spinner=False)
+def _cached_query_raw(db_id_arg: str):
+    """캘린더용 — 디스크 캐시 우선 (raw properties 포함)."""
+    cached, _ = cache_load(_cache_key_for_db(db_id_arg))
+    if cached is not None:
+        return cached
+    return query_database(db_id_arg, max_count=300, include_raw=True)
+
+
+def _sync_now(db_ids: list[str]) -> tuple[int, int, list[str]]:
+    """노션에서 강제 sync — (성공, 실패, 에러 메시지)."""
+    ok, fail = 0, 0
+    errors: list[str] = []
+
+    # databases 갱신
+    try:
+        fresh_dbs = list_accessible_databases()
+        if fresh_dbs:
+            # 페이지 코드와 동일한 classify 로직으로 필터링
+            cs = []
+            seen: dict = {}
+            for db in fresh_dbs:
+                title = db["title"]
+                t = title.lower().replace(" ", "")
+                lbl = None
+                if "회의록" in title or "meeting" in t: lbl = ("회의록", "📝")
+                elif ("할 일" in title or "할일" in title or "task" in t
+                      or "todo" in t or "to-do" in t): lbl = ("할 일", "✅")
+                elif "지식" in title or "knowledge" in t: lbl = ("지식", "📚")
+                elif "캘린더" in title or "calendar" in t or "일정" in title:
+                    lbl = ("캘린더", "🗓")
+                if not lbl:
+                    continue
+                label, icon = lbl
+                is_g = "그로잉업" in title
+                if label in seen and not is_g:
+                    continue
+                cs = [c for c in cs if c["label"] != label]
+                cs.append({**db, "label": label, "icon": icon})
+                seen[label] = db["id"]
+            order = {"회의록": 0, "할 일": 1, "캘린더": 2, "지식": 3}
+            cs.sort(key=lambda x: order.get(x["label"], 99))
+            cache_save("databases", cs)
+            # 이후 DB id 목록은 cs 사용
+            db_ids = [c["id"] for c in cs]
+    except Exception as e:
+        errors.append(f"DB 목록: {e}")
+
+    for db_id in db_ids:
+        try:
+            rows = query_database(
+                db_id, max_count=300, raise_on_error=True, include_raw=True,
+            )
+            cache_save(_cache_key_for_db(db_id), rows)
+            ok += 1
+        except Exception as e:
+            fail += 1
+            errors.append(f"{db_id[:8]}: {e}")
+    return ok, fail, errors
+
+
+def _diagnose_query(db_id_arg: str) -> str:
+    """쿼리 실패 원인 진단."""
+    try:
+        rows = query_database(db_id_arg, max_count=5, raise_on_error=True)
+        return f"✅ 정상 — {len(rows)}건 조회됨"
+    except Exception as e:
+        return f"❌ {e}"
+
+
+def _show_empty_diag(db_id_arg: str, label: str = "데이터"):
+    """rows 가 비어 있을 때 공통 진단 UI."""
+    # 캐시 상태 알리기
+    age = cache_age_seconds(_cache_key_for_db(db_id_arg))
+    if age is not None:
+        st.caption(f"⏱ 로컬 캐시: {age/60:.1f}분 전 저장됨 (비어있음)")
+
+    diag = _diagnose_query(db_id_arg)
+    if any(s in diag for s in (
+        "일시 장애", "503", "502", "504", "timeout", "Timeout", "ConnectionError",
+    )):
+        st.error(
+            "🌐 **Notion 서버가 일시 장애 상태입니다.** "
+            "노션 본체도 같이 안 될 가능성이 큽니다. 잠시 후 다시 시도해주세요."
+        )
+        st.caption(f"진단: {diag}")
+        st.markdown("👉 https://www.notionstatus.com 에서 상태 확인")
+    else:
+        st.info(f"📭 {label} 없음")
+        with st.expander("🔍 진단", expanded=False):
+            st.code(f"DB ID: {db_id_arg}\n쿼리 결과: {diag}")
+    if st.button("🔄 캐시 비우고 재시도", key=f"recache_{label}_{db_id_arg}"):
+        st.cache_data.clear()
+        st.rerun()
+
+
+databases, db_cache_saved_at = _cached_databases()
 
 if not databases:
     st.error(
@@ -96,19 +211,55 @@ if not databases:
 
 
 # ==========================================================
-# 상단 상태바
+# 상단 상태바 — 캐시 상태 표시 + Sync 버튼
 # ==========================================================
-header_a, header_b = st.columns([4, 1])
+# 캐시 나이 계산 (databases 기준)
+cache_age = cache_age_seconds("databases")
+if cache_age is not None:
+    if cache_age < 60:
+        age_text = f"{int(cache_age)}초"
+        age_color = "#16a34a"
+    elif cache_age < 3600:
+        age_text = f"{int(cache_age/60)}분"
+        age_color = "#16a34a" if cache_age < 1800 else "#f59e0b"
+    else:
+        age_text = f"{int(cache_age/3600)}시간"
+        age_color = "#dc2626"
+    cache_status = (
+        f"<span style='color:{age_color};'>⚡ 캐시 {age_text} 전</span>"
+    )
+else:
+    cache_status = "<span style='color:#dc2626;'>⚠️ 캐시 없음</span>"
+
+header_a, header_b, header_c = st.columns([3, 1, 1])
 with header_a:
     st.markdown(
         f"<div style='padding:8px 14px; background:#dcfce7; border-left:4px solid #16a34a; "
         f"border-radius:6px; font-size:0.85rem;'>"
-        f"🟢 <b>API 모드</b> — Notion 연결됨 · <b>{len(databases)}개 DB</b> 탐색됨"
+        f"🟢 <b>API 모드</b> — <b>{len(databases)}개 DB</b> · {cache_status} "
+        f"<span style='color:#6b7280; font-size:0.78rem;'>"
+        f"(로컬 캐시에서 즉시 로드)</span>"
         f"</div>",
         unsafe_allow_html=True,
     )
 with header_b:
-    if st.button("🔄 새로고침", use_container_width=True):
+    if st.button("⚡ Sync", use_container_width=True,
+                 help="노션에서 최신 데이터 가져와 캐시 갱신"):
+        db_ids = [d["id"] for d in databases]
+        with st.spinner("📥 노션에서 sync 중..."):
+            ok, fail, errs = _sync_now(db_ids)
+        if fail == 0:
+            st.success(f"✅ {ok}개 DB sync 완료")
+        else:
+            st.warning(f"⚠️ {ok}개 성공, {fail}개 실패")
+            for e in errs:
+                st.caption(f"  - {e}")
+        st.cache_data.clear()
+        time.sleep(0.5)
+        st.rerun()
+with header_c:
+    if st.button("🔄 다시 로드", use_container_width=True,
+                 help="streamlit 세션 캐시만 비우고 디스크 캐시는 유지"):
         st.cache_data.clear()
         st.rerun()
 
@@ -116,7 +267,7 @@ st.write("")
 
 
 # ==========================================================
-# DB 타입 분류 + 그로잉업팀 관련만 필터링
+# DB 타입 분류 — 캐시에 label 이 이미 있으면 그대로, 아니면 동적 분류
 # ==========================================================
 def _classify_db(title: str) -> tuple[str, str] | None:
     """DB 제목 → (탭 라벨, 아이콘) 또는 None (관련 없음)."""
@@ -130,32 +281,31 @@ def _classify_db(title: str) -> tuple[str, str] | None:
         return ("지식", "📚")
     if "캘린더" in title or "calendar" in t or "일정" in title:
         return ("캘린더", "🗓")
-    return None   # 관련 없는 DB → 제외
+    return None
 
 
-# 키워드 매칭된 DB 만 + 중복 제거 (같은 title 두 개 있으면 첫 번째만)
-classified = []
-seen_labels: dict[str, str] = {}   # label → db_id (중복 방지)
+# 캐시에서 온 databases 는 이미 분류돼 있을 수 있음 (sync_notion_cache.py)
+if databases and "label" in databases[0]:
+    classified = list(databases)
+else:
+    # 동적 분류
+    classified = []
+    seen_labels: dict[str, str] = {}
+    for db in databases:
+        result = _classify_db(db.get("title", ""))
+        if result is None:
+            continue
+        label, icon = result
+        is_growingup = "그로잉업" in db.get("title", "")
+        if label in seen_labels and not is_growingup:
+            continue
+        classified = [c for c in classified if c["label"] != label]
+        classified.append({**db, "label": label, "icon": icon})
+        seen_labels[label] = db["id"]
 
-for db in databases:
-    result = _classify_db(db["title"])
-    if result is None:
-        continue
-    label, icon = result
-    # "그로잉업팀 캘린더" 같이 그로잉업 keyword 있으면 우선
-    is_growingup_specific = "그로잉업" in db["title"]
-    existing_id = seen_labels.get(label)
-    if existing_id and not is_growingup_specific:
-        # 이미 더 관련 있는 것 있으면 skip
-        continue
-    classified = [c for c in classified if c["label"] != label] + [{
-        **db, "label": label, "icon": icon,
-    }]
-    seen_labels[label] = db["id"]
-
-# 우선순위 정렬: 회의록 → 할 일 → 캘린더 → 지식
+# 우선순위 정렬
 order = {"회의록": 0, "할 일": 1, "캘린더": 2, "지식": 3}
-classified.sort(key=lambda x: order.get(x["label"], 99))
+classified.sort(key=lambda x: order.get(x.get("label", ""), 99))
 
 
 # ==========================================================
@@ -220,7 +370,7 @@ def _normalize_prop_value(v):
 def render_meetings_view(db_id_arg: str):
     rows = _cached_query(db_id_arg)
     if not rows:
-        st.info("📭 회의록 없음")
+        _show_empty_diag(db_id_arg, "회의록")
         return
 
     # 팀 필터
@@ -313,9 +463,9 @@ def render_calendar_view(db_id_arg: str):
         )
         return
 
-    rows = _cached_query(db_id_arg)
+    rows = _cached_query_raw(db_id_arg)
     if not rows:
-        st.info("📭 캘린더 항목 없음")
+        _show_empty_diag(db_id_arg, "캘린더 항목")
         return
 
     # 담당자별 색상 매핑
@@ -331,25 +481,65 @@ def render_calendar_view(db_id_arg: str):
             idx += 1
         return assignee_color[name]
 
+    # 날짜 컬럼 자동 탐지 — date 타입 property 우선
+    DATE_KEY_PRIORITY = ["날짜", "Date", "date", "마감일시", "마감일", "일자", "Due"]
+
+    def _find_date_dict(raw_props: dict) -> dict | None:
+        """raw properties 에서 date 타입 property 우선 탐색."""
+        # 우선순위 키
+        for k in DATE_KEY_PRIORITY:
+            if k in raw_props and raw_props[k].get("type") == "date":
+                d = _extract_date_full(raw_props[k])
+                if d.get("start"):
+                    return d
+        # 그래도 없으면 date 타입 첫 것
+        for k, v in raw_props.items():
+            if v.get("type") == "date":
+                d = _extract_date_full(v)
+                if d.get("start"):
+                    return d
+        return None
+
     # 이벤트 변환
     events = []
+    skipped_no_date = 0
+    sample_props_seen: set = set()
+
     for r in rows:
         title = r.get("title") or "(제목 없음)"
         props = r.get("properties", {})
-        # 날짜 컬럼 우선순위
-        date_val = (
-            props.get("날짜")
-            or props.get("마감일시")
-            or props.get("마감일")
-            or props.get("Date")
-            or props.get("date")
-            or r.get("created_at", "")
-        )
-        if not date_val:
+        raw_props = r.get("_raw_properties", {})
+
+        for k in raw_props.keys():
+            sample_props_seen.add(k)
+
+        # 1) raw 에서 date 타입 찾기
+        date_info = _find_date_dict(raw_props)
+
+        # 2) 없으면 parsed props 의 string 값 fallback
+        if not date_info or not date_info.get("start"):
+            date_val = (
+                props.get("날짜")
+                or props.get("Date")
+                or props.get("date")
+                or props.get("마감일시")
+                or props.get("마감일")
+            )
+            if date_val and isinstance(date_val, str) and date_val.strip():
+                date_info = {"start": date_val.strip(), "end": ""}
+
+        # 3) 그래도 없으면 created_at fallback
+        if not date_info or not date_info.get("start"):
+            ca = r.get("created_at", "")
+            if ca:
+                date_info = {"start": ca, "end": ""}
+
+        if not date_info or not date_info.get("start"):
+            skipped_no_date += 1
             continue
-        date_str = str(date_val).strip()
-        if not date_str:
-            continue
+
+        date_str = date_info["start"]
+        end_str = date_info.get("end", "")
 
         # 담당자
         assignee = props.get("담당자") or props.get("Assignee") or ""
@@ -358,34 +548,58 @@ def render_calendar_view(db_id_arg: str):
         assignee = str(assignee).strip()
 
         # 완료여부
-        done = props.get("완료여부") or props.get("보정완료") or props.get("Done")
+        done = (props.get("완료여부") or props.get("보정완료")
+                or props.get("Done") or props.get("완료"))
         done_bool = bool(done) and str(done).lower() not in ("no", "false", "0", "")
 
         # 색상
         color = _color_for(assignee) if assignee else "#94a3b8"
         if done_bool:
-            # 완료된 건 흐릿하게
-            color = color + "88"   # alpha hex (low opacity)
+            color = color + "88"
 
         event_title = f"{title}"
         if assignee:
             event_title = f"[{assignee}] {title}"
 
-        events.append({
+        event = {
             "title": event_title,
             "start": date_str,
             "backgroundColor": color,
             "borderColor": color,
+            "textColor": "#ffffff",
             "extendedProps": {
                 "url": r.get("url", ""),
                 "assignee": assignee,
                 "done": done_bool,
             },
-        })
+        }
+        if end_str:
+            event["end"] = end_str
+        events.append(event)
 
     if not events:
-        st.info("📭 날짜가 있는 항목이 없습니다.")
+        st.warning(
+            f"📭 {len(rows)}건 조회됐지만 날짜 정보가 있는 이벤트가 없습니다."
+        )
+        with st.expander("🔍 진단 — 속성 키 목록", expanded=True):
+            st.code(
+                f"DB 행 수: {len(rows)}\n"
+                f"날짜 없어서 skip: {skipped_no_date}\n"
+                f"발견된 속성 키: {sorted(sample_props_seen)}"
+            )
+            if rows:
+                st.markdown("**첫 행 raw 속성 샘플:**")
+                st.json({
+                    k: v for k, v in
+                    (rows[0].get("_raw_properties") or {}).items()
+                })
         return
+
+    # 통계
+    st.caption(
+        f"📊 전체 {len(rows)}건 중 **{len(events)}건** 표시 "
+        f"(날짜 없음 {skipped_no_date}건 제외)"
+    )
 
     # 뷰 모드 선택
     view_mode = st.radio(
@@ -401,6 +615,18 @@ def render_calendar_view(db_id_arg: str):
     }
     initial_view = view_map[view_mode]
 
+    # 시작 날짜 = 가장 빈번한 월
+    from collections import Counter
+    months = Counter()
+    for ev in events:
+        s = ev.get("start", "")[:7]
+        if s:
+            months[s] += 1
+    initial_date = (
+        months.most_common(1)[0][0] + "-01" if months
+        else datetime.now().strftime("%Y-%m-01")
+    )
+
     calendar_options = {
         "headerToolbar": {
             "left": "today prev,next",
@@ -408,6 +634,7 @@ def render_calendar_view(db_id_arg: str):
             "right": "dayGridMonth,timeGridWeek,listMonth",
         },
         "initialView": initial_view,
+        "initialDate": initial_date,
         "selectable": False,
         "editable": False,
         "locale": "ko",
@@ -417,15 +644,19 @@ def render_calendar_view(db_id_arg: str):
             "week": "주",
             "list": "리스트",
         },
-        "height": 700,
-        "firstDay": 0,  # 일요일 시작
+        "height": 720,
+        "firstDay": 0,
+        "dayMaxEvents": 3,
+        "displayEventTime": False,
     }
 
     custom_css = """
-.fc-event-title { font-weight: 500; font-size: 0.82rem; }
-.fc-event { cursor: pointer; padding: 2px 4px; }
-.fc-toolbar-title { font-size: 1.1rem; font-weight: 700; }
-.fc-button { font-size: 0.82rem; padding: 4px 10px; }
+.fc-event-title { font-weight: 500; font-size: 0.78rem; }
+.fc-event { cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.fc-toolbar-title { font-size: 1.15rem; font-weight: 700; }
+.fc-button { font-size: 0.82rem; padding: 4px 12px; }
+.fc-day-today { background: #fef3c7 !important; }
+.fc-col-header-cell { background: #f8fafc; font-weight: 600; }
 """
 
     state = calendar(
@@ -438,23 +669,26 @@ def render_calendar_view(db_id_arg: str):
     # 클릭한 이벤트 정보 표시
     if state and state.get("eventClick"):
         clicked = state["eventClick"].get("event", {})
-        url = clicked.get("extendedProps", {}).get("url", "")
+        ext = clicked.get("extendedProps", {}) or {}
+        url = ext.get("url", "")
         st.markdown(
             f"**{clicked.get('title', '')}**  · "
-            f"[🔗 노션에서 열기]({url})"
-            if url else f"**{clicked.get('title', '')}**"
+            + (f"[🔗 노션에서 열기]({url})" if url else "")
         )
 
     # 담당자별 범례
     if assignee_color:
         st.write("")
-        legend_html = "<div style='display:flex; gap:10px; flex-wrap:wrap; font-size:0.82rem;'>"
+        legend_html = (
+            "<div style='display:flex; gap:10px; flex-wrap:wrap; "
+            "font-size:0.82rem; margin-top:8px;'>"
+        )
         for name, color in assignee_color.items():
             if name:
                 legend_html += (
                     f"<div style='display:flex; align-items:center; gap:6px;'>"
-                    f"<div style='width:14px; height:14px; background:{color}; border-radius:3px;'></div>"
-                    f"{name}</div>"
+                    f"<div style='width:14px; height:14px; background:{color}; "
+                    f"border-radius:3px;'></div>{name}</div>"
                 )
         legend_html += "</div>"
         st.markdown(legend_html, unsafe_allow_html=True)
@@ -466,7 +700,7 @@ def render_calendar_view(db_id_arg: str):
 def render_table_view(db_id_arg: str, label: str):
     rows = _cached_query(db_id_arg)
     if not rows:
-        st.info(f"📭 {label} 데이터 없음")
+        _show_empty_diag(db_id_arg, label)
         return
 
     # 모든 property 키 수집

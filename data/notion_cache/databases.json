@@ -1,0 +1,276 @@
+{
+  "saved_at": "2026-05-26T02:53:23.633613Z",
+  "data": [
+    {
+      "id": "b49aa564-03d5-418f-8f6c-b950ce5ef7dc",
+      "title": "회의록 DB",
+      "url": "https://www.notion.so/b49aa56403d5418f8f6cb950ce5ef7dc",
+      "properties_schema": {
+        "생성자": {
+          "id": "Y~hb",
+          "name": "생성자",
+          "description": null,
+          "type": "created_by",
+          "created_by": {}
+        },
+        "댓글": {
+          "id": "%5CZ%5C%5C",
+          "name": "댓글",
+          "description": null,
+          "type": "rich_text",
+          "rich_text": {}
+        },
+        "팀": {
+          "id": "b%7Chf",
+          "name": "팀",
+          "description": null,
+          "type": "select",
+          "select": {
+            "options": [
+              {
+                "id": "1bea4330-8c02-4d7f-b415-96d4c0d03b93",
+                "name": "할일미팅",
+                "color": "blue",
+                "description": null
+              },
+              {
+                "id": "60f7b1f1-ba21-4829-89dd-768a135fe8a2",
+                "name": "외부미팅",
+                "color": "brown",
+                "description": null
+              },
+              {
+                "id": "2753240b-a6e9-4b6e-8ffc-ee6ebdd45b40",
+                "name": "팀장회의",
+                "color": "red",
+                "description": null
+              },
+              {
+                "id": "b33d30a6-12f4-43e3-94db-42612f5e41a3",
+                "name": "온라인팀",
+                "color": "red",
+                "description": null
+              },
+              {
+                "id": "c83e5ebb-c684-40ad-9a32-2d33ab5d973b",
+                "name": "디자인팀",
+                "color": "orange",
+                "description": null
+              },
+              {
+                "id": "aa97a23b-20f8-44a7-b957-c73a0a81d862",
+                "name": "글로벌팀",
+                "color": "blue",
+                "description": null
+              },
+              {
+                "id": "6f65cd06-38fc-462d-93fe-68ba4ce74a6a",
+                "name": "마케팅팀",
+                "color": "blue",
+                "description": null
+              },
+              {
+                "id": "795adc46-9b87-4eee-93c9-2cbdee2022e8",
+                "name": "일상화보",
+                "color": "green",
+                "description": null
+              },
+              {
+                "id": "94f98151-cc82-429c-8047-29c3efe31726",
+                "name": "와우팀",
+                "color": "yellow",
+                "description": null
+              },
+              {
+                "id": "0e52e2d9-b4b3-4d90-80ea-efef37dbf94a",
+                "name": "경영지원",
+                "color": "pink",
+                "description": null
+              },
+              {
+                "id": "6c3208b4-5523-40d1-8fcd-afde0ef93df0",
+                "name": "SCM팀",
+                "color": "green",
+                "description": null
+              },
+              {
+                "id": "93f61337-d13b-47a8-95dc-133718e7f581",
+                "name": "FC팀",
+                "color": "purple",
+                "description": null
+              },
+              {
+                "id": "f667d75f-8867-499a-8b46-a868e3f08ef7",
+                "name": "우일신",
+                "color": "gray",
+                "description": null
+              },
+              {
+                "id": "f077be82-1ebf-40d8-b726-ecc907995aad",
+                "name": "비주얼팀",
+                "color": "brown",
+                "description": null
+              },
+              {
+                "id": "d6efa739-a585-4304-a58e-625793c97490",
+                "name": "그로잉업",
+                "color": "pink",
+                "description": null
+              },
+              {
+                "id": "78d6705d-190b-424c-a946-f7359e2b0f2a",
+                "name": "인디비주엘",
+                "color": "green",
+                "description": null
+              },
+              {
+                "id": "1faef097-6363-4e12-9d77-a9cd8cf21335",
+                "name": "중국지사",
+                "color": "default",
+                "description": null
+              },
+              {
+                "id": "1e90e427-e452-4616-b248-c868e993b02b",
+                "name": "브이팀",
+                "color": "gray",
+                "description": null
+              }
+            ]
+          }
+        },
+        "생성일자": {
+          "id": "vq%5Ds",
+          "name": "생성일자",
+          "description": null,
+          "type": "created_time",
+          "created_time": {}
+        },
+        "참석자": {
+          "id": "x_el",
+          "name": "참석자",
+          "description": null,
+          "type": "people",
+          "people": {}
+        },
+        "confirm": {
+          "id": "xv%5D%5B",
+          "name": "confirm",
+          "description": null,
+          "type": "checkbox",
+          "checkbox": {}
+        },
+        "팀장": {
+          "id": "%7C%5Cqy",
+          "name": "팀장",
+          "description": null,
+          "type": "people",
+          "people": {}
+        },
+        "미팅 주제": {
+          "id": "title",
+          "name": "미팅 주제",
+          "description": null,
+          "type": "title",
+          "title": {}
+        }
+      },
+      "label": "회의록",
+      "icon": "📝"
+    },
+    {
+      "id": "310c081d-6cc9-8053-b868-e6db557854ad",
+      "title": "그로잉업팀 캘린더",
+      "url": "https://www.notion.so/310c081d6cc98053b868e6db557854ad",
+      "properties_schema": {
+        "자동보정": {
+          "id": "CinA",
+          "name": "자동보정",
+          "description": null,
+          "type": "select",
+          "select": {
+            "options": [
+              {
+                "id": "YkL^",
+                "name": "NO",
+                "color": "blue",
+                "description": null
+              },
+              {
+                "id": "TEl[",
+                "name": "YES",
+                "color": "pink",
+                "description": null
+              }
+            ]
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "name": "마감일시",
+          "description": null,
+          "type": "date",
+          "date": {}
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "name": "날짜",
+          "description": null,
+          "type": "date",
+          "date": {}
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "name": "보정완료",
+          "description": null,
+          "type": "select",
+          "select": {
+            "options": [
+              {
+                "id": "WyYM",
+                "name": "NO",
+                "color": "blue",
+                "description": null
+              },
+              {
+                "id": "swu{",
+                "name": "YES",
+                "color": "pink",
+                "description": null
+              }
+            ]
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "name": "담당자",
+          "description": null,
+          "type": "people",
+          "people": {}
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "name": "생성 일시",
+          "description": null,
+          "type": "created_time",
+          "created_time": {}
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "name": "완료여부",
+          "description": null,
+          "type": "checkbox",
+          "checkbox": {}
+        },
+        "이름": {
+          "id": "title",
+          "name": "이름",
+          "description": null,
+          "type": "title",
+          "title": {}
+        }
+      },
+      "label": "캘린더",
+      "icon": "🗓"
+    }
+  ]
+}
