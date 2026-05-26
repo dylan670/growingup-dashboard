@@ -89,11 +89,12 @@ SB_HEADERS = {
 
 
 # ──────────────────────────────────────────────────────────
-# 데이터 로드 (5분 캐시)
+# 데이터 로드 (5분 캐시 — 우상단 새로고침 버튼으로 즉시 무효화 가능)
 # ──────────────────────────────────────────────────────────
 @st.cache_data(ttl=300, show_spinner="📊 1688 데이터 로드 중...")
-def load_products() -> pd.DataFrame:
-    """Supabase REST 로 전체 products 조회."""
+def load_products() -> tuple[pd.DataFrame, str]:
+    """Supabase REST 로 전체 products 조회 + 조회 시각."""
+    from datetime import datetime
     try:
         r = requests.get(
             f"{SB_URL}/rest/v1/products",
@@ -103,10 +104,10 @@ def load_products() -> pd.DataFrame:
         )
         r.raise_for_status()
         rows = r.json()
-        return pd.DataFrame(rows)
+        return pd.DataFrame(rows), datetime.now().strftime("%H:%M:%S")
     except Exception as e:
         st.error(f"Supabase 조회 실패: {e}")
-        return pd.DataFrame()
+        return pd.DataFrame(), datetime.now().strftime("%H:%M:%S")
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -248,10 +249,27 @@ def yuan_to_krw(y) -> float | None:
 
 
 # ──────────────────────────────────────────────────────────
+# 새로고침 컨트롤 (마지막 갱신 시각 + 강제 새로고침 버튼)
+# ──────────────────────────────────────────────────────────
+ctrl_left, ctrl_right = st.columns([5, 1])
+with ctrl_right:
+    if st.button("🔄 새로고침", use_container_width=True,
+                  help="풀 대시보드에서 갓 수집·편집한 데이터를 즉시 가져옵니다."):
+        load_products.clear()
+        load_bookmarks_count.clear()
+        st.rerun()
+
+# ──────────────────────────────────────────────────────────
 # 데이터 로드 + 전처리
 # ──────────────────────────────────────────────────────────
-df_raw = load_products()
+df_raw, fetched_at = load_products()
 bookmarks_n = load_bookmarks_count()
+
+with ctrl_left:
+    st.caption(
+        f"🕒 마지막 갱신: **{fetched_at}** · 자동 갱신 5분 간격 "
+        f"(즉시 보고 싶으면 우측 🔄 새로고침)"
+    )
 
 if df_raw.empty:
     st.info("아직 수집된 1688 상품이 없습니다. 별도 수집 도구를 사용하세요.")
