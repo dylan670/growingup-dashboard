@@ -55,8 +55,9 @@ from utils.insights import generate_insights, SEVERITY_STYLES
 setup_page(
     page_title="그로잉업팀 대시보드",
     page_icon="📊",
-    header_title="📊 대시보드",
-    header_subtitle="그로잉업팀 3개 브랜드 통합 — 똑똑연구소 · 롤라루 · 루티니스트",
+    # header_title="" → render_page_header() 호출 안 함 (우리가 직접 더 풍부하게 그림)
+    header_title="",
+    header_subtitle="",
 )
 
 
@@ -66,6 +67,301 @@ setup_page(
 ads = load_ads()
 orders = load_orders()
 reviews = load_reviews()
+
+
+# ============================================================
+# 🎨 HERO — BRANDBOARD 스타일 페이지 헤더 + 브랜드별 진도 + 차트
+# ============================================================
+from utils.ui import BRAND_COLORS, TEXT_FAINT, channel_color  # noqa: E402
+
+_today = date.today()
+_year_start = date(_today.year, 1, 1)
+_year_end = date(_today.year, 12, 31)
+_days_elapsed = (_today - _year_start).days + 1
+_days_total = (_year_end - _year_start).days + 1
+_days_remaining = max(1, _days_total - _days_elapsed)
+_weekday_kr = ["월", "화", "수", "목", "금", "토", "일"][_today.weekday()]
+
+# ─── 페이지 헤더 (BRANDBOARD 톤) ───
+st.markdown(
+    f"""
+<div style="margin-top:-0.5rem; margin-bottom:1.4rem;">
+    <div style="font-size:0.68rem; letter-spacing:0.22em;
+                color:#94a3b8; text-transform:uppercase;
+                font-weight:700; margin-bottom:6px;">
+        GROWINGUP DASHBOARD
+    </div>
+    <h1 style="font-size:2.1rem; font-weight:800; margin:0 0 8px 0;
+               letter-spacing:-0.03em; color:#0f172a; line-height:1.1;">
+        대시보드
+    </h1>
+    <div style="font-size:0.88rem; color:#64748b;">
+        {_today.month}월 {_today.day}일 ({_weekday_kr}) ·
+        {_today.year}년 {_days_elapsed}일차 · 3개 브랜드 통합
+        <span style="color:#94a3b8;">(부가세 별도)</span>
+    </div>
+</div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+def _brand_of_store_hero(s) -> str:
+    s = str(s).replace(" ", "")
+    if "똑똑" in s:
+        return "똑똑연구소"
+    if "롤라루" in s:
+        return "롤라루"
+    if "루티니" in s:
+        return "루티니스트"
+    return "기타"
+
+
+# YTD 데이터
+if not orders.empty:
+    _orders_ytd = orders[orders["date"] >= pd.Timestamp(_year_start)].copy()
+    _orders_ytd["brand"] = _orders_ytd["store"].apply(_brand_of_store_hero)
+else:
+    _orders_ytd = pd.DataFrame()
+
+
+# ─── 브랜드별 hero 카드 3개 (가로) ───
+_BRAND_DEFS = [
+    {"name": "똑똑연구소", "emoji": "🍙", "tag": "유아식"},
+    {"name": "롤라루",     "emoji": "🧳", "tag": "여행용품"},
+    {"name": "루티니스트", "emoji": "👟", "tag": "런닝"},
+]
+
+_hero_cols = st.columns(3)
+for _i, _bdef in enumerate(_BRAND_DEFS):
+    _bname = _bdef["name"]
+    _bc = BRAND_COLORS.get(_bname, {})
+    _primary = _bc.get("primary", "#64748b")
+    _soft = _bc.get("bg_soft", "#f8fafc")
+    _text_c = _bc.get("text", "#0f172a")
+
+    # YTD 매출
+    if not _orders_ytd.empty:
+        _ytd = float(_orders_ytd[_orders_ytd["brand"] == _bname]["revenue"].sum())
+    else:
+        _ytd = 0.0
+
+    # 연간 목표 = 월 목표 × 12
+    _monthly_t = BRAND_MONTHLY_TARGETS.get(_bname, 0)
+    _annual_t = _monthly_t * 12
+    _progress = (_ytd / _annual_t * 100) if _annual_t > 0 else 0
+    _progress_clipped = min(_progress, 100)
+
+    # 일평균
+    _daily_avg = _ytd / _days_elapsed if _days_elapsed > 0 else 0
+    _remaining = max(0, _annual_t - _ytd)
+    _required = _remaining / _days_remaining if _days_remaining > 0 else 0
+
+    # 진행률 색 (50% 이상 초록, 30% 이상 황색, 미만 빨강)
+    if _progress >= 50:
+        _status_color = "#16a34a"
+        _status_text = "양호"
+    elif _progress >= 30:
+        _status_color = "#f59e0b"
+        _status_text = "주의"
+    else:
+        _status_color = "#dc2626"
+        _status_text = "미달"
+
+    with _hero_cols[_i]:
+        st.markdown(
+            f"""
+<div style="background:linear-gradient(135deg, #ffffff 0%, {_soft} 100%);
+            border:1px solid {_soft};
+            border-radius:18px; padding:22px 24px;
+            box-shadow:0 1px 3px rgba(15,23,42,0.04);
+            min-height:260px;
+            transition:transform 0.18s ease, box-shadow 0.18s ease;">
+    <div style="display:flex; justify-content:space-between;
+                align-items:flex-start; margin-bottom:14px;">
+        <div>
+            <div style="font-size:0.68rem; color:#94a3b8;
+                        text-transform:uppercase; letter-spacing:0.1em;
+                        font-weight:700;">
+                {_bdef['tag']}
+            </div>
+            <div style="font-size:1.05rem; font-weight:700;
+                        color:{_text_c}; margin-top:4px;">
+                {_bdef['emoji']} {_bname}
+            </div>
+        </div>
+        <div style="background:{_status_color}15;
+                    color:{_status_color};
+                    border-radius:999px; padding:4px 10px;
+                    font-size:0.7rem; font-weight:700;">
+            {_status_text}
+        </div>
+    </div>
+
+    <div style="font-size:1.95rem; font-weight:800;
+                color:{_text_c}; line-height:1; letter-spacing:-0.02em;">
+        ₩{int(_ytd):,}
+    </div>
+    <div style="font-size:0.72rem; color:#94a3b8; margin-top:4px;">
+        {_today.year} 누적 (YTD)
+    </div>
+
+    <div style="margin-top:18px;">
+        <div style="display:flex; justify-content:space-between;
+                    font-size:0.74rem; color:#64748b; margin-bottom:6px;">
+            <span>⊕ 연간 목표 ₩{int(_annual_t):,}</span>
+            <span style="font-weight:700; color:{_text_c};">
+                {_progress:.1f}%
+            </span>
+        </div>
+        <div style="height:8px; background:#f1f5f9;
+                    border-radius:99px; overflow:hidden;">
+            <div style="height:100%; width:{_progress_clipped}%;
+                        background:linear-gradient(90deg, {_primary} 0%,
+                            {_text_c} 100%);
+                        border-radius:99px;"></div>
+        </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between;
+                margin-top:14px; padding-top:12px;
+                border-top:1px solid {_soft}; font-size:0.72rem;">
+        <div>
+            <div style="color:#94a3b8;">일평균</div>
+            <div style="color:{_text_c}; font-weight:700; font-size:0.88rem;">
+                ₩{int(_daily_avg):,}
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <div style="color:#94a3b8;">필요 일평균</div>
+            <div style="color:#dc2626; font-weight:700; font-size:0.88rem;">
+                ₩{int(_required):,}
+            </div>
+        </div>
+    </div>
+</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+st.write("")
+st.write("")
+
+# ─── 2단 차트 — 채널 매출 비중 도넛 + 월별 매출 추이 막대 ───
+_chart_l, _chart_r = st.columns(2)
+
+with _chart_l:
+    st.markdown(
+        f"""
+<div style="font-size:1rem; font-weight:700; color:#0f172a;
+            margin-bottom:2px;">
+    채널 매출 비중
+</div>
+<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:12px;">
+    {_today.year} 누적 (YTD)
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if not _orders_ytd.empty:
+        _ch_agg = _orders_ytd.groupby("channel")["revenue"].sum().sort_values(
+            ascending=False,
+        )
+        if not _ch_agg.empty:
+            _colors = [channel_color(c) for c in _ch_agg.index]
+            _total = int(_ch_agg.sum())
+
+            _fig_donut = go.Figure(go.Pie(
+                labels=_ch_agg.index.tolist(),
+                values=_ch_agg.values.tolist(),
+                hole=0.65,
+                marker=dict(colors=_colors, line=dict(color="white", width=2)),
+                textinfo="label+percent",
+                textposition="outside",
+                textfont=dict(size=12),
+                showlegend=False,
+                sort=False,
+            ))
+            _fig_donut.update_layout(
+                height=340,
+                margin=dict(l=10, r=10, t=10, b=10),
+                annotations=[dict(
+                    text=(
+                        f"<span style='font-size:0.72rem; color:#94a3b8;'>"
+                        f"총 매출</span><br>"
+                        f"<span style='font-size:1.1rem; font-weight:700; "
+                        f"color:#0f172a;'>₩{_total:,}</span>"
+                    ),
+                    x=0.5, y=0.5, showarrow=False,
+                )],
+            )
+            st.plotly_chart(_fig_donut, use_container_width=True)
+        else:
+            st.info("채널 데이터 없음")
+    else:
+        st.info("YTD 데이터 없음")
+
+with _chart_r:
+    st.markdown(
+        f"""
+<div style="font-size:1rem; font-weight:700; color:#0f172a;
+            margin-bottom:2px;">
+    월별 매출 추이
+</div>
+<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:12px;">
+    {_today.year}년 1~12월
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if not orders.empty:
+        _orders_year = orders[orders["date"].dt.year == _today.year].copy()
+        if not _orders_year.empty:
+            _orders_year["month"] = _orders_year["date"].dt.month
+            _m_agg = _orders_year.groupby("month")["revenue"].sum().reset_index()
+            # 1~12월 모두 채우기
+            _full_m = pd.DataFrame({"month": range(1, 13)})
+            _m_agg = _full_m.merge(_m_agg, on="month", how="left").fillna(0)
+
+            # 현재 월까지 노란색, 미래 월은 회색 (예상)
+            _bar_colors = [
+                "#f59e0b" if m <= _today.month else "#e2e8f0"
+                for m in _m_agg["month"]
+            ]
+            _bar_text = [
+                f"₩{int(v/1e6):.0f}M" if v >= 1e6
+                else (f"₩{int(v/1e3):,}K" if v > 0 else "")
+                for v in _m_agg["revenue"]
+            ]
+
+            _fig_bar = go.Figure(go.Bar(
+                x=[f"{m}월" for m in _m_agg["month"]],
+                y=_m_agg["revenue"],
+                marker=dict(color=_bar_colors, line=dict(width=0)),
+                text=_bar_text,
+                textposition="outside",
+                hovertemplate="<b>%{x}</b><br>매출: ₩%{y:,.0f}<extra></extra>",
+                showlegend=False,
+            ))
+            _fig_bar.update_layout(
+                height=340,
+                margin=dict(l=10, r=10, t=10, b=10),
+                xaxis=dict(title="", tickfont=dict(size=11)),
+                yaxis=dict(
+                    title="", tickformat=",",
+                    showgrid=True, gridcolor="#f1f5f9",
+                ),
+                plot_bgcolor="white",
+            )
+            st.plotly_chart(_fig_bar, use_container_width=True)
+        else:
+            st.info(f"{_today.year}년 데이터 없음")
+    else:
+        st.info("주문 데이터 없음")
+
+st.markdown("---")
 
 
 def _precompute_version_key() -> str:
