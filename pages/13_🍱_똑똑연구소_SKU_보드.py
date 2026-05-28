@@ -40,6 +40,15 @@ setup_page(
 ROOT = Path(__file__).parent.parent
 
 
+def _flatten_html(html: str) -> str:
+    """Streamlit st.markdown 의 들여쓰기 코드블록 오인 방지.
+
+    4 space 이상 들여쓰기된 HTML 이 markdown code-block 으로 렌더링되는
+    버그 회피 — 모든 줄의 leading whitespace 제거 후 한 줄로 합침.
+    """
+    return "".join(ln.strip() for ln in html.strip().split("\n"))
+
+
 # ==========================================================
 # 데이터 로드
 # ==========================================================
@@ -323,72 +332,35 @@ with tab_cat:
 
             with col:
                 st.markdown(
-                    f"""
-<div class="cat-card" style="
-    background: linear-gradient(135deg, {s['tint']} 0%, {s['soft']} 100%);
-    border-radius: 16px;
-    padding: 20px 22px;
-    border: 1px solid {s['soft']};
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-    margin-bottom: 14px;
-    min-height: 250px;
-">
-    <div style="display:flex; justify-content:space-between;
-                align-items:flex-start; margin-bottom:14px;">
+                    _flatten_html(f"""
+<div class="cat-card" style="background:linear-gradient(135deg, {s['tint']} 0%, {s['soft']} 100%); border-radius:16px; padding:20px 22px; border:1px solid {s['soft']}; box-shadow:0 1px 3px rgba(15,23,42,0.04); margin-bottom:14px; min-height:250px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
         <div>
             <div style="font-size:2rem; line-height:1;">{s['emoji']}</div>
-            <div style="font-size:1.05rem; font-weight:700;
-                        color:{s['text']}; margin-top:4px;">
-                {cat}
-            </div>
+            <div style="font-size:1.05rem; font-weight:700; color:{s['text']}; margin-top:4px;">{cat}</div>
         </div>
-        <div style="background:{s['primary']}; color:white;
-                    border-radius:999px; padding:4px 11px;
-                    font-size:0.75rem; font-weight:600;">
-            {share:.1f}%
-        </div>
+        <div style="background:{s['primary']}; color:white; border-radius:999px; padding:4px 11px; font-size:0.75rem; font-weight:600;">{share:.1f}%</div>
     </div>
-
-    <div style="font-size:1.55rem; font-weight:800;
-                color:{s['text']}; line-height:1.1;
-                letter-spacing:-0.02em;">
-        ₩{int(row['매출']):,}
-    </div>
-
-    <div style="display:flex; gap:14px; margin-top:8px;
-                font-size:0.78rem; color:#64748b;">
+    <div style="font-size:1.55rem; font-weight:800; color:{s['text']}; line-height:1.1; letter-spacing:-0.02em;">₩{int(row['매출']):,}</div>
+    <div style="display:flex; gap:14px; margin-top:8px; font-size:0.78rem; color:#64748b;">
         <span><b style="color:{s['text']};">{int(row['SKU수'])}</b> SKU</span>
         <span>·</span>
         <span><b style="color:{s['text']};">{int(row['구매자수'])}</b> 구매자</span>
         <span>·</span>
         <span>객단가 <b style="color:{s['text']};">₩{int(row['객단가']):,}</b></span>
     </div>
-
-    <div style="margin-top:14px;
-                background:rgba(255,255,255,0.6);
-                border-radius:8px; padding:10px 12px;">
-        <div style="display:flex; justify-content:space-between;
-                    font-size:0.72rem; color:#64748b;
-                    margin-bottom:5px;">
+    <div style="margin-top:14px; background:rgba(255,255,255,0.6); border-radius:8px; padding:10px 12px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#64748b; margin-bottom:5px;">
             <span>SKU 당 평균매출</span>
-            <span style="color:{eff_color}; font-weight:600;">
-                {eff_label}
-            </span>
+            <span style="color:{eff_color}; font-weight:600;">{eff_label}</span>
         </div>
-        <div style="font-size:0.95rem; font-weight:700;
-                    color:{s['text']};">
-            ₩{int(row['SKU당평균매출']):,}
-        </div>
-        <div style="height:5px; background:rgba(255,255,255,0.8);
-                    border-radius:3px; margin-top:6px; overflow:hidden;">
-            <div style="height:100%; width:{sku_eff_ratio:.0f}%;
-                        background:linear-gradient(90deg,
-                            {s['primary']} 0%, {s['text']} 100%);
-                        border-radius:3px;"></div>
+        <div style="font-size:0.95rem; font-weight:700; color:{s['text']};">₩{int(row['SKU당평균매출']):,}</div>
+        <div style="height:5px; background:rgba(255,255,255,0.8); border-radius:3px; margin-top:6px; overflow:hidden;">
+            <div style="height:100%; width:{sku_eff_ratio:.0f}%; background:linear-gradient(90deg, {s['primary']} 0%, {s['text']} 100%); border-radius:3px;"></div>
         </div>
     </div>
 </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
 
@@ -469,44 +441,23 @@ with tab_cat:
             u = underdeveloped.iloc[0]
             s = _cat_style(u["category"])
             st.markdown(
-                f"""
-<div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border-left: 5px solid #f59e0b;
-            border-radius: 12px; padding: 16px 18px; min-height: 165px;">
-    <div style="font-size:0.78rem; font-weight:700; color:#b45309;
-                letter-spacing:0.04em; text-transform:uppercase;">
-        🎯 확장 기회
-    </div>
-    <div style="font-size:1.1rem; font-weight:700; color:#78350f;
-                margin-top:8px;">
-        {s['emoji']} {u['category']}
-    </div>
-    <div style="font-size:0.82rem; color:#92400e; margin-top:8px;
-                line-height:1.6;">
-        SKU <b>{int(u['SKU수'])}개</b> 로 매출 <b>{u['매출비중']:.1f}%</b> 차지.<br>
-        SKU 당 평균 ₩<b>{int(u['SKU당평균매출']):,}</b> →
-        신규 SKU 추가 시 ROI 최대.
-    </div>
+                _flatten_html(f"""
+<div style="background:linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left:5px solid #f59e0b; border-radius:12px; padding:16px 18px; min-height:165px;">
+    <div style="font-size:0.78rem; font-weight:700; color:#b45309; letter-spacing:0.04em; text-transform:uppercase;">🎯 확장 기회</div>
+    <div style="font-size:1.1rem; font-weight:700; color:#78350f; margin-top:8px;">{s['emoji']} {u['category']}</div>
+    <div style="font-size:0.82rem; color:#92400e; margin-top:8px; line-height:1.6;">SKU <b>{int(u['SKU수'])}개</b> 로 매출 <b>{u['매출비중']:.1f}%</b> 차지.<br>SKU 당 평균 ₩<b>{int(u['SKU당평균매출']):,}</b> → 신규 SKU 추가 시 ROI 최대.</div>
 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                """
-<div style="background: #f8fafc; border: 1px dashed #cbd5e1;
-            border-radius: 12px; padding: 16px 18px; min-height: 165px;
-            display:flex; flex-direction:column; justify-content:center;">
-    <div style="font-size:0.78rem; font-weight:700; color:#94a3b8;
-                letter-spacing:0.04em; text-transform:uppercase;">
-        🎯 확장 기회
-    </div>
-    <div style="font-size:0.85rem; color:#94a3b8; margin-top:10px;">
-        모든 카테고리가 충분히 진출되어 있어요. <br>
-        세부 옵션 (맛/사이즈) 차원 검토 권장.
-    </div>
+                _flatten_html("""
+<div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:16px 18px; min-height:165px; display:flex; flex-direction:column; justify-content:center;">
+    <div style="font-size:0.78rem; font-weight:700; color:#94a3b8; letter-spacing:0.04em; text-transform:uppercase;">🎯 확장 기회</div>
+    <div style="font-size:0.85rem; color:#94a3b8; margin-top:10px;">모든 카테고리가 충분히 진출되어 있어요. <br>세부 옵션 (맛/사이즈) 차원 검토 권장.</div>
 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
@@ -515,26 +466,13 @@ with tab_cat:
         if leader is not None:
             s = _cat_style(leader["category"])
             st.markdown(
-                f"""
-<div style="background: linear-gradient(135deg, {s['tint']} 0%, {s['soft']} 100%);
-            border-left: 5px solid {s['primary']};
-            border-radius: 12px; padding: 16px 18px; min-height: 165px;">
-    <div style="font-size:0.78rem; font-weight:700; color:{s['text']};
-                letter-spacing:0.04em; text-transform:uppercase;">
-        🏆 강세 카테고리
-    </div>
-    <div style="font-size:1.1rem; font-weight:700; color:{s['text']};
-                margin-top:8px;">
-        {s['emoji']} {leader['category']}
-    </div>
-    <div style="font-size:0.82rem; color:{s['text']}; margin-top:8px;
-                line-height:1.6;">
-        매출 <b>{leader['매출비중']:.1f}%</b> 차지 ·
-        <b>{int(leader['SKU수'])}개 SKU</b> 운영.<br>
-        이 카테고리 변형/심화 SKU 가 가장 안전한 확장 선택지.
-    </div>
+                _flatten_html(f"""
+<div style="background:linear-gradient(135deg, {s['tint']} 0%, {s['soft']} 100%); border-left:5px solid {s['primary']}; border-radius:12px; padding:16px 18px; min-height:165px;">
+    <div style="font-size:0.78rem; font-weight:700; color:{s['text']}; letter-spacing:0.04em; text-transform:uppercase;">🏆 강세 카테고리</div>
+    <div style="font-size:1.1rem; font-weight:700; color:{s['text']}; margin-top:8px;">{s['emoji']} {leader['category']}</div>
+    <div style="font-size:0.82rem; color:{s['text']}; margin-top:8px; line-height:1.6;">매출 <b>{leader['매출비중']:.1f}%</b> 차지 · <b>{int(leader['SKU수'])}개 SKU</b> 운영.<br>이 카테고리 변형/심화 SKU 가 가장 안전한 확장 선택지.</div>
 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
@@ -544,50 +482,26 @@ with tab_cat:
             sat = saturated.iloc[0]
             s = _cat_style(sat["category"])
             st.markdown(
-                f"""
-<div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            border-left: 5px solid #dc2626;
-            border-radius: 12px; padding: 16px 18px; min-height: 165px;">
-    <div style="font-size:0.78rem; font-weight:700; color:#991b1b;
-                letter-spacing:0.04em; text-transform:uppercase;">
-        ⚠️ 포화 시그널
-    </div>
-    <div style="font-size:1.1rem; font-weight:700; color:#7f1d1d;
-                margin-top:8px;">
-        {s['emoji']} {sat['category']}
-    </div>
-    <div style="font-size:0.82rem; color:#991b1b; margin-top:8px;
-                line-height:1.6;">
-        SKU <b>{int(sat['SKU수'])}개</b> 인데 SKU 당 매출 평균 미만.<br>
-        카니발리제이션 가능성 — 단종 또는 통합 검토.
-    </div>
+                _flatten_html(f"""
+<div style="background:linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left:5px solid #dc2626; border-radius:12px; padding:16px 18px; min-height:165px;">
+    <div style="font-size:0.78rem; font-weight:700; color:#991b1b; letter-spacing:0.04em; text-transform:uppercase;">⚠️ 포화 시그널</div>
+    <div style="font-size:1.1rem; font-weight:700; color:#7f1d1d; margin-top:8px;">{s['emoji']} {sat['category']}</div>
+    <div style="font-size:0.82rem; color:#991b1b; margin-top:8px; line-height:1.6;">SKU <b>{int(sat['SKU수'])}개</b> 인데 SKU 당 매출 평균 미만.<br>카니발리제이션 가능성 — 단종 또는 통합 검토.</div>
 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
         else:
             # 다양성 인사이트
             avg_per_sku = cat_agg["SKU당평균매출"].mean()
             st.markdown(
-                f"""
-<div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            border-left: 5px solid #16a34a;
-            border-radius: 12px; padding: 16px 18px; min-height: 165px;">
-    <div style="font-size:0.78rem; font-weight:700; color:#15803d;
-                letter-spacing:0.04em; text-transform:uppercase;">
-        ✅ 건강한 분포
-    </div>
-    <div style="font-size:1.1rem; font-weight:700; color:#14532d;
-                margin-top:8px;">
-        {len(cat_agg)}개 카테고리 운영 중
-    </div>
-    <div style="font-size:0.82rem; color:#15803d; margin-top:8px;
-                line-height:1.6;">
-        포화 시그널 없음. SKU 당 평균 매출 ₩<b>{int(avg_per_sku):,}</b>.<br>
-        카테고리 간 균형 양호.
-    </div>
+                _flatten_html(f"""
+<div style="background:linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border-left:5px solid #16a34a; border-radius:12px; padding:16px 18px; min-height:165px;">
+    <div style="font-size:0.78rem; font-weight:700; color:#15803d; letter-spacing:0.04em; text-transform:uppercase;">✅ 건강한 분포</div>
+    <div style="font-size:1.1rem; font-weight:700; color:#14532d; margin-top:8px;">{len(cat_agg)}개 카테고리 운영 중</div>
+    <div style="font-size:0.82rem; color:#15803d; margin-top:8px; line-height:1.6;">포화 시그널 없음. SKU 당 평균 매출 ₩<b>{int(avg_per_sku):,}</b>.<br>카테고리 간 균형 양호.</div>
 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
