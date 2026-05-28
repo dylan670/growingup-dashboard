@@ -140,71 +140,71 @@ def _grade(total: int) -> tuple[str, str]:
 def _score_total_sold(s) -> int:
     if pd.isna(s) or s is None: return 0
     s = int(s)
-    if s >= 10000: return 15
-    if s >= 5000: return 12
-    if s >= 1000: return 9
-    if s >= 300: return 5
-    return 2
+    if s >= 10000: return 12
+    if s >= 5000: return 9
+    if s >= 1000: return 6
+    if s >= 300: return 3
+    return 1
 
 
 def _score_reviews(r) -> int:
     if pd.isna(r) or r is None: return 0
     r = int(r)
-    if r >= 500: return 13
-    if r >= 100: return 10
-    if r >= 50: return 7
-    if r >= 10: return 3
+    if r >= 500: return 10
+    if r >= 100: return 8
+    if r >= 50: return 5
+    if r >= 10: return 2
     return 1
 
 
 def _score_age(a) -> int:
     if pd.isna(a) or a is None: return 0
     a = int(a)
-    if a >= 10: return 12
-    if a >= 5: return 10
-    if a >= 3: return 6
-    return 2
+    if a >= 10: return 10
+    if a >= 5: return 8
+    if a >= 3: return 5
+    return 1
 
 
 def _score_badges(row) -> int:
-    if row.get("is_super_factory"): return 25
-    if row.get("is_powerful_merchant"): return 18
-    if row.get("is_factory"): return 10
+    if row.get("is_super_factory"): return 20
+    if row.get("is_powerful_merchant"): return 15
+    if row.get("is_factory"): return 8
     return 0
 
 
 def _score_price(price, cat_prices: list[float]) -> int:
     if pd.isna(price) or price is None: return 0
-    if not cat_prices or len(cat_prices) < 3: return 5
+    if not cat_prices or len(cat_prices) < 3: return 4
     sorted_p = sorted(cat_prices)
     rank_below = sum(1 for x in sorted_p if x < price)
     pct = rank_below / len(sorted_p)
-    if pct <= 0.25: return 10
-    if pct <= 0.50: return 7
-    if pct <= 0.75: return 3
+    if pct <= 0.25: return 8
+    if pct <= 0.50: return 5
+    if pct <= 0.75: return 2
     return 1
 
 
 def _score_repurchase(r) -> int:
     if pd.isna(r) or r is None: return 0
-    if r >= 70: return 10
-    if r >= 50: return 7
-    if r >= 30: return 4
+    if r >= 70: return 8
+    if r >= 50: return 5
+    if r >= 30: return 3
     return 1
 
 
 def _score_ontime(r) -> int:
     if pd.isna(r) or r is None: return 0
-    if r >= 99: return 8
-    if r >= 95: return 6
-    if r >= 90: return 3
+    if r >= 99: return 6
+    if r >= 95: return 4
+    if r >= 90: return 2
     return 1
 
 
 def _score_service(s) -> int:
     if pd.isna(s) or s is None: return 0
-    if s >= 4.5: return 4
-    if s >= 4.0: return 3
+    if s >= 4.5: return 3
+    if s >= 4.0: return 2
     if s >= 3.5: return 1
     return 0
 
@@ -240,10 +240,10 @@ def _score_user_review(s) -> int:
 def _score_user_product(s) -> int:
     if pd.isna(s) or not s: return 0
     s = int(s)
-    if s >= 5: return 10
-    if s >= 4: return 8
-    if s >= 3: return 5
-    if s >= 2: return 2
+    if s >= 5: return 12
+    if s >= 4: return 10
+    if s >= 3: return 6
+    if s >= 2: return 3
     return 0
 
 
