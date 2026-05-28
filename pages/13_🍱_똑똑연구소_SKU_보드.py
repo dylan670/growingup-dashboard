@@ -209,8 +209,24 @@ unique_products = filtered["product"].nunique()
 unique_cats = filtered["category"].nunique()
 avg_price = total_rev / total_qty if total_qty > 0 else 0
 
+# 선택 기간 표시 (사이드바 필터 명시화)
+_period_days = (max_date - start_date).days + 1
+st.markdown(
+    _flatten_html(f"""
+<div style="display:inline-flex; align-items:center; gap:8px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:999px; padding:6px 14px; font-size:0.82rem; color:#475569; margin-bottom:14px;">
+    <span style="color:#94a3b8;">📅 선택 기간</span>
+    <span style="font-weight:600; color:#0f172a;">{start_date.isoformat()} ~ {max_date.isoformat()}</span>
+    <span style="color:#94a3b8;">·</span>
+    <span style="color:#64748b;">{_period_days}일</span>
+    <span style="color:#94a3b8;">·</span>
+    <span style="color:#2563eb; font-weight:600;">{period_label}</span>
+</div>
+    """),
+    unsafe_allow_html=True,
+)
+
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("📅 기간 매출", f"₩{int(total_rev):,}")
+k1.metric(f"📅 매출 ({_period_days}일)", f"₩{int(total_rev):,}")
 k2.metric("📦 총 판매수량", f"{int(total_qty):,}")
 k3.metric("🏷 판매 SKU", f"{unique_products}")
 k4.metric("🍱 카테고리", f"{unique_cats}")
