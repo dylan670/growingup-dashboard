@@ -217,6 +217,36 @@ def _score_goodrate(r) -> int:
     return 0
 
 
+# 사용자 별점 (1-5) → 점수
+def _score_user_image(s) -> int:
+    if pd.isna(s) or not s: return 0
+    s = int(s)
+    if s >= 5: return 5
+    if s >= 4: return 4
+    if s >= 3: return 2
+    if s >= 2: return 1
+    return 0
+
+
+def _score_user_review(s) -> int:
+    if pd.isna(s) or not s: return 0
+    s = int(s)
+    if s >= 5: return 3
+    if s >= 4: return 2
+    if s >= 3: return 1
+    return 0
+
+
+def _score_user_product(s) -> int:
+    if pd.isna(s) or not s: return 0
+    s = int(s)
+    if s >= 5: return 10
+    if s >= 4: return 8
+    if s >= 3: return 5
+    if s >= 2: return 2
+    return 0
+
+
 def quick_score(row, cat_prices: list[float]) -> int:
     return (
         _score_total_sold(row.get("total_sold"))
@@ -228,6 +258,9 @@ def quick_score(row, cat_prices: list[float]) -> int:
         + _score_ontime(row.get("shop_on_time_rate"))
         + _score_service(row.get("shop_service_score"))
         + _score_goodrate(row.get("positive_review_ratio"))
+        + _score_user_image(row.get("user_image_quality"))
+        + _score_user_review(row.get("user_review_quality"))
+        + _score_user_product(row.get("user_product_quality"))
     )
 
 
