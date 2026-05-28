@@ -151,7 +151,7 @@ brand_options = (
     + [b for b in brand_options_all if b != "롤라루"]
     + ["전체"]
 )
-selected_brand = st.sidebar.selectbox(
+selected_brand = st.sidebar.radio(
     "브랜드",
     brand_options,
     index=0,
@@ -161,7 +161,7 @@ selected_brand = st.sidebar.selectbox(
 # 기간 필터
 max_date = orders["date"].max().date()
 min_date = orders["date"].min().date()
-period_label = st.sidebar.selectbox(
+period_label = st.sidebar.radio(
     "기간",
     ["전체", "최근 30일", "최근 90일", "최근 180일", "올해"],
     index=2,
@@ -237,10 +237,12 @@ with tab_opt:
     else:
         # 옵션키 선택
         opt_key_labels = [c.replace("opt_", "") for c in opt_cols]
-        selected_opt_key = st.selectbox(
+        selected_opt_key = st.radio(
             "분석할 옵션",
             opt_key_labels,
             index=opt_key_labels.index("컬러") if "컬러" in opt_key_labels else 0,
+            horizontal=True,
+            key="rollaru_opt_key",
         )
 
         col = f"opt_{selected_opt_key}"
@@ -535,19 +537,23 @@ with tab_combo:
         opt_labels = [c.replace("opt_", "") for c in opt_cols]
         c1, c2 = st.columns(2)
         with c1:
-            main_key = st.selectbox(
+            main_key = st.radio(
                 "메인 옵션 (X축)",
                 opt_labels,
                 index=opt_labels.index("컬러") if "컬러" in opt_labels else 0,
                 help="가로축에 배치할 옵션",
+                horizontal=True,
+                key="rollaru_combo_main",
             )
         with c2:
             remaining = [l for l in opt_labels if l != main_key]
-            sub_key = st.selectbox(
+            sub_key = st.radio(
                 "서브 옵션 (색상 구분)",
                 remaining,
                 index=remaining.index("사이즈") if "사이즈" in remaining else 0,
                 help="누적 막대를 색으로 구분할 옵션",
+                horizontal=True,
+                key="rollaru_combo_sub",
             )
 
         main_col, sub_col = f"opt_{main_key}", f"opt_{sub_key}"

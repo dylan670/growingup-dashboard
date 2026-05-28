@@ -384,12 +384,22 @@ def render_meetings_view(db_id_arg: str):
 
     col_a, col_b = st.columns([2, 1])
     with col_a:
-        selected_team = st.selectbox(
-            "🏷️ 팀 필터",
-            team_options,
-            index=team_options.index("그로잉업") if "그로잉업" in team_options else 0,
-            key=f"team_filter_{db_id_arg}",
-        )
+        # 옵션 5개 이하면 horizontal radio (한 번에 클릭), 많으면 selectbox
+        if len(team_options) <= 5:
+            selected_team = st.radio(
+                "🏷️ 팀 필터",
+                team_options,
+                index=team_options.index("그로잉업") if "그로잉업" in team_options else 0,
+                horizontal=True,
+                key=f"team_filter_{db_id_arg}",
+            )
+        else:
+            selected_team = st.selectbox(
+                "🏷️ 팀 필터",
+                team_options,
+                index=team_options.index("그로잉업") if "그로잉업" in team_options else 0,
+                key=f"team_filter_{db_id_arg}",
+            )
     with col_b:
         confirm_only = st.checkbox("✅ 확정만", key=f"confirm_{db_id_arg}")
 

@@ -162,7 +162,7 @@ st.sidebar.markdown("#### 🔎 필터")
 
 max_date = orders["date"].max().date()
 min_date = orders["date"].min().date()
-period_label = st.sidebar.selectbox(
+period_label = st.sidebar.radio(
     "기간",
     ["전체", "최근 30일", "최근 90일", "최근 180일", "올해"],
     index=2,
