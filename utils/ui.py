@@ -178,13 +178,12 @@ def inject_global_css() -> None:
             padding-top: 1.2rem;
         }}
 
-        /* 섹션 라벨 (OVERVIEW / ANALYTICS / SYSTEM) */
+        /* 섹션 라벨 (홈 / 1. 소싱 / 2. 등록 / 3. 분석 / 4. 성장 / 5. 피드백 / 설정) */
         .nav-section-header {{
-            font-size: 0.72rem;
+            font-size: 0.78rem;
             color: {TEXT_MUTED};
             font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
+            letter-spacing: 0.02em;
             margin: 16px 0 6px 8px;
         }}
 
@@ -479,33 +478,44 @@ def render_sidebar_brand() -> None:
 
 
 # ==========================================================
-# 커스텀 사이드바 네비게이션 — OVERVIEW / ANALYTICS / SYSTEM
+# 커스텀 사이드바 네비게이션 — 업무 흐름 순서
+# 홈 → 1. 소싱 → 2. 등록 → 3. 분석 → 4. 성장 → 5. 피드백 → 설정
 # ==========================================================
 # 페이지 등록 정보: (섹션, 아이콘, 표시명, 파일 경로)
+# 업무 흐름 순서: 홈 → 소싱 → 등록 → 분석 → 성장 → 피드백 → 설정
 _NAV_PAGES: list[tuple[str, str, str, str]] = [
-    ("OVERVIEW",  "🏠", "대시보드",       "app.py"),
+    # 🏠 홈 — 들어오자마자 종합 + 알림 확인
+    ("홈",        "🏠", "대시보드",         "app.py"),
+    ("홈",        "🚦", "알림 센터",        "pages/4_🚦_알림_센터.py"),
 
-    ("ANALYTICS", "💰", "매출 분석",      "pages/2_💰_매출_분석.py"),
-    ("ANALYTICS", "📣", "광고 분석",      "pages/1_📣_광고_분석.py"),
-    ("ANALYTICS", "📦", "제품 분석",      "pages/3_📦_제품_분석.py"),
-    ("ANALYTICS", "👥", "CRM",            "pages/5_👥_CRM.py"),
-    ("ANALYTICS", "🚦", "알림 센터",      "pages/4_🚦_알림_센터.py"),
+    # 1. 소싱 — 신규 제품 발굴
+    ("1. 소싱",   "🛒", "루티니스트 1688",  "pages/12_🛒_루티니스트_1688_소싱.py"),
 
-    ("GROWTH",    "🎯", "롤라루 SKU 보드", "pages/10_🎯_SKU_확장_보드.py"),
+    # 2. 등록 — 채널 연동 + 데이터 입력
+    ("2. 등록",   "🔌", "API 연결",         "pages/7_🔌_API_연결.py"),
+    ("2. 등록",   "📤", "CSV 업로드",       "pages/8_📤_CSV_업로드.py"),
 
-    ("WORKSPACE", "📝", "회의록",         "pages/9_📝_회의록.py"),
+    # 3. 분석 — 제품 → 광고 → 매출 흐름
+    ("3. 분석",   "📦", "제품 분석",        "pages/3_📦_제품_분석.py"),
+    ("3. 분석",   "📣", "광고 분석",        "pages/1_📣_광고_분석.py"),
+    ("3. 분석",   "💰", "매출 분석",        "pages/2_💰_매출_분석.py"),
 
-    ("SOURCING",  "🛒", "루티니스트 1688", "pages/12_🛒_루티니스트_1688_소싱.py"),
+    # 4. 성장 — SKU 확장 의사결정
+    ("4. 성장",   "🎯", "롤라루 SKU 보드",  "pages/10_🎯_SKU_확장_보드.py"),
 
-    ("SYSTEM",    "⚙️", "설정",           "pages/6_⚙️_설정.py"),
-    ("SYSTEM",    "🔌", "API 연결",       "pages/7_🔌_API_연결.py"),
-    ("SYSTEM",    "📤", "CSV 업로드",     "pages/8_📤_CSV_업로드.py"),
+    # 5. 피드백 — 고객 + 팀 회의
+    ("5. 피드백", "👥", "CRM (고객)",       "pages/5_👥_CRM.py"),
+    ("5. 피드백", "📝", "회의록",           "pages/9_📝_회의록.py"),
+
+    # ⚙️ 설정
+    ("설정",      "⚙️", "설정",             "pages/6_⚙️_설정.py"),
 ]
 
 
 def render_sidebar_nav() -> None:
-    """사이드바 섹션형 네비게이션 (OVERVIEW / ANALYTICS / SYSTEM).
+    """사이드바 섹션형 네비게이션 — 업무 흐름 순서.
 
+    홈 / 1. 소싱 / 2. 등록 / 3. 분석 / 4. 성장 / 5. 피드백 / 설정
     Streamlit 기본 pages 자동 네비는 CSS 로 숨겨져 있음.
     """
     current_section: str | None = None
