@@ -84,24 +84,13 @@ _weekday_kr = ["월", "화", "수", "목", "금", "토", "일"][_today.weekday()
 
 # ─── 페이지 헤더 (BRANDBOARD 톤) ───
 st.markdown(
-    f"""
+    _flatten_html(f"""
 <div style="margin-top:-0.5rem; margin-bottom:1.4rem;">
-    <div style="font-size:0.68rem; letter-spacing:0.22em;
-                color:#94a3b8; text-transform:uppercase;
-                font-weight:700; margin-bottom:6px;">
-        GROWINGUP DASHBOARD
-    </div>
-    <h1 style="font-size:2.1rem; font-weight:800; margin:0 0 8px 0;
-               letter-spacing:-0.03em; color:#0f172a; line-height:1.1;">
-        대시보드
-    </h1>
-    <div style="font-size:0.88rem; color:#64748b;">
-        {_today.month}월 {_today.day}일 ({_weekday_kr}) ·
-        {_today.year}년 {_days_elapsed}일차 · 3개 브랜드 통합
-        <span style="color:#94a3b8;">(부가세 별도)</span>
-    </div>
+    <div style="font-size:0.68rem; letter-spacing:0.22em; color:#94a3b8; text-transform:uppercase; font-weight:700; margin-bottom:6px;">GROWINGUP DASHBOARD</div>
+    <h1 style="font-size:2.1rem; font-weight:800; margin:0 0 8px 0; letter-spacing:-0.03em; color:#0f172a; line-height:1.1;">대시보드</h1>
+    <div style="font-size:0.88rem; color:#64748b;">{_today.month}월 {_today.day}일 ({_weekday_kr}) · {_today.year}년 {_days_elapsed}일차 · 3개 브랜드 통합 <span style="color:#94a3b8;">(부가세 별도)</span></div>
 </div>
-    """,
+    """),
     unsafe_allow_html=True,
 )
 
@@ -170,77 +159,38 @@ for _i, _bdef in enumerate(_BRAND_DEFS):
 
     with _hero_cols[_i]:
         st.markdown(
-            f"""
-<div style="background:linear-gradient(135deg, #ffffff 0%, {_soft} 100%);
-            border:1px solid {_soft};
-            border-radius:18px; padding:22px 24px;
-            box-shadow:0 1px 3px rgba(15,23,42,0.04);
-            min-height:260px;
-            transition:transform 0.18s ease, box-shadow 0.18s ease;">
-    <div style="display:flex; justify-content:space-between;
-                align-items:flex-start; margin-bottom:14px;">
+            _flatten_html(f"""
+<div style="background:linear-gradient(135deg, #ffffff 0%, {_soft} 100%); border:1px solid {_soft}; border-radius:18px; padding:22px 24px; box-shadow:0 1px 3px rgba(15,23,42,0.04); min-height:260px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
         <div>
-            <div style="font-size:0.68rem; color:#94a3b8;
-                        text-transform:uppercase; letter-spacing:0.1em;
-                        font-weight:700;">
-                {_bdef['tag']}
-            </div>
-            <div style="font-size:1.05rem; font-weight:700;
-                        color:{_text_c}; margin-top:4px;">
-                {_bdef['emoji']} {_bname}
-            </div>
+            <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; font-weight:700;">{_bdef['tag']}</div>
+            <div style="font-size:1.05rem; font-weight:700; color:{_text_c}; margin-top:4px;">{_bdef['emoji']} {_bname}</div>
         </div>
-        <div style="background:{_status_color}15;
-                    color:{_status_color};
-                    border-radius:999px; padding:4px 10px;
-                    font-size:0.7rem; font-weight:700;">
-            {_status_text}
-        </div>
+        <div style="background:{_status_color}15; color:{_status_color}; border-radius:999px; padding:4px 10px; font-size:0.7rem; font-weight:700;">{_status_text}</div>
     </div>
-
-    <div style="font-size:1.95rem; font-weight:800;
-                color:{_text_c}; line-height:1; letter-spacing:-0.02em;">
-        ₩{int(_ytd):,}
-    </div>
-    <div style="font-size:0.72rem; color:#94a3b8; margin-top:4px;">
-        {_today.year} 누적 (YTD)
-    </div>
-
+    <div style="font-size:1.95rem; font-weight:800; color:{_text_c}; line-height:1; letter-spacing:-0.02em;">₩{int(_ytd):,}</div>
+    <div style="font-size:0.72rem; color:#94a3b8; margin-top:4px;">{_today.year} 누적 (YTD)</div>
     <div style="margin-top:18px;">
-        <div style="display:flex; justify-content:space-between;
-                    font-size:0.74rem; color:#64748b; margin-bottom:6px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b; margin-bottom:6px;">
             <span>⊕ 연간 목표 ₩{int(_annual_t):,}</span>
-            <span style="font-weight:700; color:{_text_c};">
-                {_progress:.1f}%
-            </span>
+            <span style="font-weight:700; color:{_text_c};">{_progress:.1f}%</span>
         </div>
-        <div style="height:8px; background:#f1f5f9;
-                    border-radius:99px; overflow:hidden;">
-            <div style="height:100%; width:{_progress_clipped}%;
-                        background:linear-gradient(90deg, {_primary} 0%,
-                            {_text_c} 100%);
-                        border-radius:99px;"></div>
+        <div style="height:8px; background:#f1f5f9; border-radius:99px; overflow:hidden;">
+            <div style="height:100%; width:{_progress_clipped}%; background:linear-gradient(90deg, {_primary} 0%, {_text_c} 100%); border-radius:99px;"></div>
         </div>
     </div>
-
-    <div style="display:flex; justify-content:space-between;
-                margin-top:14px; padding-top:12px;
-                border-top:1px solid {_soft}; font-size:0.72rem;">
+    <div style="display:flex; justify-content:space-between; margin-top:14px; padding-top:12px; border-top:1px solid {_soft}; font-size:0.72rem;">
         <div>
             <div style="color:#94a3b8;">일평균</div>
-            <div style="color:{_text_c}; font-weight:700; font-size:0.88rem;">
-                ₩{int(_daily_avg):,}
-            </div>
+            <div style="color:{_text_c}; font-weight:700; font-size:0.88rem;">₩{int(_daily_avg):,}</div>
         </div>
         <div style="text-align:right;">
             <div style="color:#94a3b8;">필요 일평균</div>
-            <div style="color:#dc2626; font-weight:700; font-size:0.88rem;">
-                ₩{int(_required):,}
-            </div>
+            <div style="color:#dc2626; font-weight:700; font-size:0.88rem;">₩{int(_required):,}</div>
         </div>
     </div>
 </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
 
@@ -252,15 +202,10 @@ _chart_l, _chart_r = st.columns(2)
 
 with _chart_l:
     st.markdown(
-        f"""
-<div style="font-size:1rem; font-weight:700; color:#0f172a;
-            margin-bottom:2px;">
-    채널 매출 비중
-</div>
-<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:12px;">
-    {_today.year} 누적 (YTD)
-</div>
-        """,
+        _flatten_html(f"""
+<div style="font-size:1rem; font-weight:700; color:#0f172a; margin-bottom:2px;">채널 매출 비중</div>
+<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:12px;">{_today.year} 누적 (YTD)</div>
+        """),
         unsafe_allow_html=True,
     )
 
@@ -304,15 +249,10 @@ with _chart_l:
 
 with _chart_r:
     st.markdown(
-        f"""
-<div style="font-size:1rem; font-weight:700; color:#0f172a;
-            margin-bottom:2px;">
-    월별 매출 추이
-</div>
-<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:12px;">
-    {_today.year}년 1~12월
-</div>
-        """,
+        _flatten_html(f"""
+<div style="font-size:1rem; font-weight:700; color:#0f172a; margin-bottom:2px;">월별 매출 추이</div>
+<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:12px;">{_today.year}년 1~12월</div>
+        """),
         unsafe_allow_html=True,
     )
 
