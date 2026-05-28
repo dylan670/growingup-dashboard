@@ -222,14 +222,42 @@ tab_cat, tab_flavor, tab_bundle, tab_roas = st.tabs([
 
 
 # ==========================================================
-# TAB 1 — 카테고리 분포 (김/떡뻥/번들 갭)
+# TAB 1 — 카테고리 분포 (시각적 강화 버전)
 # ==========================================================
+
+# 카테고리별 컬러 팔레트 (브랜드 톤 일관) + 이모지
+CAT_STYLE: dict[str, dict[str, str]] = {
+    "김":         {"emoji": "🍙", "primary": "#2563eb", "soft": "#dbeafe",
+                   "tint": "#eff6ff", "text": "#1e40af"},
+    "떡뻥/쌀과자": {"emoji": "🍘", "primary": "#f59e0b", "soft": "#fef3c7",
+                   "tint": "#fffbeb", "text": "#b45309"},
+    "번들/세트":   {"emoji": "📦", "primary": "#7c3aed", "soft": "#ede9fe",
+                   "tint": "#f5f3ff", "text": "#6b21a8"},
+    "분유":       {"emoji": "🍼", "primary": "#ec4899", "soft": "#fce7f3",
+                   "tint": "#fdf2f8", "text": "#be185d"},
+    "이유식":     {"emoji": "🥣", "primary": "#16a34a", "soft": "#dcfce7",
+                   "tint": "#f0fdf4", "text": "#15803d"},
+    "기타 간식":  {"emoji": "🍪", "primary": "#0ea5e9", "soft": "#e0f2fe",
+                   "tint": "#f0f9ff", "text": "#0369a1"},
+    "기타":       {"emoji": "📌", "primary": "#64748b", "soft": "#f1f5f9",
+                   "tint": "#f8fafc", "text": "#475569"},
+}
+
+
+def _cat_style(cat: str) -> dict:
+    return CAT_STYLE.get(cat, CAT_STYLE["기타"])
+
+
 with tab_cat:
-    st.markdown("##### 🍱 카테고리별 매출 + SKU 분포")
+    st.markdown("##### 🍱 카테고리 한눈에 보기")
     st.caption(
-        "어느 카테고리가 잘 팔리는지 + SKU 수가 적은데 매출 큰 카테고리 = 확장 기회"
+        "매출·SKU·구매자 수 + 미개척 기회 자동 도출. "
+        "카드를 보고 어디에 SKU 를 더 만들지 결정하세요."
     )
 
+    # ============================================
+    # 데이터 집계
+    # ============================================
     cat_agg = (
         filtered.groupby("category")
         .agg(
@@ -241,75 +269,354 @@ with tab_cat:
         .reset_index()
         .sort_values("매출", ascending=False)
     )
-    cat_agg["매출비중%"] = (
-        cat_agg["매출"] / cat_agg["매출"].sum() * 100
-    ).round(1)
-    cat_agg["SKU당평균매출"] = (cat_agg["매출"] / cat_agg["SKU수"]).round(0)
+    cat_agg["매출비중"] = (cat_agg["매출"] / cat_agg["매출"].sum() * 100)
+    cat_agg["SKU당평균매출"] = cat_agg["매출"] / cat_agg["SKU수"]
+    cat_agg["객단가"] = cat_agg["매출"] / cat_agg["구매자수"].replace(0, 1)
 
-    # 차트 — 매출 bar + SKU 수 line
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=cat_agg["category"],
-        y=cat_agg["매출"],
-        name="매출",
-        marker_color="#2563eb",
-        text=cat_agg["매출비중%"].apply(lambda v: f"{v}%"),
-        textposition="outside",
-        yaxis="y",
+    # SKU 효율 분위수 — 색감 강도 조절
+    max_sku_rev = cat_agg["SKU당평균매출"].max() or 1
+    total_rev_all = cat_agg["매출"].sum() or 1
+
+    # ============================================
+    # ① 카테고리 카드 그리드 (시각적 임팩트)
+    # ============================================
+    st.markdown(
+        "<style>"
+        ".cat-card {transition: transform 0.18s ease, box-shadow 0.18s ease;}"
+        ".cat-card:hover {transform: translateY(-2px); "
+        "box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);}"
+        "</style>",
+        unsafe_allow_html=True,
+    )
+
+    # 카드 그리드 — 최대 3열
+    n_cats = len(cat_agg)
+    n_cols = min(3, n_cats) if n_cats > 0 else 1
+    rows_needed = (n_cats + n_cols - 1) // n_cols
+
+    cat_iter = iter(cat_agg.iterrows())
+    for _ in range(rows_needed):
+        cols = st.columns(n_cols)
+        for col in cols:
+            try:
+                _, row = next(cat_iter)
+            except StopIteration:
+                break
+
+            cat = row["category"]
+            s = _cat_style(cat)
+            sku_eff_ratio = (
+                row["SKU당평균매출"] / max_sku_rev * 100
+                if max_sku_rev > 0 else 0
+            )
+            share = row["매출비중"]
+            # 효율 라벨
+            if row["SKU당평균매출"] >= max_sku_rev * 0.8:
+                eff_label = "🔥 SKU 효율 매우 높음"
+                eff_color = "#dc2626"
+            elif row["SKU당평균매출"] >= max_sku_rev * 0.5:
+                eff_label = "✨ SKU 효율 양호"
+                eff_color = s["text"]
+            else:
+                eff_label = "💤 SKU 효율 낮음"
+                eff_color = "#94a3b8"
+
+            with col:
+                st.markdown(
+                    f"""
+<div class="cat-card" style="
+    background: linear-gradient(135deg, {s['tint']} 0%, {s['soft']} 100%);
+    border-radius: 16px;
+    padding: 20px 22px;
+    border: 1px solid {s['soft']};
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    margin-bottom: 14px;
+    min-height: 250px;
+">
+    <div style="display:flex; justify-content:space-between;
+                align-items:flex-start; margin-bottom:14px;">
+        <div>
+            <div style="font-size:2rem; line-height:1;">{s['emoji']}</div>
+            <div style="font-size:1.05rem; font-weight:700;
+                        color:{s['text']}; margin-top:4px;">
+                {cat}
+            </div>
+        </div>
+        <div style="background:{s['primary']}; color:white;
+                    border-radius:999px; padding:4px 11px;
+                    font-size:0.75rem; font-weight:600;">
+            {share:.1f}%
+        </div>
+    </div>
+
+    <div style="font-size:1.55rem; font-weight:800;
+                color:{s['text']}; line-height:1.1;
+                letter-spacing:-0.02em;">
+        ₩{int(row['매출']):,}
+    </div>
+
+    <div style="display:flex; gap:14px; margin-top:8px;
+                font-size:0.78rem; color:#64748b;">
+        <span><b style="color:{s['text']};">{int(row['SKU수'])}</b> SKU</span>
+        <span>·</span>
+        <span><b style="color:{s['text']};">{int(row['구매자수'])}</b> 구매자</span>
+        <span>·</span>
+        <span>객단가 <b style="color:{s['text']};">₩{int(row['객단가']):,}</b></span>
+    </div>
+
+    <div style="margin-top:14px;
+                background:rgba(255,255,255,0.6);
+                border-radius:8px; padding:10px 12px;">
+        <div style="display:flex; justify-content:space-between;
+                    font-size:0.72rem; color:#64748b;
+                    margin-bottom:5px;">
+            <span>SKU 당 평균매출</span>
+            <span style="color:{eff_color}; font-weight:600;">
+                {eff_label}
+            </span>
+        </div>
+        <div style="font-size:0.95rem; font-weight:700;
+                    color:{s['text']};">
+            ₩{int(row['SKU당평균매출']):,}
+        </div>
+        <div style="height:5px; background:rgba(255,255,255,0.8);
+                    border-radius:3px; margin-top:6px; overflow:hidden;">
+            <div style="height:100%; width:{sku_eff_ratio:.0f}%;
+                        background:linear-gradient(90deg,
+                            {s['primary']} 0%, {s['text']} 100%);
+                        border-radius:3px;"></div>
+        </div>
+    </div>
+</div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+
+    # ============================================
+    # ② Treemap — 면적=매출, 색=SKU 효율
+    # ============================================
+    st.markdown("##### 🗺 카테고리 매출 지도")
+    st.caption(
+        "면적 = 매출 크기 · 색상 = SKU 당 평균매출 (진할수록 효율 높음). "
+        "큰 면적 + 진한 색 = 강세 카테고리. 작은 면적 + 진한 색 = 확장 기회."
+    )
+
+    tm_df = cat_agg.copy()
+    tm_df["label"] = tm_df.apply(
+        lambda r: (
+            f"{_cat_style(r['category'])['emoji']} {r['category']}<br>"
+            f"<b>₩{int(r['매출']):,}</b><br>"
+            f"{int(r['SKU수'])} SKU · {r['매출비중']:.1f}%"
+        ),
+        axis=1,
+    )
+
+    fig_tm = go.Figure(go.Treemap(
+        labels=tm_df["label"],
+        parents=[""] * len(tm_df),
+        values=tm_df["매출"],
+        marker=dict(
+            colors=tm_df["SKU당평균매출"],
+            colorscale=[
+                [0.0, "#e0e7ff"],
+                [0.3, "#a5b4fc"],
+                [0.6, "#6366f1"],
+                [1.0, "#3730a3"],
+            ],
+            colorbar=dict(
+                title=dict(text="SKU당<br>평균매출", side="right"),
+                tickformat=",",
+                len=0.75,
+            ),
+            line=dict(width=2, color="white"),
+        ),
+        textfont=dict(size=14, color="white", family="Pretendard, sans-serif"),
+        textposition="middle center",
+        hovertemplate="<b>%{label}</b><br>매출: ₩%{value:,.0f}<extra></extra>",
     ))
-    fig.add_trace(go.Scatter(
-        x=cat_agg["category"],
-        y=cat_agg["SKU수"],
-        mode="lines+markers+text",
-        text=cat_agg["SKU수"],
-        textposition="top center",
-        name="진출 SKU 수",
-        line=dict(color="#f59e0b", width=3),
-        yaxis="y2",
-    ))
-    fig.update_layout(
+    fig_tm.update_layout(
         height=420,
-        xaxis=dict(title="카테고리"),
-        yaxis=dict(title="매출 (원)", side="left", tickformat=","),
-        yaxis2=dict(title="SKU 수", overlaying="y", side="right"),
-        margin=dict(l=10, r=10, t=30, b=10),
-        legend=dict(orientation="h", y=1.1),
+        margin=dict(l=10, r=10, t=10, b=10),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig_tm, use_container_width=True)
 
-    # 표
-    st.markdown("**상세 표**")
-    display_cat = cat_agg.copy()
-    display_cat["매출"] = display_cat["매출"].apply(lambda v: f"₩{int(v):,}")
-    display_cat["SKU당평균매출"] = display_cat["SKU당평균매출"].apply(
-        lambda v: f"₩{int(v):,}"
-    )
-    display_cat["판매수량"] = display_cat["판매수량"].apply(lambda v: f"{int(v):,}")
-    st.dataframe(
-        display_cat[["category", "매출", "매출비중%", "SKU수",
-                     "SKU당평균매출", "판매수량", "구매자수"]],
-        width="stretch", hide_index=True,
-    )
+    # ============================================
+    # ③ 자동 인사이트 박스 — 다양화 (3종)
+    # ============================================
+    st.markdown("##### 💡 자동 도출 인사이트")
 
-    # 인사이트 — SKU 적은데 SKU당 매출 큰 카테고리
-    opp = cat_agg.sort_values("SKU당평균매출", ascending=False)
-    top_opp = opp.iloc[0]
+    # 1) 미개척 카테고리 — SKU 1~2개인데 매출 비중 의미 있음
     underdeveloped = cat_agg[
-        (cat_agg["매출비중%"] >= 3) & (cat_agg["SKU수"] <= 2)
+        (cat_agg["매출비중"] >= 2) & (cat_agg["SKU수"] <= 2)
+    ].sort_values("SKU당평균매출", ascending=False)
+
+    # 2) 강세 카테고리 — 매출 비중 1위
+    leader = cat_agg.iloc[0] if not cat_agg.empty else None
+
+    # 3) 포화 카테고리 — SKU 많은데 SKU 당 매출 낮음 (카니발 risk)
+    saturated = cat_agg[
+        (cat_agg["SKU수"] >= 5)
+        & (cat_agg["SKU당평균매출"] < cat_agg["SKU당평균매출"].median())
     ]
-    if not underdeveloped.empty:
-        u = underdeveloped.iloc[0]
-        st.success(
-            f"💡 **미개척 카테고리** — `{u['category']}` 는 "
-            f"SKU {int(u['SKU수'])}개로 매출 {u['매출비중%']}% 차지. "
-            f"SKU 당 평균 매출 ₩{int(u['SKU당평균매출']):,}. "
-            f"신규 SKU 추가 시 ROI 가장 큼."
+
+    insight_cols = st.columns(3)
+
+    # 카드 1: 확장 기회
+    with insight_cols[0]:
+        if not underdeveloped.empty:
+            u = underdeveloped.iloc[0]
+            s = _cat_style(u["category"])
+            st.markdown(
+                f"""
+<div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 5px solid #f59e0b;
+            border-radius: 12px; padding: 16px 18px; min-height: 165px;">
+    <div style="font-size:0.78rem; font-weight:700; color:#b45309;
+                letter-spacing:0.04em; text-transform:uppercase;">
+        🎯 확장 기회
+    </div>
+    <div style="font-size:1.1rem; font-weight:700; color:#78350f;
+                margin-top:8px;">
+        {s['emoji']} {u['category']}
+    </div>
+    <div style="font-size:0.82rem; color:#92400e; margin-top:8px;
+                line-height:1.6;">
+        SKU <b>{int(u['SKU수'])}개</b> 로 매출 <b>{u['매출비중']:.1f}%</b> 차지.<br>
+        SKU 당 평균 ₩<b>{int(u['SKU당평균매출']):,}</b> →
+        신규 SKU 추가 시 ROI 최대.
+    </div>
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                """
+<div style="background: #f8fafc; border: 1px dashed #cbd5e1;
+            border-radius: 12px; padding: 16px 18px; min-height: 165px;
+            display:flex; flex-direction:column; justify-content:center;">
+    <div style="font-size:0.78rem; font-weight:700; color:#94a3b8;
+                letter-spacing:0.04em; text-transform:uppercase;">
+        🎯 확장 기회
+    </div>
+    <div style="font-size:0.85rem; color:#94a3b8; margin-top:10px;">
+        모든 카테고리가 충분히 진출되어 있어요. <br>
+        세부 옵션 (맛/사이즈) 차원 검토 권장.
+    </div>
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # 카드 2: 강세 카테고리
+    with insight_cols[1]:
+        if leader is not None:
+            s = _cat_style(leader["category"])
+            st.markdown(
+                f"""
+<div style="background: linear-gradient(135deg, {s['tint']} 0%, {s['soft']} 100%);
+            border-left: 5px solid {s['primary']};
+            border-radius: 12px; padding: 16px 18px; min-height: 165px;">
+    <div style="font-size:0.78rem; font-weight:700; color:{s['text']};
+                letter-spacing:0.04em; text-transform:uppercase;">
+        🏆 강세 카테고리
+    </div>
+    <div style="font-size:1.1rem; font-weight:700; color:{s['text']};
+                margin-top:8px;">
+        {s['emoji']} {leader['category']}
+    </div>
+    <div style="font-size:0.82rem; color:{s['text']}; margin-top:8px;
+                line-height:1.6;">
+        매출 <b>{leader['매출비중']:.1f}%</b> 차지 ·
+        <b>{int(leader['SKU수'])}개 SKU</b> 운영.<br>
+        이 카테고리 변형/심화 SKU 가 가장 안전한 확장 선택지.
+    </div>
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # 카드 3: 포화 카테고리 또는 카테고리 다양성
+    with insight_cols[2]:
+        if not saturated.empty:
+            sat = saturated.iloc[0]
+            s = _cat_style(sat["category"])
+            st.markdown(
+                f"""
+<div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border-left: 5px solid #dc2626;
+            border-radius: 12px; padding: 16px 18px; min-height: 165px;">
+    <div style="font-size:0.78rem; font-weight:700; color:#991b1b;
+                letter-spacing:0.04em; text-transform:uppercase;">
+        ⚠️ 포화 시그널
+    </div>
+    <div style="font-size:1.1rem; font-weight:700; color:#7f1d1d;
+                margin-top:8px;">
+        {s['emoji']} {sat['category']}
+    </div>
+    <div style="font-size:0.82rem; color:#991b1b; margin-top:8px;
+                line-height:1.6;">
+        SKU <b>{int(sat['SKU수'])}개</b> 인데 SKU 당 매출 평균 미만.<br>
+        카니발리제이션 가능성 — 단종 또는 통합 검토.
+    </div>
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            # 다양성 인사이트
+            avg_per_sku = cat_agg["SKU당평균매출"].mean()
+            st.markdown(
+                f"""
+<div style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            border-left: 5px solid #16a34a;
+            border-radius: 12px; padding: 16px 18px; min-height: 165px;">
+    <div style="font-size:0.78rem; font-weight:700; color:#15803d;
+                letter-spacing:0.04em; text-transform:uppercase;">
+        ✅ 건강한 분포
+    </div>
+    <div style="font-size:1.1rem; font-weight:700; color:#14532d;
+                margin-top:8px;">
+        {len(cat_agg)}개 카테고리 운영 중
+    </div>
+    <div style="font-size:0.82rem; color:#15803d; margin-top:8px;
+                line-height:1.6;">
+        포화 시그널 없음. SKU 당 평균 매출 ₩<b>{int(avg_per_sku):,}</b>.<br>
+        카테고리 간 균형 양호.
+    </div>
+</div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    st.markdown(
+        "<div style='margin-top:14px;'></div>", unsafe_allow_html=True,
+    )
+
+    # ============================================
+    # ④ 상세 표 (접힘 — 카드 보고 부족하면 펼침)
+    # ============================================
+    with st.expander("📋 카테고리 상세 표 (수치 확인)", expanded=False):
+        display_cat = cat_agg.copy()
+        display_cat["매출"] = display_cat["매출"].apply(
+            lambda v: f"₩{int(v):,}"
         )
-    else:
-        st.info(
-            f"💡 **현재 잘 팔리는 카테고리** — `{top_opp['category']}` "
-            f"SKU 당 평균 매출 ₩{int(top_opp['SKU당평균매출']):,}. "
-            f"이 카테고리 변형 SKU 검토 권장."
+        display_cat["SKU당평균매출"] = display_cat["SKU당평균매출"].apply(
+            lambda v: f"₩{int(v):,}"
+        )
+        display_cat["객단가"] = display_cat["객단가"].apply(
+            lambda v: f"₩{int(v):,}"
+        )
+        display_cat["판매수량"] = display_cat["판매수량"].apply(
+            lambda v: f"{int(v):,}"
+        )
+        display_cat["매출비중%"] = display_cat["매출비중"].round(1)
+        st.dataframe(
+            display_cat[["category", "매출", "매출비중%", "SKU수",
+                         "SKU당평균매출", "판매수량", "구매자수", "객단가"]],
+            width="stretch", hide_index=True,
         )
 
 
