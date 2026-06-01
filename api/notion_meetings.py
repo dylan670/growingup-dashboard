@@ -501,3 +501,204 @@ def save_notion_credentials(token: str, db_id: str) -> None:
     existing["NOTION_MEETINGS_DB_ID"] = db_id.strip()
     lines = [f"{k}={v}" for k, v in existing.items()]
     env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+# ==========================================================
+# WRITE 기능 — 회의록 생성 / 댓글 / 사용자 조회
+# ==========================================================
+def create_meeting_page(
+    db_id: str,
+    title: str,
+    team: str | None = None,
+    participants: list[str] | None = None,
+    content: str | None = None,
+    comment_text: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    """회의록 DB 에 새 페이지(행) 생성.
+
+    Args:
+        db_id: 회의록 DB id
+        title: 미팅 주제 (제목)
+        team: 팀 select 값 (예: '그로잉업')
+        participants: 참석자 user id 리스트 (Notion user id)
+        content: 본문 markdown-like 텍스트 (줄바꿈은 paragraph 블록 분리)
+        comment_text: '댓글' rich_text 컬럼 값
+        confirm: 확정 체크박스
+
+    Returns:
+        생성된 페이지 정보 ({'id', 'url', ...})
+
+    Raises:
+        RuntimeError: 토큰 없음 / API 오류
+    """
+    token, _ = _get_creds()
+    if not token:
+        raise RuntimeError("NOTION_TOKEN 없음")
+
+    # db_id 정규화
+    import re as _re
+    m = _re.search(r"([0-9a-f]{32})", db_id.replace("-", ""))
+    db_id_clean = m.group(1) if m else db_id.replace("-", "").strip()
+
+    properties: dict[str, Any] = {
+        "미팅 주제": {
+            "title": [{"text": {"content": title}}],
+        },
+    }
+    if team:
+        properties["팀"] = {"select": {"name": team}}
+    if participants:
+        properties["참석자"] = {
+            "people": [{"id": uid} for uid in participants],
+        }
+    if comment_text:
+        properties["댓글"] = {
+            "rich_text": [{"text": {"content": comment_text}}],
+        }
+    if confirm:
+        properties["confirm"] = {"checkbox": True}
+
+    # 본문 블록 (paragraph 별 줄바꿈)
+    children: list[dict] = []
+    if content:
+        for para in content.split("\n"):
+            para = para.strip()
+            if not para:
+                continue
+            children.append({
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"text": {"content": para}}],
+                },
+            })
+
+    payload: dict = {
+        "parent": {"database_id": db_id_clean},
+        "properties": properties,
+    }
+    if children:
+        payload["children"] = children
+
+    try:
+        resp = _post_with_retry(
+            f"{NOTION_API_BASE}/pages",
+            _headers(token),
+            payload,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.HTTPError as e:
+        body = e.response.text[:300] if e.response is not None else ""
+        status = e.response.status_code if e.response is not None else "?"
+        if status == 403:
+            raise RuntimeError(
+                f"노션 write 권한 부족 (HTTP 403). integration 의 'Update content / "
+                f"Insert content' 권한 활성화 필요. 응답: {body}"
+            )
+        raise RuntimeError(f"회의록 생성 실패 HTTP {status}: {body}")
+
+
+def add_page_comment(page_id: str, text: str) -> dict:
+    """노션 페이지에 댓글 추가 (정식 comment).
+
+    Args:
+        page_id: 회의록 페이지 id
+        text: 댓글 본문
+
+    Returns:
+        생성된 댓글 정보
+    """
+    token, _ = _get_creds()
+    if not token:
+        raise RuntimeError("NOTION_TOKEN 없음")
+    if not text.strip():
+        raise ValueError("댓글 본문 비어있음")
+
+    payload = {
+        "parent": {"page_id": page_id},
+        "rich_text": [{"text": {"content": text.strip()}}],
+    }
+
+    try:
+        resp = _post_with_retry(
+            f"{NOTION_API_BASE}/comments",
+            _headers(token),
+            payload,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.HTTPError as e:
+        body = e.response.text[:300] if e.response is not None else ""
+        status = e.response.status_code if e.response is not None else "?"
+        if status == 403:
+            raise RuntimeError(
+                f"댓글 권한 부족 (HTTP 403). integration 의 'Insert comments' "
+                f"권한 + 페이지 connection 필요. 응답: {body}"
+            )
+        raise RuntimeError(f"댓글 추가 실패 HTTP {status}: {body}")
+
+
+def list_page_comments(page_id: str) -> list[dict]:
+    """노션 페이지의 모든 댓글 조회.
+
+    반환: [{'id', 'created_time', 'created_by', 'text'}, ...]
+    """
+    token, _ = _get_creds()
+    if not token:
+        return []
+
+    url = f"{NOTION_API_BASE}/comments"
+    params = {"block_id": page_id}
+    try:
+        resp = _get_with_retry(url, _headers(token), params=params, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return []
+
+    rows: list[dict] = []
+    for c in data.get("results", []):
+        text_parts = c.get("rich_text", []) or []
+        text = "".join(p.get("plain_text", "") for p in text_parts)
+        rows.append({
+            "id": c.get("id", ""),
+            "created_time": c.get("created_time", ""),
+            "created_by": (c.get("created_by") or {}).get("id", ""),
+            "text": text,
+        })
+    return rows
+
+
+def list_workspace_users() -> list[dict]:
+    """노션 워크스페이스 사용자 조회 (참석자 select 용).
+
+    반환: [{'id', 'name', 'avatar_url', 'type'}, ...]
+    """
+    token, _ = _get_creds()
+    if not token:
+        return []
+
+    url = f"{NOTION_API_BASE}/users"
+    try:
+        resp = _get_with_retry(url, _headers(token), timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return []
+
+    rows: list[dict] = []
+    for u in data.get("results", []):
+        # 봇 제외
+        if u.get("type") == "bot":
+            continue
+        rows.append({
+            "id": u.get("id", ""),
+            "name": u.get("name", ""),
+            "avatar_url": u.get("avatar_url", ""),
+            "type": u.get("type", ""),
+        })
+    return rows

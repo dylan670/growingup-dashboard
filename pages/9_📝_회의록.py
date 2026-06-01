@@ -19,6 +19,8 @@ from api.notion_meetings import (
     save_notion_credentials, _get_creds,
     _extract_date_full,
     cache_load, cache_save, cache_age_seconds,
+    create_meeting_page, add_page_comment, list_page_comments,
+    list_workspace_users,
 )
 
 
@@ -369,6 +371,78 @@ def _normalize_prop_value(v):
 # ==========================================================
 def render_meetings_view(db_id_arg: str):
     rows = _cached_query(db_id_arg)
+
+    # ============================================
+    # ✏️ 새 회의록 작성 폼 (상단)
+    # ============================================
+    with st.expander("✏️ 새 회의록 작성", expanded=False):
+        with st.form(f"new_meeting_{db_id_arg}"):
+            c1, c2 = st.columns([2, 1])
+            with c1:
+                new_title = st.text_input(
+                    "미팅 주제 *",
+                    placeholder="예: 6월 1주차 그로잉업팀 회의록",
+                )
+            with c2:
+                # 기존 데이터에서 팀 옵션 추출 (없으면 그로잉업 기본)
+                team_set = sorted({
+                    str((r.get("properties", {}) or {}).get("팀") or "").strip()
+                    for r in (rows or [])
+                    if (r.get("properties", {}) or {}).get("팀")
+                })
+                team_opts = list(team_set) if team_set else ["그로잉업"]
+                if "그로잉업" not in team_opts:
+                    team_opts = ["그로잉업"] + team_opts
+                new_team = st.selectbox(
+                    "팀",
+                    team_opts,
+                    index=team_opts.index("그로잉업") if "그로잉업" in team_opts else 0,
+                )
+
+            # 참석자 선택 (노션 워크스페이스 사용자)
+            users = list_workspace_users()
+            user_options = {u["name"] or u["id"][:8]: u["id"] for u in users if u.get("id")}
+            new_participants_names = st.multiselect(
+                "참석자",
+                options=list(user_options.keys()),
+                help="노션 워크스페이스 사용자 목록 (integration 권한 필요)",
+            )
+            new_participants = [user_options[n] for n in new_participants_names]
+
+            new_content = st.text_area(
+                "본문 (회의 내용)",
+                placeholder="안건 1: ...\n결정 사항: ...\n액션 아이템: ...",
+                height=200,
+                help="줄바꿈 단위로 paragraph 블록이 생성됩니다.",
+            )
+
+            new_confirm = st.checkbox("✅ 확정 (confirm)")
+
+            submitted = st.form_submit_button("📝 노션에 회의록 생성", type="primary")
+            if submitted:
+                if not new_title.strip():
+                    st.error("미팅 주제는 필수입니다.")
+                else:
+                    with st.spinner("📤 노션 회의록 DB 에 페이지 생성 중..."):
+                        try:
+                            result = create_meeting_page(
+                                db_id=db_id_arg,
+                                title=new_title.strip(),
+                                team=new_team,
+                                participants=new_participants or None,
+                                content=new_content if new_content.strip() else None,
+                                confirm=new_confirm,
+                            )
+                            page_url = result.get("url", "")
+                            st.success(
+                                f"✅ 생성 완료! [노션에서 열기]({page_url})"
+                            )
+                            st.cache_data.clear()   # 다음 로드 시 새 회의록 보임
+                            time.sleep(1)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ 생성 실패: {e}")
+
     if not rows:
         _show_empty_diag(db_id_arg, "회의록")
         return
@@ -530,6 +604,58 @@ def render_meetings_view(db_id_arg: str):
                         _render_blocks(blocks)
                 except Exception as e:
                     st.warning(f"본문 조회 실패: {e}")
+
+                # ============================================
+                # 💬 노션 댓글 섹션
+                # ============================================
+                st.divider()
+                st.markdown("**💬 댓글**")
+                page_id = m.get("id", "")
+                try:
+                    comments = list_page_comments(page_id)
+                except Exception:
+                    comments = []
+
+                if comments:
+                    for c in comments:
+                        st.markdown(
+                            f"<div style='background:#f8fafc; "
+                            f"border-left:3px solid #cbd5e1; "
+                            f"padding:8px 12px; border-radius:6px; "
+                            f"margin-bottom:6px; font-size:0.85rem;'>"
+                            f"<div style='color:#94a3b8; font-size:0.72rem; "
+                            f"margin-bottom:3px;'>"
+                            f"💬 {_fmt_iso(c.get('created_time', ''))}</div>"
+                            f"<div style='color:#0f172a;'>{c.get('text', '')}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+                else:
+                    st.caption("(아직 댓글 없음)")
+
+                # 댓글 작성 폼
+                with st.form(f"comment_form_{page_id}"):
+                    cc1, cc2 = st.columns([5, 1])
+                    with cc1:
+                        new_comment = st.text_input(
+                            "댓글 작성",
+                            placeholder="이 회의록에 댓글 남기기...",
+                            label_visibility="collapsed",
+                            key=f"new_comment_{page_id}",
+                        )
+                    with cc2:
+                        send = st.form_submit_button(
+                            "💬 등록", use_container_width=True,
+                        )
+                    if send and new_comment.strip():
+                        try:
+                            add_page_comment(page_id, new_comment)
+                            st.success("댓글 등록 완료")
+                            st.cache_data.clear()
+                            time.sleep(0.5)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"댓글 실패: {e}")
 
 
 # ==========================================================
