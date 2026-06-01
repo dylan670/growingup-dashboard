@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -300,6 +301,138 @@ with _chart_r:
             st.info(f"{_today.year}년 데이터 없음")
     else:
         st.info("주문 데이터 없음")
+
+st.markdown("---")
+
+
+# ============================================================
+# 🏆 주간 베스트 SKU TOP 10 (제품 카드 그리드)
+# ============================================================
+st.markdown(
+    _flatten_html("""
+<div style="font-size:1rem; font-weight:700; color:#0f172a; margin-bottom:2px;">🏆 주간 베스트 SKU TOP 10</div>
+<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:14px;">최근 7일 판매수량 기준 — 브랜드별 색상 구분</div>
+    """),
+    unsafe_allow_html=True,
+)
+
+# 제품 이미지 로드
+try:
+    _img_df = pd.read_csv(
+        Path(__file__).parent / "data" / "product_images.csv",
+        encoding="utf-8-sig",
+    )
+    _img_map = {
+        str(n).strip(): str(u).strip()
+        for n, u in zip(_img_df["name"], _img_df["image_url"])
+        if pd.notna(n) and pd.notna(u)
+    }
+except Exception:
+    _img_map = {}
+
+
+def _find_image(product_name: str) -> str:
+    """제품명 fuzzy 매칭으로 이미지 URL 찾기."""
+    if not isinstance(product_name, str) or not product_name:
+        return ""
+    # 1) 완전 일치
+    if product_name in _img_map:
+        return _img_map[product_name]
+    # 2) 부분 일치 — 이미지 name 이 product 에 포함되는지
+    for img_name, url in _img_map.items():
+        if img_name and img_name in product_name:
+            return url
+    # 3) 역방향 — product 의 핵심 키워드가 img name 에 포함되는지
+    pn = product_name.replace(" ", "")[:8]
+    for img_name, url in _img_map.items():
+        if pn and pn in img_name.replace(" ", ""):
+            return url
+    return ""
+
+
+def _brand_of_product(p: str) -> str:
+    """제품명 → 브랜드 추정."""
+    pn = str(p).replace(" ", "")
+    if any(k in pn for k in ["똑똑", "김똑똑", "떡뻥"]):
+        return "똑똑연구소"
+    if any(k in pn for k in ["롤라루", "캐리어", "여행", "기내용", "백팩"]):
+        return "롤라루"
+    if any(k in pn for k in ["루티니", "러닝", "운동조끼", "장갑"]):
+        return "루티니스트"
+    return "기타"
+
+
+if not orders.empty:
+    _week_ago = pd.Timestamp(_today - timedelta(days=7))
+    _last7 = orders[orders["date"] >= _week_ago].copy()
+    if not _last7.empty:
+        _last7["brand"] = _last7["product"].apply(_brand_of_product)
+        _top10 = (
+            _last7.groupby(["product", "brand"])
+            .agg(qty=("quantity", "sum"), rev=("revenue", "sum"))
+            .reset_index()
+            .sort_values("qty", ascending=False)
+            .head(10)
+        )
+
+        # 5열 x 2행 카드 그리드
+        n_cols = 5
+        for row_idx in range(0, len(_top10), n_cols):
+            sku_cols = st.columns(n_cols)
+            for col_i, (_, sku) in enumerate(
+                _top10.iloc[row_idx:row_idx + n_cols].iterrows()
+            ):
+                rank = row_idx + col_i + 1
+                product = str(sku["product"])
+                brand = sku["brand"]
+                bc = BRAND_COLORS.get(brand, {})
+                primary = bc.get("primary", "#64748b")
+                soft = bc.get("bg_soft", "#f8fafc")
+                text_c = bc.get("text", "#0f172a")
+
+                img_url = _find_image(product)
+                img_html = (
+                    f'<img src="{img_url}" style="width:100%; height:120px; '
+                    f'object-fit:cover; border-radius:8px;" />'
+                    if img_url else
+                    f'<div style="width:100%; height:120px; '
+                    f'background:{soft}; border-radius:8px; '
+                    f'display:flex; align-items:center; '
+                    f'justify-content:center; font-size:2rem; '
+                    f'color:{primary};">📦</div>'
+                )
+
+                # 제품명 짧게
+                short_name = (
+                    product[:22] + "..." if len(product) > 22 else product
+                )
+
+                with sku_cols[col_i]:
+                    st.markdown(
+                        _flatten_html(f"""
+<div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:10px; min-height:230px; box-shadow:0 1px 3px rgba(15,23,42,0.04); transition:transform 0.18s ease;">
+    <div style="position:relative; margin-bottom:8px;">
+        {img_html}
+        <div style="position:absolute; top:6px; left:6px; background:{primary}; color:white; border-radius:999px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:0.74rem; font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,0.15);">{rank}</div>
+    </div>
+    <div style="font-size:0.66rem; color:{text_c}; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">{brand}</div>
+    <div style="font-size:0.78rem; color:#0f172a; font-weight:600; line-height:1.3; margin-top:3px; height:34px; overflow:hidden;" title="{product}">{short_name}</div>
+    <div style="margin-top:6px; padding-top:6px; border-top:1px solid #f1f5f9;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span style="font-size:0.7rem; color:#94a3b8;">판매</span>
+            <span style="font-size:0.95rem; font-weight:700; color:{text_c};">{int(sku['qty']):,}개</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:2px;">
+            <span style="font-size:0.7rem; color:#94a3b8;">매출</span>
+            <span style="font-size:0.74rem; font-weight:600; color:#64748b;">₩{int(sku['rev']):,}</span>
+        </div>
+    </div>
+</div>
+                        """),
+                        unsafe_allow_html=True,
+                    )
+    else:
+        st.info("최근 7일 판매 데이터 없음")
 
 st.markdown("---")
 

@@ -420,43 +420,116 @@ def render_meetings_view(db_id_arg: str):
     # 정렬 — 최신순
     filtered.sort(key=lambda r: r.get("created_at", ""), reverse=True)
 
-    for i, m in enumerate(filtered):
-        title = m.get("title") or "(제목 없음)"
-        created = _fmt_iso(m.get("created_at", ""))
-        notion_url = m.get("url", "")
-        props = m.get("properties", {})
+    # ============================================
+    # 주차별 그룹화 + 상단 목차 chip
+    # ============================================
+    def _week_info(iso_dt: str) -> tuple[str, str]:
+        """ISO timestamp → (sort_key, display_label)."""
+        if not iso_dt:
+            return ("0000-00-0", "(날짜 미상)")
+        try:
+            dt = datetime.fromisoformat(iso_dt.replace("Z", "+00:00"))
+            dt = dt + timedelta(hours=9)   # KST
+            wm = (dt.day - 1) // 7 + 1
+            return (
+                f"{dt.year:04d}-{dt.month:02d}-{wm}",
+                f"{dt.year}년 {dt.month}월 {wm}주차",
+            )
+        except Exception:
+            return ("0000-00-0", "(날짜 미상)")
 
-        with st.expander(f"📅 **{title}**  ·  {created}", expanded=(i == 0)):
-            # 속성 카드
-            for k, v in props.items():
-                if not v:
-                    continue
-                norm = _normalize_prop_value(v)
-                if not norm:
-                    continue
-                st.markdown(
-                    f"<div style='display:flex; gap:12px; padding:3px 0; font-size:0.88rem;'>"
-                    f"<div style='color:{TEXT_FAINT}; min-width:100px;'>{k}</div>"
-                    f"<div style='color:{TEXT_MAIN};'>{norm}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
+    from collections import defaultdict
+    weeks: dict = defaultdict(list)
+    week_labels: dict = {}
+    for m in filtered:
+        sk, lbl = _week_info(m.get("created_at", ""))
+        weeks[sk].append(m)
+        week_labels[sk] = lbl
 
-            if notion_url:
-                st.markdown(
-                    f"<div style='margin: 8px 0; font-size:0.82rem;'>"
-                    f"<a href='{notion_url}' target='_blank' style='color:#2563eb;'>"
-                    f"🔗 노션 원본에서 열기</a></div>",
-                    unsafe_allow_html=True,
-                )
+    sorted_weeks = sorted(weeks.keys(), reverse=True)
 
-            try:
-                blocks = load_page_content(m["id"])
-                if blocks:
-                    st.divider()
-                    _render_blocks(blocks)
-            except Exception as e:
-                st.warning(f"본문 조회 실패: {e}")
+    # 상단 목차 chip (주차 1개 이상일 때만)
+    if len(sorted_weeks) > 1:
+        chips_inner = ""
+        for sk in sorted_weeks:
+            cnt = len(weeks[sk])
+            chips_inner += (
+                f'<div style="background:#dbeafe; color:#1e40af; '
+                f'border-radius:999px; padding:5px 12px; '
+                f'font-size:0.78rem; font-weight:600; '
+                f'border:1px solid #bfdbfe;">'
+                f'{week_labels[sk]} <span style="color:#60a5fa; '
+                f'margin-left:4px;">·</span> {cnt}건</div>'
+            )
+        st.markdown(
+            f'<div style="display:flex; gap:6px; flex-wrap:wrap; '
+            f'margin-bottom:14px; padding:10px 12px; background:#f8fafc; '
+            f'border-radius:10px; border:1px solid #e2e8f0;">'
+            f'<div style="font-size:0.78rem; color:#64748b; '
+            f'font-weight:600; align-self:center; margin-right:4px;">'
+            f'📑 주차별 목차</div>'
+            f'{chips_inner}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ============================================
+    # 주차별 회의록 렌더링
+    # ============================================
+    is_first_overall = True
+    for sk_idx, sk in enumerate(sorted_weeks):
+        st.markdown(
+            f'<div style="margin-top:18px; margin-bottom:6px; '
+            f'padding:8px 12px; background:linear-gradient(90deg, #eff6ff 0%, transparent 100%); '
+            f'border-left:4px solid #2563eb; border-radius:6px;">'
+            f'<span style="font-size:0.95rem; font-weight:700; color:#1e40af;">'
+            f'📅 {week_labels[sk]}</span>'
+            f'<span style="font-size:0.78rem; color:#64748b; margin-left:10px;">'
+            f'{len(weeks[sk])}건</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        for m in weeks[sk]:
+            title = m.get("title") or "(제목 없음)"
+            created = _fmt_iso(m.get("created_at", ""))
+            notion_url = m.get("url", "")
+            props = m.get("properties", {})
+
+            with st.expander(
+                f"📝 **{title}**  ·  {created}",
+                expanded=is_first_overall,
+            ):
+                is_first_overall = False
+                # 속성 카드
+                for k, v in props.items():
+                    if not v:
+                        continue
+                    norm = _normalize_prop_value(v)
+                    if not norm:
+                        continue
+                    st.markdown(
+                        f"<div style='display:flex; gap:12px; padding:3px 0; font-size:0.88rem;'>"
+                        f"<div style='color:{TEXT_FAINT}; min-width:100px;'>{k}</div>"
+                        f"<div style='color:{TEXT_MAIN};'>{norm}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                if notion_url:
+                    st.markdown(
+                        f"<div style='margin: 8px 0; font-size:0.82rem;'>"
+                        f"<a href='{notion_url}' target='_blank' style='color:#2563eb;'>"
+                        f"🔗 노션 원본에서 열기</a></div>",
+                        unsafe_allow_html=True,
+                    )
+
+                try:
+                    blocks = load_page_content(m["id"])
+                    if blocks:
+                        st.divider()
+                        _render_blocks(blocks)
+                except Exception as e:
+                    st.warning(f"본문 조회 실패: {e}")
 
 
 # ==========================================================
