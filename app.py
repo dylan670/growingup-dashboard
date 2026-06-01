@@ -437,6 +437,161 @@ if not orders.empty:
 st.markdown("---")
 
 
+# ============================================================
+# 📦 재고 관리 (이지어드민 업로드 기반)
+# ============================================================
+try:
+    from api.easyadmin_csv import get_inventory_alerts as _inv_alerts
+    _inv = _inv_alerts()
+    _has_inv = any(not v.empty for v in _inv.values())
+except Exception:
+    _inv = {"low_stock": pd.DataFrame(), "top_stock": pd.DataFrame(),
+            "incoming": pd.DataFrame(), "pressure": pd.DataFrame()}
+    _has_inv = False
+
+st.markdown(
+    _flatten_html("""
+<div style="font-size:1rem; font-weight:700; color:#0f172a; margin-bottom:2px;">📦 재고 관리</div>
+<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:14px;">이지어드민 업로드 기반 — 소진 임박 / 현재 재고 / 입고 예정 / 재고 압박</div>
+    """),
+    unsafe_allow_html=True,
+)
+
+if not _has_inv:
+    st.markdown(
+        _flatten_html("""
+<div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:10px; padding:14px 18px; font-size:0.85rem; color:#78350f;">
+    📥 <b>아직 재고 데이터가 없습니다.</b><br>
+    이지어드민에서 재고 CSV/Excel 을 받아 <b>📤 CSV 업로드</b> 페이지 →
+    <b>📦 이지어드민 재고</b> 탭에서 업로드하세요.
+</div>
+        """),
+        unsafe_allow_html=True,
+    )
+else:
+    inv_cols = st.columns(4)
+
+    # ── ① 소진 임박 ──
+    with inv_cols[0]:
+        st.markdown(
+            _flatten_html("""
+<div style="font-size:0.82rem; font-weight:700; color:#dc2626; margin-bottom:8px;">🚨 소진 임박</div>
+            """),
+            unsafe_allow_html=True,
+        )
+        low = _inv["low_stock"]
+        if low.empty:
+            st.caption("(임박 SKU 없음)")
+        else:
+            for _, r in low.head(5).iterrows():
+                days = int(r["days_left"])
+                urgency = "#dc2626" if days <= 3 else "#ea580c" if days <= 7 else "#f59e0b"
+                pname = str(r.get("product") or r.get("sku") or "")[:22]
+                st.markdown(
+                    _flatten_html(f"""
+<div style="background:white; border-left:3px solid {urgency}; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.78rem;">
+    <div style="color:#0f172a; font-weight:600;">{pname}</div>
+    <div style="display:flex; justify-content:space-between; color:#64748b; margin-top:2px; font-size:0.72rem;">
+        <span>재고 <b style="color:{urgency};">{int(r['stock']):,}</b></span>
+        <span style="color:{urgency}; font-weight:700;">{days}일 후 품절</span>
+    </div>
+</div>
+                    """),
+                    unsafe_allow_html=True,
+                )
+
+    # ── ② 현재 재고 TOP ──
+    with inv_cols[1]:
+        st.markdown(
+            _flatten_html("""
+<div style="font-size:0.82rem; font-weight:700; color:#2563eb; margin-bottom:8px;">📊 현재 재고 TOP</div>
+            """),
+            unsafe_allow_html=True,
+        )
+        top = _inv["top_stock"]
+        if top.empty:
+            st.caption("(데이터 없음)")
+        else:
+            for _, r in top.head(5).iterrows():
+                pname = str(r.get("product") or r.get("sku") or "")[:22]
+                st.markdown(
+                    _flatten_html(f"""
+<div style="background:#eff6ff; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.78rem;">
+    <div style="color:#0f172a; font-weight:600;">{pname}</div>
+    <div style="display:flex; justify-content:space-between; color:#64748b; margin-top:2px; font-size:0.72rem;">
+        <span>재고</span>
+        <span style="color:#1e40af; font-weight:700;">{int(r['stock']):,}개</span>
+    </div>
+</div>
+                    """),
+                    unsafe_allow_html=True,
+                )
+
+    # ── ③ 입고 예정 ──
+    with inv_cols[2]:
+        st.markdown(
+            _flatten_html("""
+<div style="font-size:0.82rem; font-weight:700; color:#16a34a; margin-bottom:8px;">📥 입고 예정</div>
+            """),
+            unsafe_allow_html=True,
+        )
+        inc = _inv["incoming"]
+        if inc.empty:
+            st.caption("(입고 예정 SKU 없음)")
+        else:
+            for _, r in inc.head(5).iterrows():
+                pname = str(r.get("product") or r.get("sku") or "")[:22]
+                st.markdown(
+                    _flatten_html(f"""
+<div style="background:#dcfce7; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.78rem;">
+    <div style="color:#0f172a; font-weight:600;">{pname}</div>
+    <div style="display:flex; justify-content:space-between; color:#64748b; margin-top:2px; font-size:0.72rem;">
+        <span>입고예정</span>
+        <span style="color:#15803d; font-weight:700;">+{int(r['incoming']):,}개</span>
+    </div>
+</div>
+                    """),
+                    unsafe_allow_html=True,
+                )
+
+    # ── ④ 재고 압박 (안 팔리는데 재고 많음) ──
+    with inv_cols[3]:
+        st.markdown(
+            _flatten_html("""
+<div style="font-size:0.82rem; font-weight:700; color:#7c3aed; margin-bottom:8px;">⚠️ 재고 압박</div>
+            """),
+            unsafe_allow_html=True,
+        )
+        pres = _inv["pressure"]
+        if pres.empty:
+            st.caption("(압박 SKU 없음)")
+        else:
+            for _, r in pres.head(5).iterrows():
+                pname = str(r.get("product") or r.get("sku") or "")[:22]
+                turn_days = (
+                    int(r["stock"] / (r["sold_30d"] / 30))
+                    if r["sold_30d"] > 0 else 999
+                )
+                turn_display = (
+                    f"{turn_days}일분" if turn_days < 365
+                    else "1년+ 분량"
+                )
+                st.markdown(
+                    _flatten_html(f"""
+<div style="background:#f3e8ff; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.78rem;">
+    <div style="color:#0f172a; font-weight:600;">{pname}</div>
+    <div style="display:flex; justify-content:space-between; color:#64748b; margin-top:2px; font-size:0.72rem;">
+        <span>재고 {int(r['stock']):,}</span>
+        <span style="color:#6b21a8; font-weight:700;">{turn_display}</span>
+    </div>
+</div>
+                    """),
+                    unsafe_allow_html=True,
+                )
+
+st.markdown("---")
+
+
 def _precompute_version_key() -> str:
     """precompute last_updated → 캐시 키 (precompute 마다 무효화)."""
     try:

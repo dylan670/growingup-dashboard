@@ -396,9 +396,10 @@ def _render_last_upload_card(d: Path, label: str) -> None:
 # ==========================================================
 # 탭 구성
 # ==========================================================
-tab_sales, tab_ads, tab_help = st.tabs([
+tab_sales, tab_ads, tab_inv, tab_help = st.tabs([
     "🛒 쿠팡 판매 CSV",
     "📣 쿠팡 광고 CSV",
+    "📦 이지어드민 재고",
     "📖 사용 가이드",
 ])
 
@@ -629,6 +630,109 @@ with tab_ads:
             st.caption(f"…외 {len(existing) - 20}개")
     else:
         st.info("아직 업로드된 파일이 없습니다.")
+
+
+# ----------------------------------------------------------
+# 📦 이지어드민 재고 CSV
+# ----------------------------------------------------------
+with tab_inv:
+    st.markdown("### 📦 이지어드민 재고 업로드")
+    st.caption(
+        "이지어드민(EasyAdmin) 에서 다운로드한 재고 CSV/Excel 을 업로드. "
+        "본업 계정 보호 원칙 — 자동 스크래핑 X, 사람-주도 워크플로우."
+    )
+
+    with st.expander("📌 어떻게 다운로드하나요?", expanded=False):
+        st.markdown("""
+**이지어드민에서 재고 데이터 받는 법** (메뉴 위치는 버전마다 다름):
+
+1. 이지어드민 로그인
+2. **상품 관리** 또는 **재고 관리** 메뉴
+3. **재고 현황 / 상품 목록** 화면
+4. 우상단 **엑셀 다운로드** 또는 **내보내기** 버튼
+5. 다운받은 `.xlsx` 또는 `.csv` 를 아래에 업로드
+
+**필요한 컬럼 (있으면 자동 매칭)**:
+- 상품코드/SKU코드 · 상품명 · 옵션 · 현재고
+- 안전재고 · 입고예정 · 30일판매 · 카테고리 · 판매가
+
+→ 컬럼명이 정확히 안 맞아도 fuzzy 매칭으로 잡힘. 일단 업로드해보고
+   파싱 결과 확인하세요.
+        """)
+
+    from api.easyadmin_csv import process_uploaded, load_inventory, COLUMN_ALIASES
+
+    uploaded_inv = st.file_uploader(
+        "📂 이지어드민 재고 CSV/Excel",
+        type=["csv", "xlsx", "xls", "tsv"],
+        accept_multiple_files=False,
+        key="easyadmin_inv_upload",
+    )
+
+    if uploaded_inv is not None:
+        with st.spinner("📥 파싱 중..."):
+            try:
+                parsed, info = process_uploaded(uploaded_inv)
+                st.success(
+                    f"✅ {info['parsed_rows']}건 파싱 완료 "
+                    f"(원본 {info['raw_rows']}행)"
+                )
+
+                # 매칭된 컬럼 표시
+                with st.expander("🔍 컬럼 매칭 결과", expanded=False):
+                    matched = info["matched_columns"]
+                    matched_df = pd.DataFrame([
+                        {
+                            "표준 컬럼": k,
+                            "원본 컬럼": matched[k] or "(없음)",
+                            "상태": "✅" if matched[k] else "⚠️",
+                        }
+                        for k in COLUMN_ALIASES.keys()
+                    ])
+                    st.dataframe(matched_df, hide_index=True, width="stretch")
+                    st.caption(
+                        f"원본 컬럼 전체: {', '.join(info['raw_columns'])}"
+                    )
+
+                # 파싱 결과 미리보기
+                if not parsed.empty:
+                    st.markdown("**📋 파싱 결과 (상위 20행)**")
+                    st.dataframe(
+                        parsed.head(20), hide_index=True, width="stretch",
+                    )
+
+                    # KPI
+                    k1, k2, k3, k4 = st.columns(4)
+                    k1.metric("총 SKU", f"{len(parsed):,}")
+                    k2.metric(
+                        "총 재고", f"{int(parsed['stock'].sum()):,}",
+                    )
+                    k3.metric(
+                        "소진 임박 (≤14일)",
+                        f"{int((parsed['days_left'] <= 14).sum()):,}",
+                    )
+                    k4.metric(
+                        "입고 예정 SKU",
+                        f"{int((parsed['incoming'] > 0).sum()):,}",
+                    )
+            except Exception as e:
+                st.error(f"❌ 파싱 실패: {type(e).__name__}: {e}")
+                st.caption("CSV 컬럼명이 너무 다르거나 손상됐을 수 있어요.")
+
+    # 현재 저장된 재고 상태
+    st.divider()
+    st.markdown("##### 💾 현재 저장된 재고")
+    stored = load_inventory()
+    if stored.empty:
+        st.info("아직 업로드된 재고 데이터가 없습니다.")
+    else:
+        s1, s2, s3 = st.columns(3)
+        s1.metric("저장된 SKU", f"{len(stored):,}")
+        s2.metric("총 재고", f"{int(stored['stock'].sum()):,}")
+        s3.metric(
+            "소진 임박 (≤14일)",
+            f"{int((stored['days_left'] <= 14).sum()):,}",
+        )
 
 
 # ----------------------------------------------------------
