@@ -239,16 +239,26 @@ if not _orders_hero.empty:
 
     _c1, _c2, _c3 = st.columns(3)
 
-    # 카테고리별 판매 비중 (도넛)
+    # 매출 금액 포맷 helper
+    def _fmt_amount(v: float) -> str:
+        if v >= 1e8:
+            return f"₩{v/1e8:.1f}억"
+        if v >= 1e7:
+            return f"₩{v/1e7:.1f}천만"
+        if v >= 1e4:
+            return f"₩{v/1e4:.0f}만"
+        return f"₩{int(v):,}"
+
+    # 카테고리별 매출 비중 (도넛 — 금액 기준)
     with _c1:
         st.markdown(
             _flatten_html("""
-<div style="font-size:0.88rem; font-weight:700; color:#0f172a; margin-bottom:8px;">카테고리별 판매 비중</div>
+<div style="font-size:0.88rem; font-weight:700; color:#0f172a; margin-bottom:8px;">카테고리별 매출 비중</div>
             """),
             unsafe_allow_html=True,
         )
         _cat_agg = (
-            _cat_df.groupby("cat")["quantity"].sum().sort_values(ascending=False)
+            _cat_df.groupby("cat")["revenue"].sum().sort_values(ascending=False)
         )
         if not _cat_agg.empty:
             _cat_colors = px.colors.qualitative.Set3
@@ -262,27 +272,33 @@ if not _orders_hero.empty:
                 textposition="outside",
                 textfont=dict(size=10),
                 sort=False,
+                hovertemplate="<b>%{label}</b><br>매출: ₩%{value:,.0f}<br>비중: %{percent}<extra></extra>",
             ))
+            _cat_total = float(_cat_agg.sum())
             _fig_c.update_layout(
                 height=320, margin=dict(l=10, r=10, t=10, b=10),
                 showlegend=False,
                 annotations=[dict(
-                    text=f"<span style='font-size:0.7rem; color:#94a3b8;'>총</span><br><span style='font-size:0.95rem; font-weight:700;'>{int(_cat_agg.sum()):,}개</span>",
+                    text=(
+                        f"<span style='font-size:0.7rem; color:#94a3b8;'>매출</span><br>"
+                        f"<span style='font-size:0.95rem; font-weight:700;'>"
+                        f"{_fmt_amount(_cat_total)}</span>"
+                    ),
                     x=0.5, y=0.5, showarrow=False,
                 )],
             )
             st.plotly_chart(_fig_c, use_container_width=True)
 
-    # 브랜드별 판매 비중 (도넛)
+    # 브랜드별 매출 비중 (도넛 — 금액 기준)
     with _c2:
         st.markdown(
             _flatten_html("""
-<div style="font-size:0.88rem; font-weight:700; color:#0f172a; margin-bottom:8px;">브랜드별 판매 비중</div>
+<div style="font-size:0.88rem; font-weight:700; color:#0f172a; margin-bottom:8px;">브랜드별 매출 비중</div>
             """),
             unsafe_allow_html=True,
         )
         _br_agg = (
-            _cat_df.groupby("brand")["quantity"].sum().sort_values(ascending=False)
+            _cat_df.groupby("brand")["revenue"].sum().sort_values(ascending=False)
         )
         if not _br_agg.empty:
             from utils.ui import BRAND_COLORS as _BC
@@ -300,13 +316,18 @@ if not _orders_hero.empty:
                 textposition="outside",
                 textfont=dict(size=10),
                 sort=False,
+                hovertemplate="<b>%{label}</b><br>매출: ₩%{value:,.0f}<br>비중: %{percent}<extra></extra>",
             ))
-            _br_rev = int(_cat_df["revenue"].sum())
+            _br_total = float(_br_agg.sum())
             _fig_b.update_layout(
                 height=320, margin=dict(l=10, r=10, t=10, b=10),
                 showlegend=False,
                 annotations=[dict(
-                    text=f"<span style='font-size:0.7rem; color:#94a3b8;'>매출</span><br><span style='font-size:0.88rem; font-weight:700;'>₩{_br_rev/1e8:.1f}억</span>" if _br_rev >= 1e8 else f"<span style='font-size:0.7rem; color:#94a3b8;'>매출</span><br><span style='font-size:0.88rem; font-weight:700;'>₩{_br_rev/1e7:.1f}천만</span>",
+                    text=(
+                        f"<span style='font-size:0.7rem; color:#94a3b8;'>매출</span><br>"
+                        f"<span style='font-size:0.95rem; font-weight:700;'>"
+                        f"{_fmt_amount(_br_total)}</span>"
+                    ),
                     x=0.5, y=0.5, showarrow=False,
                 )],
             )
