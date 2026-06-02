@@ -610,14 +610,32 @@ _SOON_PAGES: set[str] = {
 def render_sidebar_nav() -> None:
     """사이드바 섹션형 네비게이션 — Ozkiz BrandBoard 미러.
 
-    운영 / 협업 / 성장 / 시스템 4섹션 구조.
-    Streamlit 기본 pages 자동 네비는 CSS 로 숨겨져 있음.
+    운영 / 협업 / 성장 / 시스템 4섹션 구조 — 섹션별 컬러 chip.
     """
+    # 섹션별 컬러 chip (배경 / 글자 / 보더)
+    SECTION_COLORS: dict[str, dict[str, str]] = {
+        "운영":   {"bg": "#dbeafe", "fg": "#1e40af", "br": "#bfdbfe"},
+        "협업":   {"bg": "#dcfce7", "fg": "#15803d", "br": "#bbf7d0"},
+        "성장":   {"bg": "#fef3c7", "fg": "#b45309", "br": "#fde68a"},
+        "시스템": {"bg": "#f1f5f9", "fg": "#475569", "br": "#e2e8f0"},
+    }
+
     current_section: str | None = None
     for section, icon, label, path in _NAV_PAGES:
         if section != current_section:
+            sc = SECTION_COLORS.get(
+                section,
+                {"bg": "#f8fafc", "fg": "#64748b", "br": "#e2e8f0"},
+            )
             st.sidebar.markdown(
-                f"<div class='nav-section-header'>{section}</div>",
+                f"<div style='background:{sc['bg']}; color:{sc['fg']}; "
+                f"border:1px solid {sc['br']}; "
+                f"padding:5px 12px; border-radius:999px; "
+                f"font-size:0.74rem; font-weight:600; "
+                f"letter-spacing:0.02em; "
+                f"display:inline-block; "
+                f"margin:14px 0 6px 4px;'>"
+                f"{section}</div>",
                 unsafe_allow_html=True,
             )
             current_section = section
