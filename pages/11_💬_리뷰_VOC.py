@@ -1313,6 +1313,18 @@ with tab_reply:
                 reply_key = f"reply_text_{mall_id}_{article_no}"
                 btn_key = f"reply_send_{mall_id}_{article_no}"
                 view_key = f"reply_view_{mall_id}_{article_no}"
+                clear_flag = f"_clear_{reply_key}"
+                sent_flag = f"_sent_{reply_key}"
+
+                # 직전 전송 성공 시 입력칸 초기화 (위젯 생성 前이어야 에러 X)
+                if st.session_state.get(clear_flag):
+                    st.session_state[reply_key] = ""
+                    del st.session_state[clear_flag]
+
+                # 직전 전송 성공 메시지 (rerun 후 표시)
+                if st.session_state.get(sent_flag):
+                    st.success(st.session_state[sent_flag])
+                    del st.session_state[sent_flag]
 
                 rcol1, rcol2 = st.columns([5, 1.2])
                 with rcol1:
@@ -1356,12 +1368,14 @@ with tab_reply:
                                 result = client.post_board_comment(
                                     board_no, article_no, text_val,
                                 )
-                                st.success(
+                                # 성공 메시지 + 입력칸 초기화는 rerun 후
+                                # (위젯 생성 후 session_state 직접 수정 불가)
+                                st.session_state[sent_flag] = (
                                     f"✅ 답글 전송 완료 "
                                     f"(comment_no={result.get('comment_no','?')})"
                                 )
-                                # 입력칸 비우기
-                                st.session_state[reply_key] = ""
+                                st.session_state[clear_flag] = True
+                                st.rerun()
                         except Exception as e:
                             err = str(e)[:300]
                             if "403" in err or "scope" in err.lower():
