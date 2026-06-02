@@ -484,39 +484,46 @@ def render_sidebar_brand() -> None:
 # 페이지 등록 정보: (섹션, 아이콘, 표시명, 파일 경로)
 # 업무 흐름 순서: 홈 → 소싱 → 등록 → 분석 → 성장 → 피드백 → 설정
 _NAV_PAGES: list[tuple[str, str, str, str]] = [
-    # 🏠 홈 — 들어오자마자 종합 + 알림 확인
-    ("홈",        "🏠", "대시보드",         "app.py"),
-    ("홈",        "🚦", "알림 센터",        "pages/4_🚦_알림_센터.py"),
+    # 운영 (Ozkiz BrandBoard 미러)
+    ("운영",      "🏠", "대시보드",         "app.py"),
+    ("운영",      "📈", "매출관리",         "pages/2_💰_매출_분석.py"),
+    ("운영",      "📦", "제품관리",         "pages/3_📦_제품_분석.py"),
+    ("운영",      "🏪", "재고관리",         "pages/14_🏪_재고관리.py"),
+    ("운영",      "📥", "입고관리",         "pages/15_📥_입고관리.py"),
+    ("운영",      "📋", "발주관리",         "pages/16_📋_발주관리.py"),
+    ("운영",      "🎉", "행사관리",         "pages/17_🎉_행사관리.py"),
+    ("운영",      "🏆", "랭킹관리",         "pages/18_🏆_랭킹관리.py"),
+    ("운영",      "🌐", "채널관리",         "pages/1_📣_광고_분석.py"),
+    ("운영",      "🤖", "AI 어시스턴트",    "pages/19_🤖_AI_어시스턴트.py"),
 
-    # 1. 소싱 — 신규 제품 발굴
-    ("1. 소싱",   "🛒", "루티니스트 1688",  "pages/12_🛒_루티니스트_1688_소싱.py"),
+    # 협업
+    ("협업",      "🚦", "알림 센터",        "pages/4_🚦_알림_센터.py"),
+    ("협업",      "👥", "CRM (고객)",       "pages/5_👥_CRM.py"),
+    ("협업",      "📝", "회의록",           "pages/9_📝_회의록.py"),
+    ("협업",      "🛒", "1688 소싱",        "pages/12_🛒_루티니스트_1688_소싱.py"),
 
-    # 2. 등록 — 채널 연동 + 데이터 입력
-    ("2. 등록",   "🔌", "API 연결",         "pages/7_🔌_API_연결.py"),
-    ("2. 등록",   "📤", "CSV 업로드",       "pages/8_📤_CSV_업로드.py"),
+    # 성장 (SKU 보드)
+    ("성장",      "🎯", "롤라루 SKU 보드",   "pages/10_🎯_SKU_확장_보드.py"),
+    ("성장",      "🍱", "똑똑연구소 SKU 보드", "pages/13_🍱_똑똑연구소_SKU_보드.py"),
 
-    # 3. 분석 — 제품 → 광고 → 매출 흐름
-    ("3. 분석",   "📦", "제품 분석",        "pages/3_📦_제품_분석.py"),
-    ("3. 분석",   "📣", "광고 분석",        "pages/1_📣_광고_분석.py"),
-    ("3. 분석",   "💰", "매출 분석",        "pages/2_💰_매출_분석.py"),
-
-    # 4. 성장 — SKU 확장 의사결정
-    ("4. 성장",   "🎯", "롤라루 SKU 보드",   "pages/10_🎯_SKU_확장_보드.py"),
-    ("4. 성장",   "🍱", "똑똑연구소 SKU 보드", "pages/13_🍱_똑똑연구소_SKU_보드.py"),
-
-    # 5. 피드백 — 고객 + 팀 회의
-    ("5. 피드백", "👥", "CRM (고객)",       "pages/5_👥_CRM.py"),
-    ("5. 피드백", "📝", "회의록",           "pages/9_📝_회의록.py"),
-
-    # ⚙️ 설정
-    ("설정",      "⚙️", "설정",             "pages/6_⚙️_설정.py"),
+    # 시스템
+    ("시스템",    "🔌", "API 연결",         "pages/7_🔌_API_연결.py"),
+    ("시스템",    "📤", "CSV 업로드",       "pages/8_📤_CSV_업로드.py"),
+    ("시스템",    "⚙️", "설정",             "pages/6_⚙️_설정.py"),
 ]
+
+# SOON 표시할 페이지 (사이드바에 작은 회색 라벨)
+_SOON_PAGES: set[str] = {
+    "pages/16_📋_발주관리.py",
+    "pages/17_🎉_행사관리.py",
+    "pages/19_🤖_AI_어시스턴트.py",
+}
 
 
 def render_sidebar_nav() -> None:
-    """사이드바 섹션형 네비게이션 — 업무 흐름 순서.
+    """사이드바 섹션형 네비게이션 — Ozkiz BrandBoard 미러.
 
-    홈 / 1. 소싱 / 2. 등록 / 3. 분석 / 4. 성장 / 5. 피드백 / 설정
+    운영 / 협업 / 성장 / 시스템 4섹션 구조.
     Streamlit 기본 pages 자동 네비는 CSS 로 숨겨져 있음.
     """
     current_section: str | None = None
@@ -527,7 +534,24 @@ def render_sidebar_nav() -> None:
                 unsafe_allow_html=True,
             )
             current_section = section
-        st.sidebar.page_link(path, label=label, icon=icon)
+
+        # SOON 페이지는 회색 라벨 + 비활성 (page_link 의 disabled 인자)
+        is_soon = path in _SOON_PAGES
+        display_label = f"{label}  SOON" if is_soon else label
+        try:
+            st.sidebar.page_link(
+                path, label=display_label, icon=icon,
+                disabled=is_soon,
+            )
+        except Exception:
+            # 파일이 아직 없으면 skip (개발 중 안전망)
+            st.sidebar.markdown(
+                f"<div style='padding:6px 12px; color:#cbd5e1; "
+                f"font-size:0.85rem;'>"
+                f"{icon} {display_label} <span style='color:#fbbf24; "
+                f"font-size:0.7rem;'>(미생성)</span></div>",
+                unsafe_allow_html=True,
+            )
 
     # ----------------------------------------------------------
     # 🔄 전체 업데이트 버튼
