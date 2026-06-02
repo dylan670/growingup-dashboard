@@ -549,18 +549,25 @@ def render_meetings_view(db_id_arg: str):
         )
 
     # ============================================
-    # 주차별 회의록 렌더링
+    # 주차별 회의록 렌더링 — 헤더 강화 + 카드 스타일
     # ============================================
     is_first_overall = True
     for sk_idx, sk in enumerate(sorted_weeks):
+        # 주차 헤더 — 큰 그라데이션 배너
+        wk_count = len(weeks[sk])
         st.markdown(
-            f'<div style="margin-top:18px; margin-bottom:6px; '
-            f'padding:8px 12px; background:linear-gradient(90deg, #eff6ff 0%, transparent 100%); '
-            f'border-left:4px solid #2563eb; border-radius:6px;">'
-            f'<span style="font-size:0.95rem; font-weight:700; color:#1e40af;">'
-            f'📅 {week_labels[sk]}</span>'
-            f'<span style="font-size:0.78rem; color:#64748b; margin-left:10px;">'
-            f'{len(weeks[sk])}건</span>'
+            f'<div style="margin-top:24px; margin-bottom:12px; '
+            f'padding:14px 20px; '
+            f'background:linear-gradient(135deg, #eff6ff 0%, #dbeafe 70%, #ffffff 100%); '
+            f'border-left:5px solid #2563eb; border-radius:12px; '
+            f'box-shadow:0 1px 3px rgba(37,99,235,0.08);">'
+            f'<div style="display:flex; align-items:baseline; gap:12px;">'
+            f'<span style="font-size:1.15rem; font-weight:800; color:#1e3a8a; '
+            f'letter-spacing:-0.02em;">📅 {week_labels[sk]}</span>'
+            f'<span style="background:#2563eb; color:white; '
+            f'border-radius:999px; padding:3px 10px; font-size:0.72rem; '
+            f'font-weight:700;">{wk_count}건</span>'
+            f'</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -576,26 +583,92 @@ def render_meetings_view(db_id_arg: str):
                 expanded=is_first_overall,
             ):
                 is_first_overall = False
-                # 속성 카드
-                for k, v in props.items():
-                    if not v:
-                        continue
-                    norm = _normalize_prop_value(v)
-                    if not norm:
-                        continue
-                    st.markdown(
-                        f"<div style='display:flex; gap:12px; padding:3px 0; font-size:0.88rem;'>"
-                        f"<div style='color:{TEXT_FAINT}; min-width:100px;'>{k}</div>"
-                        f"<div style='color:{TEXT_MAIN};'>{norm}</div>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
+                # ────────────────────────────────────────
+                # 속성 chip — 가로 나열 (가독성 ↑)
+                # ────────────────────────────────────────
+                chips_html = (
+                    '<div style="display:flex; flex-wrap:wrap; gap:6px; '
+                    'margin: 6px 0 14px 0;">'
+                )
 
+                # 팀
+                team_val = props.get("팀")
+                if team_val:
+                    chips_html += (
+                        f'<span style="background:#dbeafe; color:#1e40af; '
+                        f'border:1px solid #bfdbfe; '
+                        f'border-radius:999px; padding:4px 11px; '
+                        f'font-size:0.74rem; font-weight:600;">'
+                        f'🏷 {_normalize_prop_value(team_val)}</span>'
+                    )
+                # 참석자
+                participants = props.get("참석자")
+                if participants:
+                    p_str = _normalize_prop_value(participants)
+                    chips_html += (
+                        f'<span style="background:#dcfce7; color:#15803d; '
+                        f'border:1px solid #bbf7d0; '
+                        f'border-radius:999px; padding:4px 11px; '
+                        f'font-size:0.74rem; font-weight:600;">'
+                        f'👥 {p_str}</span>'
+                    )
+                # 팀장
+                leader = props.get("팀장")
+                if leader:
+                    l_str = _normalize_prop_value(leader)
+                    chips_html += (
+                        f'<span style="background:#fef3c7; color:#b45309; '
+                        f'border:1px solid #fde68a; '
+                        f'border-radius:999px; padding:4px 11px; '
+                        f'font-size:0.74rem; font-weight:600;">'
+                        f'⭐ {l_str}</span>'
+                    )
+                # 확정
+                if props.get("confirm"):
+                    chips_html += (
+                        f'<span style="background:#16a34a; color:white; '
+                        f'border-radius:999px; padding:4px 11px; '
+                        f'font-size:0.72rem; font-weight:700;">'
+                        f'✅ 확정</span>'
+                    )
+                # 댓글 컬럼
+                comment_col = props.get("댓글")
+                if comment_col:
+                    c_str = str(_normalize_prop_value(comment_col))[:30]
+                    if c_str:
+                        chips_html += (
+                            f'<span style="background:#ede9fe; color:#6b21a8; '
+                            f'border:1px solid #ddd6fe; '
+                            f'border-radius:999px; padding:4px 11px; '
+                            f'font-size:0.74rem; font-weight:500;">'
+                            f'💬 {c_str}</span>'
+                        )
+                # 생성자
+                creator = props.get("생성자")
+                if creator:
+                    cr_str = _normalize_prop_value(creator)
+                    if cr_str:
+                        chips_html += (
+                            f'<span style="background:#f1f5f9; color:#475569; '
+                            f'border:1px solid #e2e8f0; '
+                            f'border-radius:999px; padding:4px 11px; '
+                            f'font-size:0.72rem; font-weight:500;">'
+                            f'✏️ {cr_str}</span>'
+                        )
+
+                chips_html += '</div>'
+                st.markdown(chips_html, unsafe_allow_html=True)
+
+                # 노션 원본 링크 — 우측 정렬
                 if notion_url:
                     st.markdown(
-                        f"<div style='margin: 8px 0; font-size:0.82rem;'>"
-                        f"<a href='{notion_url}' target='_blank' style='color:#2563eb;'>"
-                        f"🔗 노션 원본에서 열기</a></div>",
+                        f"<div style='display:flex; justify-content:flex-end; "
+                        f"margin: 0 0 6px 0; font-size:0.78rem;'>"
+                        f"<a href='{notion_url}' target='_blank' "
+                        f"style='color:#2563eb; text-decoration:none; "
+                        f"background:#eff6ff; padding:4px 10px; "
+                        f"border-radius:6px; border:1px solid #dbeafe;'>"
+                        f"🔗 노션 원본 열기 →</a></div>",
                         unsafe_allow_html=True,
                     )
 

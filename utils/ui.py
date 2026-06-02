@@ -317,11 +317,37 @@ def inject_global_css() -> None:
             background: #ffffff;
         }}
 
-        /* ---------- Expander — 따뜻한 톤 ---------- */
+        /* ---------- Expander — 카드 스타일 (회의록 등) ---------- */
         details[data-testid="stExpander"], div[data-testid="stExpander"] {{
-            border-radius: 12px !important;
+            border-radius: 14px !important;
             border: 1px solid #ece8dc !important;
             background: #ffffff;
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.03),
+                0 4px 10px rgba(15, 23, 42, 0.025);
+            margin-bottom: 10px;
+            overflow: hidden;
+            transition: box-shadow 0.18s ease, transform 0.18s ease,
+                        border-color 0.18s ease;
+        }}
+        details[data-testid="stExpander"]:hover {{
+            box-shadow:
+                0 2px 6px rgba(15, 23, 42, 0.05),
+                0 8px 20px rgba(15, 23, 42, 0.05);
+            transform: translateY(-1px);
+            border-color: #d4cebf;
+        }}
+        details[data-testid="stExpander"][open] {{
+            border-color: {BRAND_PRIMARY} !important;
+            border-left-width: 3px !important;
+        }}
+        details[data-testid="stExpander"] summary {{
+            padding: 14px 18px !important;
+            font-weight: 500 !important;
+        }}
+        details[data-testid="stExpander"][open] summary {{
+            border-bottom: 1px solid #f1f5f9;
+            background: linear-gradient(135deg, #fbfaf6 0%, #ffffff 100%);
         }}
 
         /* ---------- 버튼 — 더 modern pill 톤 ---------- */
