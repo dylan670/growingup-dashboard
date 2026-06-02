@@ -197,31 +197,43 @@ def inject_global_css() -> None:
             font-weight: 500 !important;
         }}
 
-        /* ---------- 메인 영역 여백 ---------- */
+        /* ---------- 메인 영역 배경 — Off-white (2026 트렌드: warm minimalism) ----------
+         * Linear App / Notion / Stripe Dashboard / Toss 공통 패턴:
+         * 순수 흰색 X → off-white/베이지 → 카드는 흰색 → depth 강조
+         */
+        .stApp, .main, [data-testid="stMainBlockContainer"] {{
+            background: #fbfaf6 !important;
+        }}
+
         .block-container {{
-            /* Streamlit 상단 툴바(Share/Star/GitHub/⋮ 버튼)가 sticky 로
-               1번째 요소를 덮는 문제 → 상단 여유 대폭 확대 */
             padding-top: 3.5rem !important;
             padding-bottom: 3rem !important;
             max-width: 1400px;
+            background: transparent !important;
         }}
-        /* 상단 Streamlit 기본 header 영역 배경 투명화 (고정 바와 겹침 방지) */
+        /* 상단 Streamlit 기본 header — 살짝 따뜻한 톤 (배경과 어울림) */
         [data-testid="stHeader"] {{
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(6px);
+            background: rgba(251, 250, 246, 0.85);
+            backdrop-filter: blur(8px);
         }}
 
-        /* ---------- KPI 카드 (st.metric) ---------- */
+        /* ---------- KPI 카드 (st.metric) — Multi-layer shadow (2026 트렌드) ---------- */
         div[data-testid="stMetric"] {{
-            background: {BG_CARD};
-            border: 1px solid {BORDER_SUBTLE};
+            background: #ffffff;
+            border: 1px solid #ece8dc;   /* 따뜻한 보더 */
             padding: 18px 22px;
-            border-radius: 14px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-            transition: box-shadow 0.15s ease;
+            border-radius: 16px;          /* Bento UI rounded-xl */
+            /* Multi-layer: tight inner + soft outer (Linear App 스타일) */
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.03),
+                0 4px 12px rgba(15, 23, 42, 0.025);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
         }}
         div[data-testid="stMetric"]:hover {{
-            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+            transform: translateY(-1px);
+            box-shadow:
+                0 2px 4px rgba(15, 23, 42, 0.04),
+                0 8px 20px rgba(15, 23, 42, 0.06);
         }}
         div[data-testid="stMetric"] label {{
             font-size: 0.82rem;
@@ -245,10 +257,63 @@ def inject_global_css() -> None:
         h2, h3, h4 {{ font-weight: 650; letter-spacing: -0.02em; }}
         h2 {{ padding-top: 0.4rem; }}
 
-        /* ---------- 컨테이너 (border=True) ---------- */
+        /* ---------- 컨테이너 (border=True) — warm border + bento rounded ---------- */
         div[data-testid="stVerticalBlockBorderWrapper"] {{
-            border-radius: 14px !important;
-            border-color: {BORDER_SUBTLE} !important;
+            border-radius: 16px !important;
+            border-color: #ece8dc !important;
+            background: #ffffff;
+        }}
+
+        /* ---------- 표 (Dataframe) ---------- */
+        .stDataFrame {{
+            border-radius: 12px !important;
+            border: 1px solid #ece8dc !important;
+            overflow: hidden;
+            background: #ffffff;
+        }}
+
+        /* ---------- Expander — 따뜻한 톤 ---------- */
+        details[data-testid="stExpander"], div[data-testid="stExpander"] {{
+            border-radius: 12px !important;
+            border: 1px solid #ece8dc !important;
+            background: #ffffff;
+        }}
+
+        /* ---------- 버튼 — 더 modern pill 톤 ---------- */
+        .stButton button, button[kind="secondary"], button[kind="primary"] {{
+            border-radius: 10px !important;
+            font-weight: 500 !important;
+            transition: all 0.15s ease;
+            border: 1px solid #ece8dc !important;
+        }}
+        .stButton button:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(15, 23, 42, 0.06);
+        }}
+        button[kind="primary"] {{
+            background: {BRAND_PRIMARY} !important;
+            color: white !important;
+            border: 1px solid {BRAND_PRIMARY} !important;
+        }}
+
+        /* ---------- Tabs — 더 깔끔한 underline 톤 ---------- */
+        button[data-baseweb="tab"] {{
+            font-weight: 500 !important;
+        }}
+        button[data-baseweb="tab"][aria-selected="true"] {{
+            font-weight: 600 !important;
+            color: {BRAND_PRIMARY} !important;
+        }}
+
+        /* ---------- Input fields — warm border ---------- */
+        .stTextInput input, .stTextArea textarea,
+        .stSelectbox [data-baseweb="select"] {{
+            border-radius: 10px !important;
+            border-color: #ece8dc !important;
+        }}
+        .stTextInput input:focus, .stTextArea textarea:focus {{
+            border-color: {BRAND_PRIMARY} !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
         }}
 
         /* ========== 사이드바 커스텀 네비게이션 ========== */
