@@ -22,9 +22,9 @@ from api.naver_searchad import load_client_from_env as load_naver_client
 
 
 setup_page(
-    page_title="광고 분석",
+    page_title="광고관리",
     page_icon="📣",
-    header_title="📣 광고 분석",
+    header_title="📣 광고관리",
     header_subtitle="네이버 검색광고 · 쿠팡 광고 · 메타 광고 — 브랜드별 ROAS·효율·피로도",
 )
 
