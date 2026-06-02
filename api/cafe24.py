@@ -38,6 +38,10 @@ DEFAULT_SCOPES = [
     "mall.read_order",
     "mall.read_product",
     "mall.read_customer",
+    "mall.read_store",
+    "mall.read_salesreport",
+    "mall.read_community",
+    "mall.write_community",   # 답글 작성용
 ]
 
 
@@ -406,6 +410,7 @@ class Cafe24Client:
 
         # ---- 시도 1: /admin/reviews ----
         review_endpoint_ok = False
+        used_board_no = 0   # /reviews 경로면 board_no=0 (답글 대상 아님)
         try:
             offset = 0
             while True:
@@ -419,7 +424,10 @@ class Cafe24Client:
                 batch = res.get("reviews", []) or []
                 review_endpoint_ok = True
                 for r in batch:
-                    rows.append(self._normalize_review(r, brand, product_name_map))
+                    rows.append(self._normalize_review(
+                        r, brand, product_name_map,
+                        board_no=0, mall_id=self.mall_id,
+                    ))
                 if len(batch) < limit:
                     break
                 offset += limit
@@ -432,6 +440,7 @@ class Cafe24Client:
 
         # ---- 시도 2: 게시판 articles (review endpoint 없을 때만) ----
         if not review_endpoint_ok:
+            used_board_no = board_no
             offset = 0
             while True:
                 params = {
@@ -453,7 +462,10 @@ class Cafe24Client:
                     )
                 batch = res.get("articles", []) or []
                 for r in batch:
-                    rows.append(self._normalize_review(r, brand, product_name_map))
+                    rows.append(self._normalize_review(
+                        r, brand, product_name_map,
+                        board_no=used_board_no, mall_id=self.mall_id,
+                    ))
                 if len(batch) < limit:
                     break
                 offset += limit
@@ -464,13 +476,18 @@ class Cafe24Client:
         rows = [r for r in rows if r is not None]
         return pd.DataFrame(rows, columns=[
             "date", "channel", "brand", "product", "rating", "text",
+            "mall_id", "board_no", "article_no",
         ])
 
     @staticmethod
     def _normalize_review(
         r: dict, brand: str, product_name_map: dict[int, str],
+        board_no: int = 0, mall_id: str = "",
     ) -> dict | None:
-        """카페24 리뷰 1건 → reviews.csv 스키마."""
+        """카페24 리뷰 1건 → reviews.csv 스키마.
+
+        board_no / mall_id / article_no 는 답글 작성 시 필요한 식별자.
+        """
         # 날짜
         d_str = (
             r.get("created_date")
@@ -526,6 +543,13 @@ class Cafe24Client:
                 except (TypeError, ValueError):
                     pass
 
+        # 답글 작성용 식별자
+        article_no = r.get("article_no") or r.get("review_no") or 0
+        try:
+            article_no = int(article_no)
+        except (TypeError, ValueError):
+            article_no = 0
+
         return {
             "date": d_str,
             "channel": "자사몰",
@@ -533,7 +557,69 @@ class Cafe24Client:
             "product": str(product).strip(),
             "rating": rating,
             "text": text,
+            "mall_id": mall_id,
+            "board_no": board_no,
+            "article_no": article_no,
         }
+
+    # ============================================================
+    # 답글 (게시판 댓글) — 관리자가 리뷰에 답글 작성
+    # 필요 scope: mall.write_community
+    # ============================================================
+    def get_board_comments(
+        self, board_no: int, article_no: int,
+    ) -> list[dict]:
+        """게시글의 기존 댓글(답글) 목록."""
+        try:
+            res = self._request(
+                "GET",
+                f"/boards/{board_no}/articles/{article_no}/comments",
+                params={"limit": 100},
+            ) or {}
+            return res.get("comments", []) or []
+        except requests.HTTPError as e:
+            code = e.response.status_code if e.response is not None else 0
+            if code == 404:
+                return []
+            raise
+
+    def post_board_comment(
+        self, board_no: int, article_no: int, content: str,
+        writer: str = "관리자",
+    ) -> dict:
+        """리뷰(게시글)에 관리자 답글 작성.
+
+        반환: 생성된 comment dict (comment_no 포함).
+        scope: mall.write_community 필요.
+        """
+        content = (content or "").strip()
+        if not content:
+            raise ValueError("답글 본문이 비어있습니다.")
+
+        body = {
+            "shop_no": 1,
+            "request": {
+                "writer": writer,
+                "content": content,
+                # 카페24 admin은 기본적으로 password 없이 작성 가능
+            },
+        }
+        res = self._request(
+            "POST",
+            f"/boards/{board_no}/articles/{article_no}/comments",
+            json_body=body,
+        ) or {}
+        return res.get("comment", {}) or res
+
+    def delete_board_comment(
+        self, board_no: int, article_no: int, comment_no: int,
+    ) -> bool:
+        """관리자 답글 삭제."""
+        self._request(
+            "DELETE",
+            f"/boards/{board_no}/articles/{article_no}/comments/{comment_no}",
+        )
+        return True
 
     @staticmethod
     def _brand_of_store(store: str) -> str:
@@ -584,6 +670,31 @@ def load_cafe24_client(store_brand: str) -> Cafe24Client | None:
     if not all([mall_id, cid, cs]):
         return None
     return Cafe24Client(mall_id, cid, cs, store_label=store_brand)
+
+
+def load_cafe24_client_by_mall_id(mall_id: str) -> Cafe24Client | None:
+    """mall_id (toktoklab1 / routinist / rollaroo) → 클라이언트.
+
+    페이지에서 reviews.csv 의 mall_id 컬럼 기반으로 답글 전송 시 사용.
+    """
+    mall_id = (mall_id or "").strip()
+    if not mall_id:
+        return None
+    # 매장 → 브랜드 역매핑
+    import os
+    from pathlib import Path
+    from dotenv import load_dotenv
+
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=False)
+
+    for brand in ["똑똑연구소", "롤라루", "루티니스트"]:
+        suffix = _env_suffix_for_store(brand)
+        mid = os.getenv(f"CAFE24_MALL_ID_{suffix}", "").strip()
+        if mid == mall_id:
+            return load_cafe24_client(brand)
+    return None
 
 
 def load_all_cafe24_clients() -> dict[str, Cafe24Client]:

@@ -516,17 +516,20 @@ def merge_reviews(
         existing = pd.DataFrame()
         removed = 0
 
-    # 컬럼 순서 통일
-    cols = ["date", "channel", "brand", "product", "rating", "text"]
+    # 컬럼 순서 통일 (mall_id/board_no/article_no 은 답글 식별용)
+    cols = [
+        "date", "channel", "brand", "product", "rating", "text",
+        "mall_id", "board_no", "article_no",
+    ]
     for c in cols:
         if c not in new_df.columns:
-            new_df[c] = ""
+            new_df[c] = "" if c in ("mall_id",) else 0
     new_df = new_df[cols]
 
     if not existing.empty:
         for c in cols:
             if c not in existing.columns:
-                existing[c] = ""
+                existing[c] = "" if c in ("mall_id",) else 0
         existing = existing[cols]
 
     merged = pd.concat([existing, new_df], ignore_index=True)

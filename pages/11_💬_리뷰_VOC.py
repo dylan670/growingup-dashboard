@@ -595,11 +595,12 @@ st.markdown("---")
 # ==========================================================
 # 탭 구성
 # ==========================================================
-tab_sent, tab_kw, tab_neg, tab_prod = st.tabs([
+tab_sent, tab_kw, tab_neg, tab_prod, tab_reply = st.tabs([
     "📊 감성 분포",
     "🔠 키워드 빈도",
     "🚨 부정 리뷰 분석",
     "🏷 상품별 ranking",
+    "💬 답글 관리",
 ])
 
 
@@ -1001,6 +1002,239 @@ with tab_prod:
             "**좌상단** = 잠재력 (별점 좋은데 노출 부족, 마케팅 강화) · "
             "**좌하단** = 단종 검토"
         )
+
+
+# ==========================================================
+# TAB 5 — 💬 답글 관리 (Cafe24 자사몰 리뷰에 관리자 답글)
+# ==========================================================
+with tab_reply:
+    st.markdown("#### 💬 자사몰 리뷰 답글 관리")
+    st.caption(
+        "Cafe24 자사몰 리뷰에 관리자 답글을 직접 작성합니다. "
+        "전송 즉시 고객에게 노출되니 신중히 확인 후 [전송] 클릭."
+    )
+
+    # 답글 가능한 자사몰 리뷰만 (article_no 있는 것)
+    reply_pool = filtered[
+        (filtered["channel"] == "자사몰")
+        & filtered["article_no"].fillna(0).astype(int).gt(0)
+        & filtered["mall_id"].fillna("").astype(str).str.len().gt(0)
+    ].copy()
+
+    if reply_pool.empty:
+        st.info(
+            "답글 작성 가능한 리뷰가 없습니다. "
+            "최근 sync 데이터에 `article_no`/`mall_id` 가 채워졌는지 확인하세요. "
+            "(스키마 변경 후 재 sync 필요)"
+        )
+    else:
+        # ---- 필터/정렬 ----
+        col_f1, col_f2, col_f3, col_f4 = st.columns([1.2, 1.4, 1.2, 1.2])
+        with col_f1:
+            star_filter = st.multiselect(
+                "별점", [1, 2, 3, 4, 5], default=[1, 2, 3, 4, 5],
+                key="reply_star_filter",
+            )
+        with col_f2:
+            mall_options = sorted(reply_pool["mall_id"].unique().tolist())
+            mall_filter = st.multiselect(
+                "매장", mall_options, default=mall_options,
+                key="reply_mall_filter",
+            )
+        with col_f3:
+            sort_mode = st.selectbox(
+                "정렬", ["최신순", "오래된순", "별점 낮은순", "별점 높은순"],
+                key="reply_sort_mode",
+            )
+        with col_f4:
+            search_kw = st.text_input(
+                "본문 검색", placeholder="키워드…",
+                key="reply_search_kw",
+            )
+
+        rp = reply_pool[
+            reply_pool["rating"].astype(int).isin(star_filter)
+            & reply_pool["mall_id"].isin(mall_filter)
+        ].copy()
+        if search_kw.strip():
+            rp = rp[rp["text"].str.contains(
+                search_kw.strip(), case=False, na=False,
+            )]
+
+        if sort_mode == "최신순":
+            rp = rp.sort_values("date", ascending=False)
+        elif sort_mode == "오래된순":
+            rp = rp.sort_values("date", ascending=True)
+        elif sort_mode == "별점 낮은순":
+            rp = rp.sort_values(["rating", "date"], ascending=[True, False])
+        else:
+            rp = rp.sort_values(["rating", "date"], ascending=[False, False])
+
+        st.caption(f"📋 답글 대상 {len(rp)}건 (필터 후)")
+
+        # ---- 페이지네이션 ----
+        PAGE_SIZE = 10
+        total_pages = max(1, (len(rp) + PAGE_SIZE - 1) // PAGE_SIZE)
+        page = st.number_input(
+            f"페이지 (1~{total_pages})", min_value=1, max_value=total_pages,
+            value=1, step=1, key="reply_page",
+        )
+        start = (page - 1) * PAGE_SIZE
+        page_rows = rp.iloc[start:start + PAGE_SIZE]
+
+        # ---- 카드 list ----
+        for idx, row in page_rows.iterrows():
+            article_no = int(row["article_no"])
+            board_no = int(row["board_no"]) if row["board_no"] else 4
+            mall_id = str(row["mall_id"])
+            rating_int = int(row["rating"])
+            date_str = (row["date"].strftime("%Y-%m-%d")
+                        if hasattr(row["date"], "strftime")
+                        else str(row["date"])[:10])
+            stars = "⭐" * rating_int + "☆" * (5 - rating_int)
+            brand_cfg = BRAND_COLORS.get(row["brand"], {})
+            brand_bg = brand_cfg.get("bg_soft", "#f8fafc")
+            brand_color = brand_cfg.get("primary", "#64748b")
+
+            with st.container(border=True):
+                # 헤더 — 별점 / 브랜드 / 제품 / 날짜 / 매장
+                hcol1, hcol2 = st.columns([3, 1.2])
+                with hcol1:
+                    st.markdown(
+                        f"<div style='font-size:1.1rem; line-height:1.4;'>"
+                        f"<span style='color:#fbbf24;'>{stars}</span>"
+                        f"<span style='color:#64748b; margin-left:8px;'>"
+                        f"{rating_int}/5</span></div>"
+                        f"<div style='margin-top:6px;'>"
+                        f"<span style='background:{brand_bg}; color:{brand_color};"
+                        f"padding:2px 10px; border-radius:999px; font-size:0.75rem;"
+                        f"font-weight:600; border:1px solid {brand_color}33;'>"
+                        f"{row['brand']}</span>"
+                        f"<span style='color:#0f172a; margin-left:10px; "
+                        f"font-weight:600;'>{row['product']}</span>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                with hcol2:
+                    st.markdown(
+                        f"<div style='text-align:right; color:#64748b; "
+                        f"font-size:0.78rem; line-height:1.5;'>"
+                        f"📅 {date_str}<br/>"
+                        f"🏪 {mall_id}<br/>"
+                        f"#{article_no}"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                # 본문
+                st.markdown(
+                    f"<div style='background:#fbfaf6; border-left:3px solid "
+                    f"{brand_color}; padding:12px 16px; border-radius:8px; "
+                    f"margin:8px 0; color:#0f172a; line-height:1.6; "
+                    f"white-space:pre-wrap;'>{row['text']}</div>",
+                    unsafe_allow_html=True,
+                )
+
+                # 답글 입력
+                reply_key = f"reply_text_{mall_id}_{article_no}"
+                btn_key = f"reply_send_{mall_id}_{article_no}"
+                view_key = f"reply_view_{mall_id}_{article_no}"
+
+                rcol1, rcol2 = st.columns([5, 1.2])
+                with rcol1:
+                    reply_text = st.text_area(
+                        "답글 작성",
+                        key=reply_key,
+                        placeholder=("예: 소중한 후기 감사드립니다. "
+                                     "다음에도 만족스러운 경험 드릴게요!"),
+                        height=80,
+                        label_visibility="collapsed",
+                    )
+                with rcol2:
+                    send_clicked = st.button(
+                        "💬 답글 전송", key=btn_key,
+                        type="primary", use_container_width=True,
+                    )
+                    view_clicked = st.button(
+                        "🔍 기존 답글 보기", key=view_key,
+                        use_container_width=True,
+                    )
+
+                if send_clicked:
+                    text_val = (st.session_state.get(reply_key) or "").strip()
+                    if not text_val:
+                        st.warning("답글 본문을 입력하세요.")
+                    elif board_no == 0:
+                        st.error(
+                            "이 리뷰는 board_no=0 (별도 /reviews 엔드포인트). "
+                            "답글 API 대상 아님."
+                        )
+                    else:
+                        try:
+                            from api.cafe24 import load_cafe24_client_by_mall_id
+                            client = load_cafe24_client_by_mall_id(mall_id)
+                            if client is None:
+                                st.error(
+                                    f"클라이언트 로드 실패 (mall_id={mall_id}). "
+                                    f".env 자격증명 확인."
+                                )
+                            else:
+                                result = client.post_board_comment(
+                                    board_no, article_no, text_val,
+                                )
+                                st.success(
+                                    f"✅ 답글 전송 완료 "
+                                    f"(comment_no={result.get('comment_no','?')})"
+                                )
+                                # 입력칸 비우기
+                                st.session_state[reply_key] = ""
+                        except Exception as e:
+                            err = str(e)[:300]
+                            if "403" in err or "scope" in err.lower():
+                                st.error(
+                                    "❌ HTTP 403 — `mall.write_community` scope 없음. "
+                                    "Cafe24 Developers 에서 게시판 권한 '읽기+쓰기' "
+                                    "변경 + 저장 + OAuth 재인증 필요."
+                                )
+                            else:
+                                st.error(f"❌ 전송 실패: {type(e).__name__}: {err}")
+
+                if view_clicked:
+                    try:
+                        from api.cafe24 import load_cafe24_client_by_mall_id
+                        client = load_cafe24_client_by_mall_id(mall_id)
+                        if client is None:
+                            st.error("클라이언트 로드 실패")
+                        else:
+                            existing = client.get_board_comments(
+                                board_no, article_no,
+                            )
+                            if not existing:
+                                st.info("기존 답글이 없습니다.")
+                            else:
+                                for c in existing:
+                                    cdate = (c.get("created_date", "")[:16]
+                                             .replace("T", " "))
+                                    cwriter = c.get("writer", "?")
+                                    ccontent = c.get("content", "")
+                                    st.markdown(
+                                        f"<div style='background:#eff6ff; "
+                                        f"border-left:3px solid #2563eb; "
+                                        f"padding:10px 14px; border-radius:8px; "
+                                        f"margin:6px 0;'>"
+                                        f"<div style='font-size:0.75rem; "
+                                        f"color:#64748b;'>"
+                                        f"<b>{cwriter}</b> · {cdate} · "
+                                        f"#{c.get('comment_no','?')}</div>"
+                                        f"<div style='margin-top:4px; "
+                                        f"color:#0f172a;'>{ccontent}</div>"
+                                        f"</div>",
+                                        unsafe_allow_html=True,
+                                    )
+                    except Exception as e:
+                        st.error(f"조회 실패: {type(e).__name__}: {str(e)[:200]}")
+
+        if total_pages > 1:
+            st.caption(f"📄 {page} / {total_pages} 페이지")
 
 
 # ==========================================================
