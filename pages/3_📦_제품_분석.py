@@ -54,11 +54,268 @@ def channel_color(label: str, default: str = "#94a3b8") -> str:
 
 
 setup_page(
-    page_title="제품 분석",
+    page_title="제품관리",
     page_icon="📦",
-    header_title="📦 제품 분석",
-    header_subtitle="제품 브랜드 단위 분석",
+    header_title="📦 제품관리",
+    header_subtitle="상품코드 기준으로 채널·기간별 판매를 추적하고, 잘 나가는 제품과 부진 제품을 가려냅니다",
 )
+
+
+def _flatten_html(html: str) -> str:
+    return "".join(ln.strip() for ln in html.strip().split("\n"))
+
+
+# ============================================================
+# 📊 제품 KPI 6개 + 카테고리/브랜드 차트 (Ozkiz 미러)
+# ============================================================
+from datetime import timedelta as _td
+from utils.data import load_orders as _load_orders_hero
+
+_orders_hero = _load_orders_hero()
+
+if not _orders_hero.empty:
+    _end_d = _orders_hero["date"].max()
+    _yest_df = _orders_hero[_orders_hero["date"].dt.date == (_end_d - _td(days=1)).date()]
+    _yest_2 = _orders_hero[_orders_hero["date"].dt.date == (_end_d - _td(days=2)).date()]
+    _week_df = _orders_hero[_orders_hero["date"] >= _end_d - _td(days=6)]
+    _prev_week_df = _orders_hero[
+        (_orders_hero["date"] >= _end_d - _td(days=13))
+        & (_orders_hero["date"] < _end_d - _td(days=6))
+    ]
+    _month_start = pd.Timestamp(_end_d.year, _end_d.month, 1)
+    _this_month_skus = set(_orders_hero[_orders_hero["date"] >= _month_start]["product"].unique())
+    _prev_skus = set(_orders_hero[_orders_hero["date"] < _month_start]["product"].unique())
+    _new_skus = _this_month_skus - _prev_skus
+
+    _total_sku = _orders_hero["product"].nunique()
+    _yest_qty = int(_yest_df["quantity"].sum())
+    _yest_2_qty = int(_yest_2["quantity"].sum())
+    _wk_qty = int(_week_df["quantity"].sum())
+    _prev_wk_qty = int(_prev_week_df["quantity"].sum())
+    _cumul_qty = int(_orders_hero["quantity"].sum())
+
+    # 변동률
+    _yest_vs = (_yest_qty - _yest_2_qty) / _yest_2_qty * 100 if _yest_2_qty > 0 else 0
+    _wk_vs = (_wk_qty - _prev_wk_qty) / _prev_wk_qty * 100 if _prev_wk_qty > 0 else 0
+    # 평균 판매율 = 판매 SKU / 총 SKU (단순화)
+    _active_skus = _week_df["product"].nunique() if not _week_df.empty else 0
+    _sale_rate = (_active_skus / _total_sku * 100) if _total_sku > 0 else 0
+
+    def _prod_kpi(icon: str, label: str, value: str, sub: str = "",
+                  delta_pct: float | None = None) -> str:
+        if delta_pct is not None:
+            arrow = "↑" if delta_pct > 0 else "↓" if delta_pct < 0 else "—"
+            col = "#16a34a" if delta_pct > 0 else "#dc2626" if delta_pct < 0 else "#64748b"
+            delta_html = (
+                f'<div style="font-size:0.74rem; color:{col}; '
+                f'font-weight:700; margin-top:4px;">'
+                f'{arrow} {abs(delta_pct):+.1f}% · {sub}</div>'
+            )
+        else:
+            delta_html = (
+                f'<div style="font-size:0.7rem; color:#94a3b8; '
+                f'margin-top:4px;">{sub}</div>'
+            )
+        return _flatten_html(f"""
+<div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:16px 18px; min-height:110px; box-shadow:0 1px 2px rgba(15,23,42,0.03);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+        <div style="font-size:0.78rem; color:#64748b; font-weight:600;">{label}</div>
+        <div style="font-size:0.95rem; color:#cbd5e1;">{icon}</div>
+    </div>
+    <div style="font-size:1.55rem; font-weight:800; color:#0f172a; line-height:1; letter-spacing:-0.02em;">{value}</div>
+    {delta_html}
+</div>
+        """)
+
+    _kp = st.columns(6)
+    _kp[0].markdown(_prod_kpi("📦", "총 제품 수", f"{_total_sku:,}", "운영 중인 SKU"), unsafe_allow_html=True)
+    _kp[1].markdown(_prod_kpi("✨", "신규 (이번 달)", f"{len(_new_skus):,}",
+                              f"{_end_d.month}월 첫 판매"), unsafe_allow_html=True)
+    _kp[2].markdown(_prod_kpi("☀️", "전일 판매", f"{_yest_qty:,}", "전일대비",
+                              delta_pct=_yest_vs), unsafe_allow_html=True)
+    _kp[3].markdown(_prod_kpi("📅", "주간 판매", f"{_wk_qty:,}", "전주대비",
+                              delta_pct=_wk_vs), unsafe_allow_html=True)
+    _kp[4].markdown(_prod_kpi("📊", "누적 판매", f"{_cumul_qty:,}", "전체 기간"), unsafe_allow_html=True)
+    _kp[5].markdown(_prod_kpi("⚡", "활성 SKU 비율", f"{_sale_rate:.1f}%",
+                              f"최근 7일 판매: {_active_skus} SKU"), unsafe_allow_html=True)
+
+    st.write("")
+
+    # 카테고리 분류 함수
+    def _categorize(p: str) -> str:
+        pn = str(p).replace(" ", "")
+        if any(k in pn for k in ["김똑똑", "어린이김", "조미김", "도시락김"]) and "떡뻥" not in pn:
+            return "김"
+        if any(k in pn for k in ["떡뻥", "쌀과자"]):
+            return "떡뻥/쌀과자"
+        if "캐리어" in pn or "여행" in pn or "기내용" in pn:
+            return "캐리어"
+        if "백팩" in pn:
+            return "백팩"
+        if "바퀴커버" in pn or "네임택" in pn:
+            return "캐리어 부자재"
+        if any(k in pn for k in ["러닝조끼", "운동조끼"]):
+            return "러닝조끼"
+        if "장갑" in pn:
+            return "러닝장갑"
+        return "기타"
+
+    def _brand_of(p: str) -> str:
+        pn = str(p).replace(" ", "")
+        if any(k in pn for k in ["똑똑", "김똑똑", "떡뻥"]):
+            return "똑똑연구소"
+        if any(k in pn for k in ["롤라루", "캐리어", "여행", "기내용", "백팩"]):
+            return "롤라루"
+        if any(k in pn for k in ["루티니", "러닝", "운동조끼", "장갑"]):
+            return "루티니스트"
+        return "기타"
+
+    _orders_hero["cat"] = _orders_hero["product"].apply(_categorize)
+    _orders_hero["brand"] = _orders_hero["product"].apply(_brand_of)
+
+    # 시간 토글
+    _cat_l, _cat_r = st.columns([5, 2])
+    with _cat_l:
+        st.markdown(
+            _flatten_html("""
+<div style="display:flex; align-items:baseline; gap:14px; margin-top:4px;">
+    <div style="font-size:1.0rem; font-weight:700; color:#0f172a;">📊 카테고리·브랜드 판매 분포</div>
+    <div style="font-size:0.78rem; color:#94a3b8;">제품명 키워드 기반 자동 분류</div>
+</div>
+            """),
+            unsafe_allow_html=True,
+        )
+    with _cat_r:
+        _cat_mode = st.radio(
+            "기간",
+            ["주", "월", "누적"],
+            index=1,
+            horizontal=True,
+            label_visibility="collapsed",
+            key="prod_cat_mode",
+        )
+
+    if _cat_mode == "주":
+        _cat_df = _week_df.copy()
+    elif _cat_mode == "월":
+        _cat_df = _orders_hero[_orders_hero["date"] >= _month_start].copy()
+    else:
+        _cat_df = _orders_hero.copy()
+    _cat_df["cat"] = _cat_df["product"].apply(_categorize)
+    _cat_df["brand"] = _cat_df["product"].apply(_brand_of)
+
+    _c1, _c2, _c3 = st.columns(3)
+
+    # 카테고리별 판매 비중 (도넛)
+    with _c1:
+        st.markdown(
+            _flatten_html("""
+<div style="font-size:0.88rem; font-weight:700; color:#0f172a; margin-bottom:8px;">카테고리별 판매 비중</div>
+            """),
+            unsafe_allow_html=True,
+        )
+        _cat_agg = (
+            _cat_df.groupby("cat")["quantity"].sum().sort_values(ascending=False)
+        )
+        if not _cat_agg.empty:
+            _cat_colors = px.colors.qualitative.Set3
+            _fig_c = go.Figure(go.Pie(
+                labels=_cat_agg.index.tolist(),
+                values=_cat_agg.values.tolist(),
+                hole=0.6,
+                marker=dict(colors=_cat_colors[:len(_cat_agg)],
+                            line=dict(color="white", width=2)),
+                textinfo="label+percent",
+                textposition="outside",
+                textfont=dict(size=10),
+                sort=False,
+            ))
+            _fig_c.update_layout(
+                height=320, margin=dict(l=10, r=10, t=10, b=10),
+                showlegend=False,
+                annotations=[dict(
+                    text=f"<span style='font-size:0.7rem; color:#94a3b8;'>총</span><br><span style='font-size:0.95rem; font-weight:700;'>{int(_cat_agg.sum()):,}개</span>",
+                    x=0.5, y=0.5, showarrow=False,
+                )],
+            )
+            st.plotly_chart(_fig_c, use_container_width=True)
+
+    # 브랜드별 판매 비중 (도넛)
+    with _c2:
+        st.markdown(
+            _flatten_html("""
+<div style="font-size:0.88rem; font-weight:700; color:#0f172a; margin-bottom:8px;">브랜드별 판매 비중</div>
+            """),
+            unsafe_allow_html=True,
+        )
+        _br_agg = (
+            _cat_df.groupby("brand")["quantity"].sum().sort_values(ascending=False)
+        )
+        if not _br_agg.empty:
+            from utils.ui import BRAND_COLORS as _BC
+            _br_colors = [
+                _BC.get(b, {}).get("primary", "#94a3b8")
+                for b in _br_agg.index
+            ]
+            _fig_b = go.Figure(go.Pie(
+                labels=_br_agg.index.tolist(),
+                values=_br_agg.values.tolist(),
+                hole=0.6,
+                marker=dict(colors=_br_colors,
+                            line=dict(color="white", width=2)),
+                textinfo="label+percent",
+                textposition="outside",
+                textfont=dict(size=10),
+                sort=False,
+            ))
+            _br_rev = int(_cat_df["revenue"].sum())
+            _fig_b.update_layout(
+                height=320, margin=dict(l=10, r=10, t=10, b=10),
+                showlegend=False,
+                annotations=[dict(
+                    text=f"<span style='font-size:0.7rem; color:#94a3b8;'>매출</span><br><span style='font-size:0.88rem; font-weight:700;'>₩{_br_rev/1e8:.1f}억</span>" if _br_rev >= 1e8 else f"<span style='font-size:0.7rem; color:#94a3b8;'>매출</span><br><span style='font-size:0.88rem; font-weight:700;'>₩{_br_rev/1e7:.1f}천만</span>",
+                    x=0.5, y=0.5, showarrow=False,
+                )],
+            )
+            st.plotly_chart(_fig_b, use_container_width=True)
+
+    # 카테고리별 매출 막대 (가로)
+    with _c3:
+        st.markdown(
+            _flatten_html("""
+<div style="font-size:0.88rem; font-weight:700; color:#0f172a; margin-bottom:8px;">카테고리별 매출</div>
+            """),
+            unsafe_allow_html=True,
+        )
+        _rev_agg = (
+            _cat_df.groupby("cat")["revenue"].sum().sort_values(ascending=True)
+        )
+        if not _rev_agg.empty:
+            _fig_r = px.bar(
+                x=_rev_agg.values.tolist(),
+                y=_rev_agg.index.tolist(),
+                orientation="h",
+                color=_rev_agg.values.tolist(),
+                color_continuous_scale=["#dbeafe", "#2563eb", "#1e3a8a"],
+                text=[
+                    f"₩{v/1e8:.1f}억" if v >= 1e8 else
+                    (f"₩{v/1e7:.1f}천만" if v >= 1e7 else f"₩{v/1e4:.0f}만")
+                    for v in _rev_agg.values
+                ],
+            )
+            _fig_r.update_traces(textposition="outside", textfont=dict(size=10))
+            _fig_r.update_layout(
+                height=320, margin=dict(l=10, r=10, t=10, b=10),
+                xaxis=dict(title="", tickformat=",", showgrid=True,
+                           gridcolor="#f1f5f9"),
+                yaxis=dict(title=""),
+                plot_bgcolor="white",
+                showlegend=False,
+                coloraxis_showscale=False,
+            )
+            st.plotly_chart(_fig_r, use_container_width=True)
+
+    st.markdown("---")
 
 # 캐시 버전 — 제품명 정규화 규칙 바뀌면 bump 해서 기존 캐시 강제 무효화
 _ORDERS_CACHE_VER = "v10-force-refresh"
