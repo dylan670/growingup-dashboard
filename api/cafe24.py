@@ -636,25 +636,69 @@ class Cafe24Client:
 
         반환: 생성된 comment dict (comment_no 포함).
         scope: mall.write_community 필요.
+
+        다양한 body 형식 시도 — Cafe24 board API 가 게시판 설정에 따라
+        password mandatory / writer 위치 등 다름.
         """
         content = (content or "").strip()
         if not content:
             raise ValueError("답글 본문이 비어있습니다.")
 
-        body = {
-            "shop_no": 1,
-            "request": {
-                "writer": writer,
-                "content": content,
-                # 카페24 admin은 기본적으로 password 없이 작성 가능
+        # 시도 순서: 일반적인 게시판 spec → password 포함 → minimal
+        candidate_bodies = [
+            {
+                "shop_no": 1,
+                "request": {
+                    "writer": writer,
+                    "content": content,
+                    "password": "1234",
+                    "secret": "F",
+                },
             },
-        }
-        res = self._request(
-            "POST",
-            f"/boards/{board_no}/articles/{article_no}/comments",
-            json_body=body,
-        ) or {}
-        return res.get("comment", {}) or res
+            {
+                "shop_no": 1,
+                "request": {
+                    "writer": writer,
+                    "content": content,
+                    "secret": "F",
+                },
+            },
+            {
+                "request": {
+                    "writer": writer,
+                    "content": content,
+                    "password": "1234",
+                },
+            },
+            {
+                "shop_no": 1,
+                "request": {
+                    "content": content,
+                },
+            },
+        ]
+
+        last_err: str = ""
+        for i, body in enumerate(candidate_bodies, 1):
+            try:
+                res = self._request(
+                    "POST",
+                    f"/boards/{board_no}/articles/{article_no}/comments",
+                    json_body=body,
+                ) or {}
+                return res.get("comment", {}) or res
+            except requests.HTTPError as e:
+                code = e.response.status_code if e.response is not None else 0
+                body_text = e.response.text[:300] if e.response else ""
+                last_err = f"try{i} HTTP {code}: {body_text}"
+                # 422 는 body 형식 → 다음 candidate 시도
+                # 401/403 은 인증/권한 → 즉시 중단
+                if code in (401, 403):
+                    raise RuntimeError(last_err)
+                continue
+        raise RuntimeError(
+            f"답글 작성 실패 — 모든 body 형식 시도 실패. 마지막: {last_err}"
+        )
 
     def delete_board_comment(
         self, board_no: int, article_no: int, comment_no: int,
