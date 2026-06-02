@@ -644,36 +644,34 @@ class Cafe24Client:
         if not content:
             raise ValueError("답글 본문이 비어있습니다.")
 
-        # 시도 순서: 일반적인 게시판 spec → password 포함 → minimal
+        # Cafe24 공식 spec (developers.cafe24.com 확인):
+        # {"comment": {"content": "...", "password": "4-16 alphanumeric",
+        #              "is_secret": "T" or "F"}}
+        # writer 는 OAuth 토큰의 admin 계정으로 자동 설정됨.
         candidate_bodies = [
             {
                 "shop_no": 1,
-                "request": {
-                    "writer": writer,
+                "comment": {
                     "content": content,
-                    "password": "1234",
-                    "secret": "F",
+                    "password": "growup24",  # 4-16 alphanumeric
+                    "is_secret": "F",
                 },
             },
+            {
+                "comment": {
+                    "content": content,
+                    "password": "growup24",
+                    "is_secret": "F",
+                },
+            },
+            # legacy / 다른 변형 — fallback
             {
                 "shop_no": 1,
                 "request": {
                     "writer": writer,
                     "content": content,
+                    "password": "growup24",
                     "secret": "F",
-                },
-            },
-            {
-                "request": {
-                    "writer": writer,
-                    "content": content,
-                    "password": "1234",
-                },
-            },
-            {
-                "shop_no": 1,
-                "request": {
-                    "content": content,
                 },
             },
         ]
@@ -686,7 +684,7 @@ class Cafe24Client:
                     f"/boards/{board_no}/articles/{article_no}/comments",
                     json_body=body,
                 ) or {}
-                return res.get("comment", {}) or res
+                return res.get("comment", {}) or res.get("request", {}) or res
             except requests.HTTPError as e:
                 code = e.response.status_code if e.response is not None else 0
                 body_text = e.response.text[:300] if e.response else ""
