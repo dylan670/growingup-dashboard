@@ -1074,6 +1074,67 @@ with tab_reply:
         "전송 즉시 고객에게 노출되니 신중히 확인 후 [전송] 클릭."
     )
 
+    # ---- 🔧 토큰 진단 (답글 전송 안 될 때 원인 파악) ----
+    with st.expander("🔧 토큰 진단 (답글 안 될 때 펼쳐서 확인)", expanded=False):
+        import os as _os, json as _json
+        from pathlib import Path as _Path
+        from api.cafe24 import TOKEN_FILE as _TF
+
+        diag = []
+        # 1. 토큰 파일
+        if _TF.exists():
+            sz = _TF.stat().st_size
+            try:
+                _tok = _json.loads(_TF.read_text(encoding="utf-8"))
+                diag.append(f"✅ 토큰 파일 존재 ({sz} bytes) · "
+                            f"mall_ids: {list(_tok.keys())}")
+            except Exception as _e:
+                diag.append(f"⚠️ 토큰 파일 있지만 파싱 실패: {_e}")
+        else:
+            diag.append(f"❌ 토큰 파일 없음 — 경로: {_TF}")
+
+        # 2. env var
+        _env_val = _os.getenv("CAFE24_TOKENS_JSON", "")
+        if _env_val:
+            diag.append(f"✅ CAFE24_TOKENS_JSON env 존재 (len={len(_env_val)})")
+            try:
+                _t = _json.loads(_env_val)
+                diag.append(f"   파싱 OK · mall_ids: {list(_t.keys())}")
+            except Exception as _e:
+                diag.append(f"   ⚠️ 파싱 실패: {_e} · "
+                            f"first 60 chars: {_env_val[:60]!r}")
+        else:
+            diag.append("❌ CAFE24_TOKENS_JSON env 없음 — Cloud Secrets 미설정")
+
+        # 3. st.secrets 직접 (Cloud 전용)
+        try:
+            _has_secret = "CAFE24_TOKENS_JSON" in st.secrets
+            diag.append(f"st.secrets['CAFE24_TOKENS_JSON'] 존재: {_has_secret}")
+            if _has_secret:
+                _sv = str(st.secrets["CAFE24_TOKENS_JSON"])
+                diag.append(f"   length={len(_sv)} · "
+                            f"first 60: {_sv[:60]!r}")
+        except Exception as _e:
+            diag.append(f"st.secrets 접근 불가: {type(_e).__name__}: {_e}")
+
+        # 4. 각 매장 client 토큰 로드 결과
+        from api.cafe24 import load_all_cafe24_clients as _lac
+        try:
+            _clients = _lac()
+            for _store, _cl in _clients.items():
+                _has_at = bool(getattr(_cl, "_access_token", None))
+                _has_rt = bool(getattr(_cl, "_refresh_token", None))
+                diag.append(
+                    f"   [{_store}] mall_id={_cl.mall_id} · "
+                    f"access_token={'✅' if _has_at else '❌'} · "
+                    f"refresh_token={'✅' if _has_rt else '❌'}"
+                )
+        except Exception as _e:
+            diag.append(f"⚠️ load_all_cafe24_clients 실패: {_e}")
+
+        for line in diag:
+            st.code(line, language="text")
+
     # 답글 가능한 자사몰 리뷰만 (article_no 있는 것)
     reply_pool = filtered[
         (filtered["channel"] == "자사몰")
