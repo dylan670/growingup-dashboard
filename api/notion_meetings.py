@@ -716,6 +716,244 @@ def append_page_blocks(page_id: str, content: str) -> dict:
         raise RuntimeError(f"본문 추가 실패 HTTP {status}: {body}")
 
 
+def blocks_to_markdown(blocks: list[dict]) -> str:
+    """노션 blocks (load_page_content 결과) → 마크다운 텍스트 (편집용).
+
+    paragraph / heading / list / to_do / quote / divider 지원.
+    저장 시 markdown_to_blocks 로 역변환.
+    """
+    lines: list[str] = []
+    for b in blocks:
+        btype = b.get("type", "")
+        text = b.get("text", "")
+        if btype == "heading_1":
+            lines.append(f"# {text}")
+        elif btype == "heading_2":
+            lines.append(f"## {text}")
+        elif btype == "heading_3":
+            lines.append(f"### {text}")
+        elif btype == "bulleted_list_item":
+            lines.append(f"- {text}")
+        elif btype == "numbered_list_item":
+            lines.append(f"1. {text}")
+        elif btype == "to_do":
+            checked = b.get("checked", False)
+            lines.append(f"- [{'x' if checked else ' '}] {text}")
+        elif btype == "quote":
+            lines.append(f"> {text}")
+        elif btype == "code":
+            lines.append(f"```\n{text}\n```")
+        elif btype == "divider":
+            lines.append("---")
+        elif btype == "callout":
+            lines.append(f"> 💡 {text}")
+        else:   # paragraph 또는 기타
+            lines.append(text)
+    return "\n".join(lines)
+
+
+def markdown_to_blocks(md_text: str) -> list[dict]:
+    """마크다운 텍스트 → 노션 block 리스트 (저장용).
+
+    blocks_to_markdown 역변환. 줄 단위로 type 추론.
+    """
+    blocks: list[dict] = []
+    lines = md_text.split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        # 빈 줄 → 무시
+        if not stripped:
+            i += 1
+            continue
+
+        # 코드 블록 ```
+        if stripped.startswith("```"):
+            code_lines: list[str] = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                code_lines.append(lines[i])
+                i += 1
+            i += 1   # closing ```
+            blocks.append({
+                "object": "block",
+                "type": "code",
+                "code": {
+                    "rich_text": [{"text": {"content": "\n".join(code_lines)}}],
+                    "language": "plain text",
+                },
+            })
+            continue
+
+        # divider
+        if stripped == "---":
+            blocks.append({
+                "object": "block", "type": "divider", "divider": {},
+            })
+            i += 1
+            continue
+
+        # heading
+        if stripped.startswith("### "):
+            blocks.append({
+                "object": "block", "type": "heading_3",
+                "heading_3": {
+                    "rich_text": [{"text": {"content": stripped[4:]}}],
+                },
+            })
+            i += 1
+            continue
+        if stripped.startswith("## "):
+            blocks.append({
+                "object": "block", "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [{"text": {"content": stripped[3:]}}],
+                },
+            })
+            i += 1
+            continue
+        if stripped.startswith("# "):
+            blocks.append({
+                "object": "block", "type": "heading_1",
+                "heading_1": {
+                    "rich_text": [{"text": {"content": stripped[2:]}}],
+                },
+            })
+            i += 1
+            continue
+
+        # to_do (- [x] or - [ ])
+        if stripped.startswith("- [x] ") or stripped.startswith("- [X] "):
+            blocks.append({
+                "object": "block", "type": "to_do",
+                "to_do": {
+                    "rich_text": [{"text": {"content": stripped[6:]}}],
+                    "checked": True,
+                },
+            })
+            i += 1
+            continue
+        if stripped.startswith("- [ ] "):
+            blocks.append({
+                "object": "block", "type": "to_do",
+                "to_do": {
+                    "rich_text": [{"text": {"content": stripped[6:]}}],
+                    "checked": False,
+                },
+            })
+            i += 1
+            continue
+
+        # bulleted list
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            blocks.append({
+                "object": "block", "type": "bulleted_list_item",
+                "bulleted_list_item": {
+                    "rich_text": [{"text": {"content": stripped[2:]}}],
+                },
+            })
+            i += 1
+            continue
+
+        # numbered list
+        import re as _re
+        m = _re.match(r"^(\d+)\.\s+(.*)$", stripped)
+        if m:
+            blocks.append({
+                "object": "block", "type": "numbered_list_item",
+                "numbered_list_item": {
+                    "rich_text": [{"text": {"content": m.group(2)}}],
+                },
+            })
+            i += 1
+            continue
+
+        # quote
+        if stripped.startswith("> "):
+            blocks.append({
+                "object": "block", "type": "quote",
+                "quote": {
+                    "rich_text": [{"text": {"content": stripped[2:]}}],
+                },
+            })
+            i += 1
+            continue
+
+        # 그 외 → paragraph
+        blocks.append({
+            "object": "block", "type": "paragraph",
+            "paragraph": {
+                "rich_text": [{"text": {"content": stripped}}],
+            },
+        })
+        i += 1
+    return blocks
+
+
+def replace_page_content_smart(page_id: str, md_text: str) -> dict:
+    """페이지 본문을 마크다운으로 받아 노션 block 으로 변환 후 교체.
+
+    blocks_to_markdown 으로 추출한 마크다운을 사용자가 편집 →
+    이 함수로 다시 저장.
+    """
+    token, _ = _get_creds()
+    if not token:
+        raise RuntimeError("NOTION_TOKEN 없음")
+
+    # 1. 기존 블록 모두 삭제
+    deleted = 0
+    cursor = None
+    existing = []
+    while True:
+        params: dict = {"page_size": 100}
+        if cursor:
+            params["start_cursor"] = cursor
+        resp = requests.get(
+            f"{NOTION_API_BASE}/blocks/{page_id}/children",
+            headers=_headers(token), params=params, timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        existing.extend(data.get("results", []))
+        if not data.get("has_more"):
+            break
+        cursor = data.get("next_cursor")
+
+    for b in existing:
+        bid = b.get("id")
+        if not bid:
+            continue
+        try:
+            r = requests.delete(
+                f"{NOTION_API_BASE}/blocks/{bid}",
+                headers=_headers(token), timeout=10,
+            )
+            if r.status_code in (200, 204):
+                deleted += 1
+        except Exception:
+            pass
+
+    # 2. 마크다운 → block 변환 후 추가
+    new_blocks = markdown_to_blocks(md_text)
+    added = 0
+    if new_blocks:
+        # 노션은 한 번에 100개 까지만 추가 가능
+        for i in range(0, len(new_blocks), 100):
+            batch = new_blocks[i:i + 100]
+            r = requests.patch(
+                f"{NOTION_API_BASE}/blocks/{page_id}/children",
+                headers=_headers(token),
+                json={"children": batch},
+                timeout=20,
+            )
+            r.raise_for_status()
+            added += len(batch)
+
+    return {"deleted_blocks": deleted, "added_blocks": added}
+
+
 def replace_page_content(page_id: str, content: str) -> dict:
     """페이지 본문 전체 교체 — 기존 블록 모두 삭제 후 새로 작성 (위험).
 

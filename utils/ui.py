@@ -117,10 +117,19 @@ def inject_global_css() -> None:
             font-family: 'Pretendard Variable', 'Pretendard', -apple-system,
                          BlinkMacSystemFont, system-ui, 'Segoe UI', 'Roboto',
                          'Helvetica Neue', Arial, 'Noto Sans KR',
+                         'Apple Color Emoji', 'Segoe UI Emoji',
+                         'Noto Color Emoji', 'Segoe UI Symbol',
                          sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             font-feature-settings: "ss03" 1;   /* Pretendard 정사각형 점 활성 */
+        }}
+
+        /* Streamlit 의 Material Icons (chevron, arrow 등) 강제 표시 */
+        .material-icons, .material-icons-outlined,
+        [class*="material-icons"], [data-icon] {{
+            font-family: 'Material Icons', 'Material Symbols Outlined',
+                         'Material Symbols Rounded' !important;
         }}
 
         /* 추천 weight 위계 — 8단계 (한국 UI 표준 톤) */

@@ -22,6 +22,7 @@ from api.notion_meetings import (
     create_meeting_page, add_page_comment, list_page_comments,
     list_workspace_users,
     update_meeting_properties, append_page_blocks, replace_page_content,
+    blocks_to_markdown, replace_page_content_smart,
 )
 
 
@@ -598,19 +599,92 @@ def render_meetings_view(db_id_arg: str):
                         unsafe_allow_html=True,
                     )
 
+                page_id_view = m.get("id", "")
+                # 편집 모드 상태 (페이지별)
+                edit_key = f"edit_mode_{page_id_view}"
+                if edit_key not in st.session_state:
+                    st.session_state[edit_key] = False
+
                 try:
-                    blocks = load_page_content(m["id"])
-                    if blocks:
-                        st.divider()
-                        _render_blocks(blocks)
+                    blocks = load_page_content(page_id_view)
                 except Exception as e:
+                    blocks = []
                     st.warning(f"본문 조회 실패: {e}")
 
+                if blocks or st.session_state[edit_key]:
+                    st.divider()
+                    # 본문 라벨 + 편집 토글 버튼
+                    body_l, body_r = st.columns([5, 1])
+                    with body_l:
+                        st.markdown(
+                            "<div style='font-size:0.78rem; color:#94a3b8; "
+                            "font-weight:600; margin-bottom:6px;'>📝 본문</div>",
+                            unsafe_allow_html=True,
+                        )
+                    with body_r:
+                        if not st.session_state[edit_key]:
+                            if st.button("✏️ 편집",
+                                         key=f"btn_edit_{page_id_view}",
+                                         use_container_width=True):
+                                st.session_state[edit_key] = True
+                                st.rerun()
+                        else:
+                            if st.button("❌ 취소",
+                                         key=f"btn_cancel_{page_id_view}",
+                                         use_container_width=True):
+                                st.session_state[edit_key] = False
+                                st.rerun()
+
+                    if st.session_state[edit_key]:
+                        # 편집 모드 — markdown textarea
+                        current_md = blocks_to_markdown(blocks) if blocks else ""
+                        edited = st.text_area(
+                            "본문 (마크다운 지원: # / ## / - / 1. / > / ```)",
+                            value=current_md,
+                            height=300,
+                            key=f"body_md_{page_id_view}",
+                            label_visibility="collapsed",
+                        )
+                        bt1, bt2, _ = st.columns([1, 1, 4])
+                        with bt1:
+                            if st.button("💾 저장 (노션 동기화)",
+                                         key=f"btn_save_{page_id_view}",
+                                         type="primary",
+                                         use_container_width=True):
+                                if edited.strip() == current_md.strip():
+                                    st.info("변경 사항 없음")
+                                else:
+                                    try:
+                                        with st.spinner("📤 노션에 저장 중..."):
+                                            r = replace_page_content_smart(
+                                                page_id_view, edited,
+                                            )
+                                        st.success(
+                                            f"✅ 저장 완료 — "
+                                            f"기존 {r['deleted_blocks']}개 → "
+                                            f"신규 {r['added_blocks']}개 블록"
+                                        )
+                                        st.session_state[edit_key] = False
+                                        st.cache_data.clear()
+                                        time.sleep(0.6)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"❌ 저장 실패: {e}")
+                        with bt2:
+                            st.caption(
+                                "💡 # 제목 · - 리스트 · - [x] 체크 · "
+                                "> 인용 · ``` 코드"
+                            )
+                    else:
+                        # 보기 모드 — 기존 렌더링
+                        _render_blocks(blocks)
+
                 # ============================================
-                # ✏️ 수정 / 본문 추가 섹션
+                # 🏷 속성 수정 (제목/팀/참석자/confirm)
+                # 본문 편집은 위의 '✏️ 편집' 버튼 사용
                 # ============================================
-                page_id_edit = m.get("id", "")
-                with st.expander("✏️ 회의록 수정", expanded=False):
+                page_id_edit = page_id_view
+                with st.expander("🏷 속성 수정 (제목/팀/참석자)", expanded=False):
                     # 현재 props 값
                     cur_title = title
                     cur_team = str(props.get("팀") or "")
@@ -688,60 +762,10 @@ def render_meetings_view(db_id_arg: str):
                             except Exception as e:
                                 st.error(f"❌ 저장 실패: {e}")
 
-                    # 2) 본문 추가 (append)
-                    st.markdown("**📝 본문 끝에 추가**")
-                    with st.form(f"append_body_{page_id_edit}"):
-                        new_para = st.text_area(
-                            "추가할 내용 (줄바꿈 = paragraph 분리)",
-                            placeholder="추가 안건: ...\n결정 사항: ...",
-                            height=120,
-                        )
-                        if st.form_submit_button("➕ 본문 추가"):
-                            if not new_para.strip():
-                                st.warning("내용을 입력하세요.")
-                            else:
-                                try:
-                                    append_page_blocks(page_id_edit, new_para)
-                                    st.success("✅ 본문 추가 완료")
-                                    st.cache_data.clear()
-                                    time.sleep(0.6)
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"❌ 추가 실패: {e}")
-
-                    # 3) 본문 전체 교체 (위험 — 확인 체크 필요)
-                    st.markdown("**🔄 본문 전체 교체** "
-                                "<span style='color:#dc2626; font-size:0.78rem;'>"
-                                "(주의: 기존 본문 모두 삭제됨)</span>",
-                                unsafe_allow_html=True)
-                    with st.form(f"replace_body_{page_id_edit}"):
-                        new_body = st.text_area(
-                            "새 본문 (기존 내용 완전 대체)",
-                            placeholder="회의 내용 새로 작성...",
-                            height=160,
-                        )
-                        confirm_replace = st.checkbox(
-                            "⚠️ 기존 본문 완전 삭제 동의",
-                        )
-                        if st.form_submit_button("🔄 본문 교체", type="secondary"):
-                            if not confirm_replace:
-                                st.warning("'기존 본문 삭제 동의' 체크 필요.")
-                            elif not new_body.strip():
-                                st.warning("새 본문 입력 필요.")
-                            else:
-                                try:
-                                    result = replace_page_content(
-                                        page_id_edit, new_body,
-                                    )
-                                    st.success(
-                                        f"✅ 교체 완료 — "
-                                        f"기존 {result['deleted_blocks']}개 블록 삭제 + 새 본문 작성"
-                                    )
-                                    st.cache_data.clear()
-                                    time.sleep(0.6)
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"❌ 교체 실패: {e}")
+                    st.caption(
+                        "💡 본문 편집은 위의 **'✏️ 편집'** 버튼을 사용하세요. "
+                        "마크다운으로 노션과 양방향 동기화됩니다."
+                    )
 
                 # ============================================
                 # 💬 노션 댓글 섹션
