@@ -71,7 +71,8 @@ def _flatten_html(html: str) -> str:
 from datetime import timedelta as _td
 from utils.data import load_orders as _load_orders_hero
 
-_orders_hero = _load_orders_hero()
+# 카테고리 분류용 — 원본 product 이름 (정규화 X)
+_orders_hero = _load_orders_hero(normalize=False)
 
 if not _orders_hero.empty:
     _end_d = _orders_hero["date"].max()
@@ -141,23 +142,55 @@ if not _orders_hero.empty:
 
     st.write("")
 
-    # 카테고리 분류 함수
+    # 카테고리 분류 함수 (확장 키워드 — raw + 정규화 이름 모두 커버)
     def _categorize(p: str) -> str:
         pn = str(p).replace(" ", "")
-        if any(k in pn for k in ["김똑똑", "어린이김", "조미김", "도시락김"]) and "떡뻥" not in pn:
+        # 김 (똑똑연구소)
+        if any(k in pn for k in [
+            "김똑똑", "어린이김", "조미김", "도시락김", "아기김", "맛있는김",
+            "모양김",
+        ]) and "떡뻥" not in pn:
             return "김"
+        # 떡뻥/쌀과자
         if any(k in pn for k in ["떡뻥", "쌀과자"]):
             return "떡뻥/쌀과자"
-        if "캐리어" in pn or "여행" in pn or "기내용" in pn:
-            return "캐리어"
-        if "백팩" in pn:
+        # 백팩 (먼저 체크 — 캐리어 키워드와 충돌 방지)
+        if any(k in pn for k in ["백팩", "트래블백"]):
             return "백팩"
-        if "바퀴커버" in pn or "네임택" in pn:
+        # 캐리어 부자재
+        if any(k in pn for k in [
+            "바퀴커버", "구름쿠션", "네임택", "러기지택", "이름표",
+            "꼬리표",
+        ]):
             return "캐리어 부자재"
-        if any(k in pn for k in ["러닝조끼", "운동조끼"]):
+        # 캐리어 (롤라루 메인) — 모델명도 포함
+        if any(k in pn for k in [
+            "캐리어", "여행", "기내용", "수화물", "기내반입",
+            "스파클링", "오프너", "큐보이드", "스마트캐리어",
+            "플렉스",
+        ]):
+            return "캐리어"
+        # 캐리어 네임택 (롤라루) — '01. ', '02. ' 같은 번호 + 동물 이름
+        if (pn.startswith("01.") or pn.startswith("02.")
+                or pn.startswith("03.") or pn.startswith("04.")
+                or any(k in pn for k in [
+                    "롤라루", "헬로판다", "궁금당근", "바나나트리오",
+                    "상큼딸기", "스낵버거", "핑크도넛", "스윗아이스",
+                    "해피아보카도", "마이백", "럭키코인", "리틀백",
+                    "잇츠마인",
+                ])):
+            return "캐리어 네임택"
+        # 러닝조끼 (루티니스트)
+        if any(k in pn for k in [
+            "러닝조끼", "운동조끼", "마라톤", "트레일러닝", "베스트",
+        ]):
             return "러닝조끼"
+        # 러닝장갑
         if "장갑" in pn:
             return "러닝장갑"
+        # 다이어리 (루티니스트)
+        if "다이어리" in pn or "스마트폰거치" in pn:
+            return "다이어리"
         return "기타"
 
     def _brand_of(p: str) -> str:

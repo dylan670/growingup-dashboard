@@ -175,7 +175,13 @@ def load_ads() -> pd.DataFrame:
     return _load_or_generate(ADS_FILE)
 
 
-def load_orders() -> pd.DataFrame:
+def load_orders(normalize: bool = True) -> pd.DataFrame:
+    """주문 데이터 로드.
+
+    Args:
+        normalize: True (기본) — product 이름 정규화 (긴 SKU → 짧은 모델명).
+                   False — 원본 product 이름 그대로 (카테고리 분류 등 raw 키워드 필요할 때).
+    """
     df = _load_or_generate(ORDERS_FILE)
     # 구 스키마 ('store' 컬럼 없음) → 마이그레이션 후 저장
     if "store" not in df.columns:
@@ -190,7 +196,7 @@ def load_orders() -> pd.DataFrame:
 
     # 제품명 정규화 — 모든 페이지에서 일관된 제품명 표시 (긴 SKU 이름 → 모델명)
     # 원본 CSV 는 그대로 두고, 메모리상 로드 시점에만 치환
-    if "product" in df.columns:
+    if normalize and "product" in df.columns:
         try:
             from utils.products import normalize_product_name
             df["product"] = df["product"].apply(normalize_product_name)
