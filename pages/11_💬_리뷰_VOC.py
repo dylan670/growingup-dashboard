@@ -1195,9 +1195,16 @@ with tab_reply:
                 )
 
                 # 첨부 사진 (image_urls 컬럼 '|' 구분)
-                img_str = str(row.get("image_urls") or "").strip()
+                _raw_img = row.get("image_urls")
+                if pd.isna(_raw_img) or _raw_img is None:
+                    img_str = ""
+                else:
+                    img_str = str(_raw_img).strip()
+                    if img_str.lower() == "nan":
+                        img_str = ""
                 if img_str:
-                    img_urls = [u for u in img_str.split("|") if u.strip()]
+                    img_urls = [u for u in img_str.split("|")
+                                if u.strip() and u.strip().lower() != "nan"]
                     if img_urls:
                         # 최대 4개 한 줄에 표시 (썸네일)
                         n = min(4, len(img_urls))
