@@ -105,9 +105,27 @@ def inject_global_css() -> None:
     st.markdown(
         f"""
         <style>
-        /* ---------- 타이포그래피 ---------- */
-        html, body, [class*="css"] {{
+        /* ---------- 타이포그래피 — Pretendard (한국 UI 표준) ---------- */
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+
+        html, body, [class*="css"], button, input, textarea, select,
+        .stMarkdown, .stText, .stButton, .stMetric, .stDataFrame,
+        .stRadio, .stSelectbox, .stTabs, .stExpander, .stTextInput,
+        h1, h2, h3, h4, h5, h6, p, span, div, label, a {{
+            font-family: 'Pretendard', 'Pretendard Variable', -apple-system,
+                         BlinkMacSystemFont, system-ui, 'Segoe UI', 'Roboto',
+                         'Helvetica Neue', Arial, 'Noto Sans KR',
+                         sans-serif !important;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }}
+
+        /* 숫자 정렬용 — KPI 값, 표 숫자 칼럼 */
+        div[data-testid="stMetricValue"],
+        div[data-testid="stMetricDelta"],
+        .stDataFrame [data-testid*="column"] {{
+            font-feature-settings: "tnum" 1, "ss01" 1;
+            font-variant-numeric: tabular-nums;
         }}
 
         /* ---------- 메인 영역 여백 ---------- */
