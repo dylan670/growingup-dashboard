@@ -348,12 +348,30 @@ ALLOWED_CHANNELS = ["자사몰"]
 enriched = enriched[enriched["channel"].isin(ALLOWED_CHANNELS)].copy()
 
 # ==========================================================
+# 메인 상단 — 브랜드 선택 (똑똑연구소 / 롤라루 / 루티니스트 따로 보기)
+#   선택 시 KPI · 매트릭스 · 5개 분석 탭 전부 그 브랜드로 필터됨
+# ==========================================================
+_BRAND_EMOJI = {"똑똑연구소": "🍙", "롤라루": "🧳", "루티니스트": "👟"}
+_raw_brands = sorted(enriched["brand"].dropna().unique().tolist())
+_brand_display = ["📋 전체"] + [
+    f"{_BRAND_EMOJI.get(b, '🏷')} {b}" for b in _raw_brands
+]
+_brand_sel = st.radio(
+    "브랜드 선택",
+    _brand_display,
+    horizontal=True,
+    label_visibility="collapsed",
+    key="review_brand_select",
+)
+selected_brand = (
+    "전체" if "전체" in _brand_sel else _brand_sel.split(" ", 1)[1]
+)
+st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+
+# ==========================================================
 # 사이드바 필터
 # ==========================================================
 st.sidebar.markdown("#### 🔎 필터")
-
-brand_options = ["전체"] + sorted(enriched["brand"].unique().tolist())
-selected_brand = st.sidebar.selectbox("브랜드", brand_options, index=0)
 
 # 채널 필터 (multi-select)
 all_channels = sorted(enriched["channel"].dropna().unique().tolist())
@@ -655,12 +673,12 @@ st.markdown("---")
 # ==========================================================
 # 탭 구성
 # ==========================================================
-tab_sent, tab_kw, tab_neg, tab_prod, tab_reply = st.tabs([
+tab_reply, tab_sent, tab_kw, tab_neg, tab_prod = st.tabs([
+    "💬 답글 관리",
     "📊 감성 분포",
     "🔠 키워드 빈도",
     "🚨 부정 리뷰 분석",
     "🏷 상품별 ranking",
-    "💬 답글 관리",
 ])
 
 
