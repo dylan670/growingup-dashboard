@@ -237,6 +237,128 @@ if not orders.empty:
         )
 
     st.write("")
+
+    # ========================================================
+    # 매출 추이 — 주 단위 라인 + 전년 점선 + 주간 목표
+    # ========================================================
+    st.markdown(
+        _flatten_html("""
+<div style="display:flex; align-items:baseline; gap:14px; margin-top:18px; margin-bottom:6px;">
+    <div style="font-size:1.0rem; font-weight:700; color:#0f172a;">📈 매출 추이</div>
+    <div style="font-size:0.78rem; color:#94a3b8;">주(월~일) 단위 · 전년 비교</div>
+</div>
+        """),
+        unsafe_allow_html=True,
+    )
+
+    # 주간 집계 (월요일 시작)
+    _orders_w = orders.copy()
+    _orders_w["week"] = _orders_w["date"].dt.to_period("W-SUN").dt.start_time
+    _weekly = _orders_w.groupby("week")["revenue"].sum().reset_index()
+    _weekly = _weekly.sort_values("week")
+    _weekly["week_label"] = _weekly["week"].dt.strftime("%m/%d")
+
+    # 전년 주차 — 같은 주에 작년 데이터 매핑
+    _orders_w["ly_week"] = _orders_w["week"] + pd.DateOffset(years=1)
+    _ly_weekly = _orders_w.groupby("ly_week")["revenue"].sum().reset_index()
+    _ly_weekly.columns = ["week", "ly_revenue"]
+    _weekly = _weekly.merge(_ly_weekly, on="week", how="left")
+    _weekly["ly_revenue"] = _weekly["ly_revenue"].fillna(0)
+
+    # 주간 목표 = 월 목표 × (7/30)
+    _wk_target_val = sum(BRAND_MONTHLY_TARGETS.values()) * 7 // 30
+
+    _fig = go.Figure()
+    # 전년 매출 (회색 막대)
+    if (_weekly["ly_revenue"] > 0).any():
+        _fig.add_trace(go.Bar(
+            x=_weekly["week_label"], y=_weekly["ly_revenue"],
+            name="전년 매출", marker_color="#cbd5e1",
+            hovertemplate="%{x}<br>전년: ₩%{y:,.0f}<extra></extra>",
+        ))
+    # 올해 매출 (파랑 막대)
+    _fig.add_trace(go.Bar(
+        x=_weekly["week_label"], y=_weekly["revenue"],
+        name="매출", marker_color="#2563eb",
+        text=[
+            f"₩{v/1e8:.1f}억" if v >= 1e8 else (
+                f"₩{v/1e7:.1f}천만" if v >= 1e7 else
+                (f"₩{v/1e4:.0f}만" if v >= 1e4 else "")
+            )
+            for v in _weekly["revenue"]
+        ],
+        textposition="outside",
+        textfont=dict(size=10),
+        hovertemplate="%{x}<br>매출: ₩%{y:,.0f}<extra></extra>",
+    ))
+    # 주간 목표 점선
+    _fig.add_hline(
+        y=_wk_target_val, line_dash="dot", line_color="#dc2626",
+        line_width=2,
+        annotation_text=f"주간 목표 ₩{_fmt_won(_wk_target_val)}",
+        annotation_position="top right",
+        annotation_font=dict(color="#dc2626", size=10),
+    )
+    _fig.update_layout(
+        height=380,
+        margin=dict(l=10, r=10, t=30, b=10),
+        xaxis=dict(title="", tickfont=dict(size=10), tickangle=-45),
+        yaxis=dict(title="매출 (원)", tickformat=",",
+                   showgrid=True, gridcolor="#f1f5f9"),
+        plot_bgcolor="white",
+        barmode="group",
+        legend=dict(orientation="h", y=1.08, x=0),
+    )
+    st.plotly_chart(_fig, use_container_width=True)
+    st.caption("💡 회색 = 전년 같은 기간 매출 · 파랑 = 올해 · 빨강 점선 = 주간 목표")
+
+    # ========================================================
+    # 채널별 매출 추이 — 주 단위 스택 막대
+    # ========================================================
+    st.markdown(
+        _flatten_html("""
+<div style="display:flex; align-items:baseline; gap:14px; margin-top:18px; margin-bottom:6px;">
+    <div style="font-size:1.0rem; font-weight:700; color:#0f172a;">📊 채널별 매출 추이</div>
+    <div style="font-size:0.78rem; color:#94a3b8;">주(월~일) 단위 · 채널 스택</div>
+</div>
+        """),
+        unsafe_allow_html=True,
+    )
+
+    _ch_weekly = (
+        _orders_w.groupby(["week", "channel"])["revenue"].sum().reset_index()
+    )
+    _ch_weekly["week_label"] = _ch_weekly["week"].dt.strftime("%m/%d")
+    _ch_priority = {"자사몰": 0, "쿠팡": 1, "네이버": 2, "메타": 3}
+    _ch_order_list = sorted(
+        _ch_weekly["channel"].dropna().unique().tolist(),
+        key=lambda c: _ch_priority.get(c, 99),
+    )
+
+    _fig_ch = go.Figure()
+    for _ch in _ch_order_list:
+        _ch_data = _ch_weekly[_ch_weekly["channel"] == _ch]
+        _ch_data = _ch_data.sort_values("week")
+        _ch_color = CHANNEL_COLORS.get(_ch, "#64748b")
+        _fig_ch.add_trace(go.Bar(
+            x=_ch_data["week_label"],
+            y=_ch_data["revenue"],
+            name=_ch,
+            marker_color=_ch_color,
+            hovertemplate=f"<b>{_ch}</b> %{{x}}<br>₩%{{y:,.0f}}<extra></extra>",
+        ))
+    _fig_ch.update_layout(
+        height=380,
+        margin=dict(l=10, r=10, t=30, b=10),
+        xaxis=dict(title="", tickfont=dict(size=10), tickangle=-45),
+        yaxis=dict(title="매출 (원)", tickformat=",",
+                   showgrid=True, gridcolor="#f1f5f9"),
+        plot_bgcolor="white",
+        barmode="stack",
+        legend=dict(orientation="h", y=1.08, x=0),
+    )
+    st.plotly_chart(_fig_ch, use_container_width=True)
+
     st.markdown("---")
 
 
