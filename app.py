@@ -89,7 +89,7 @@ st.markdown(
 <div style="margin-top:-0.5rem; margin-bottom:1.4rem;">
     <div style="font-size:0.68rem; letter-spacing:0.22em; color:#94a3b8; text-transform:uppercase; font-weight:700; margin-bottom:6px;">GROWINGUP DASHBOARD</div>
     <h1 style="font-size:2.1rem; font-weight:800; margin:0 0 8px 0; letter-spacing:-0.03em; color:#0f172a; line-height:1.1;">대시보드</h1>
-    <div style="font-size:0.88rem; color:#64748b;">{_today.month}월 {_today.day}일 ({_weekday_kr}) · {_today.year}년 {_days_elapsed}일차 · 3개 브랜드 통합 <span style="color:#94a3b8;">(부가세 별도)</span></div>
+    <div style="font-size:0.88rem; color:#64748b;">{_today.month}월 {_today.day}일 ({_weekday_kr}) · {_today.year}년 {_days_elapsed}일차 · 3개 브랜드 통합 <span style="color:#94a3b8;">(부가세 포함)</span></div>
 </div>
     """),
     unsafe_allow_html=True,

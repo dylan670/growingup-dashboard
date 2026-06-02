@@ -29,7 +29,7 @@ setup_page(
     page_title="매출관리",
     page_icon="📈",
     header_title="📈 매출관리",
-    header_subtitle="채널별 매출·마진·환불 추이를 추적하고 일·주·월 단위로 비교합니다 (모든 금액 부가세 별도)",
+    header_subtitle="채널별 매출·마진·환불 추이를 추적하고 일·주·월 단위로 비교합니다 (모든 금액 부가세 포함)",
 )
 
 
