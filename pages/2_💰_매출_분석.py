@@ -26,13 +26,220 @@ from api.google_sheets import load_sheet_daily_sales, get_brand_channels
 
 
 setup_page(
-    page_title="매출 분석",
-    page_icon="💰",
-    header_title="💰 매출 분석",
-    header_subtitle="3개 브랜드 · 다중 채널 매출 및 목표 달성률 (구글 시트 실시간 연동)",
+    page_title="매출관리",
+    page_icon="📈",
+    header_title="📈 매출관리",
+    header_subtitle="채널별 매출·마진·환불 추이를 추적하고 일·주·월 단위로 비교합니다 (모든 금액 부가세 별도)",
 )
 
+
+def _flatten_html(html: str) -> str:
+    return "".join(ln.strip() for ln in html.strip().split("\n"))
+
+
 orders = load_orders()
+
+
+# ============================================================
+# 📊 주간 스냅샷 (Ozkiz BrandBoard 미러)
+# ============================================================
+from datetime import timedelta as _td
+
+if not orders.empty:
+    _ws_max_date = orders["date"].max()
+
+    _snap_l, _snap_r = st.columns([5, 2])
+    with _snap_l:
+        st.markdown(
+            _flatten_html(f"""
+<div style="display:flex; align-items:baseline; gap:14px; margin-top:4px;">
+    <div style="font-size:1.1rem; font-weight:700; color:#0f172a;">📊 주간 스냅샷</div>
+    <div style="font-size:0.82rem; color:#94a3b8;">최근 7일 매출 통합 요약</div>
+</div>
+            """),
+            unsafe_allow_html=True,
+        )
+    with _snap_r:
+        _snap_mode = st.radio(
+            "주간 스냅샷",
+            ["지난주", "이번주"],
+            index=1,
+            horizontal=True,
+            label_visibility="collapsed",
+            key="weekly_snapshot_mode",
+        )
+
+    _wk_end = _ws_max_date if _snap_mode == "이번주" else _ws_max_date - _td(days=7)
+    _wk_start = _wk_end - _td(days=6)
+    _prev_end = _wk_start - _td(days=1)
+    _prev_start = _prev_end - _td(days=6)
+
+    _wk_df = orders[(orders["date"] >= _wk_start) & (orders["date"] <= _wk_end)]
+    _prev_df = orders[(orders["date"] >= _prev_start) & (orders["date"] <= _prev_end)]
+
+    # 전년 동주
+    try:
+        _ly_end = _wk_end.replace(year=_wk_end.year - 1)
+        _ly_start = _ly_end - _td(days=6)
+        _ly_df = orders[(orders["date"] >= _ly_start) & (orders["date"] <= _ly_end)]
+    except (ValueError, AttributeError):
+        _ly_df = orders.iloc[0:0]
+
+    _wk_rev = int(_wk_df["revenue"].sum())
+    _prev_rev = int(_prev_df["revenue"].sum())
+    _ly_rev = int(_ly_df["revenue"].sum()) if not _ly_df.empty else 0
+    _wk_daily = _wk_rev // 7
+
+    _vs_prev = (_wk_rev - _prev_rev) / _prev_rev * 100 if _prev_rev > 0 else 0
+    _vs_ly = (_wk_rev - _ly_rev) / _ly_rev * 100 if _ly_rev > 0 else None
+
+    # 목표 = 월 목표 합 × (7/30)
+    _monthly_total = sum(BRAND_MONTHLY_TARGETS.values())
+    _weekly_target = _monthly_total * 7 // 30
+    _vs_target = _wk_rev / _weekly_target * 100 if _weekly_target > 0 else 0
+    _target_progress = min(_vs_target, 100)
+
+
+    def _snap_card(label: str, value: str, sub: str = "",
+                   value_color: str = "#0f172a", extra: str = "") -> str:
+        return _flatten_html(f"""
+<div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; min-height:110px; box-shadow:0 1px 2px rgba(15,23,42,0.03);">
+    <div style="font-size:0.72rem; color:#64748b; font-weight:600; margin-bottom:6px;">{label}</div>
+    <div style="font-size:1.35rem; font-weight:800; color:{value_color}; line-height:1.1; letter-spacing:-0.02em;">{value}</div>
+    <div style="font-size:0.7rem; color:#94a3b8; margin-top:4px;">{sub}</div>
+    {extra}
+</div>
+        """)
+
+
+    def _fmt_won(v: int) -> str:
+        if v >= 1e8: return f"{v/1e8:.1f}억"
+        if v >= 1e7: return f"{v/1e7:.1f}천만"
+        if v >= 1e4: return f"{v/1e4:.0f}만"
+        return f"{v:,}"
+
+
+    _k = st.columns(7)
+    # 1. 주간 매출
+    _k[0].markdown(_snap_card(
+        "주간 매출",
+        f"₩{_fmt_won(_wk_rev)}",
+        f"₩{_wk_rev:,}",
+        value_color="#2563eb",
+    ), unsafe_allow_html=True)
+    # 2. 일평균
+    _k[1].markdown(_snap_card(
+        "일평균 매출",
+        f"₩{_fmt_won(_wk_daily)}",
+        "7일 기준",
+    ), unsafe_allow_html=True)
+    # 3. 전주 대비
+    _arrow = "▲" if _vs_prev > 0 else "▼" if _vs_prev < 0 else "—"
+    _col = "#16a34a" if _vs_prev > 0 else "#dc2626" if _vs_prev < 0 else "#64748b"
+    _k[2].markdown(_snap_card(
+        "전주 대비",
+        f"{_arrow} {abs(_vs_prev):.1f}%",
+        f"전주 ₩{_fmt_won(_prev_rev)}",
+        value_color=_col,
+    ), unsafe_allow_html=True)
+    # 4. 전년 동주
+    if _vs_ly is not None:
+        _ly_arrow = "▲" if _vs_ly > 0 else "▼"
+        _ly_col = "#16a34a" if _vs_ly > 0 else "#dc2626"
+        _ly_value = f"{_ly_arrow} {abs(_vs_ly):.1f}%"
+        _ly_sub = f"전년 ₩{_fmt_won(_ly_rev)}"
+    else:
+        _ly_value, _ly_sub, _ly_col = "—", "전년 데이터 없음", "#94a3b8"
+    _k[3].markdown(_snap_card(
+        "전년 동주", _ly_value, _ly_sub, value_color=_ly_col,
+    ), unsafe_allow_html=True)
+    # 5. 목표 대비
+    _target_extra = (
+        f'<div style="margin-top:6px; height:5px; background:#f1f5f9; '
+        f'border-radius:3px; overflow:hidden;">'
+        f'<div style="height:100%; width:{_target_progress:.0f}%; '
+        f'background:linear-gradient(90deg, #f59e0b 0%, #b45309 100%);"></div></div>'
+        f'<div style="font-size:0.68rem; color:#94a3b8; margin-top:3px;">'
+        f'잔여 ₩{_fmt_won(max(0, _weekly_target - _wk_rev))}</div>'
+    )
+    _k[4].markdown(_snap_card(
+        "목표 대비",
+        f"{_vs_target:.1f}%",
+        f"주간 목표 ₩{_fmt_won(_weekly_target)}",
+        value_color="#f59e0b",
+        extra=_target_extra,
+    ), unsafe_allow_html=True)
+    # 6. 원가율 — 데이터 없음
+    _k[5].markdown(_snap_card(
+        "원가율", "—", "원가 데이터 없음", value_color="#94a3b8",
+    ), unsafe_allow_html=True)
+    # 7. 환불율 — 데이터 없음
+    _k[6].markdown(_snap_card(
+        "환불율", "—", "환불 데이터 없음", value_color="#94a3b8",
+    ), unsafe_allow_html=True)
+
+    st.write("")
+
+    # ========================================================
+    # 채널별 주간 요약
+    # ========================================================
+    st.markdown(
+        _flatten_html("""
+<div style="font-size:0.92rem; color:#64748b; margin-top:6px; margin-bottom:10px;">채널별 주간 요약</div>
+        """),
+        unsafe_allow_html=True,
+    )
+
+    _ch_priority = {"자사몰": 0, "쿠팡": 1, "네이버": 2}
+    _channels = sorted(
+        _wk_df["channel"].dropna().unique().tolist(),
+        key=lambda c: _ch_priority.get(c, 99),
+    )
+
+    _ch_cols = st.columns(max(len(_channels), 1))
+    for _ci, _ch in enumerate(_channels):
+        _ch_rev = int(_wk_df[_wk_df["channel"] == _ch]["revenue"].sum())
+        _ch_prev = int(_prev_df[_prev_df["channel"] == _ch]["revenue"].sum())
+        _ch_ly = int(_ly_df[_ly_df["channel"] == _ch]["revenue"].sum()) if not _ly_df.empty else 0
+        _ch_vs_prev = (_ch_rev - _ch_prev) / _ch_prev * 100 if _ch_prev > 0 else 0
+        _ch_vs_ly = (_ch_rev - _ch_ly) / _ch_ly * 100 if _ch_ly > 0 else None
+
+        _ch_col = CHANNEL_COLORS.get(_ch, "#64748b")
+
+        _prev_arrow = "▲" if _ch_vs_prev > 0 else "▼" if _ch_vs_prev < 0 else "—"
+        _prev_col = "#16a34a" if _ch_vs_prev > 0 else "#dc2626" if _ch_vs_prev < 0 else "#64748b"
+        if _ch_vs_ly is not None:
+            _ly_arrow = "▲" if _ch_vs_ly > 0 else "▼"
+            _ly_col2 = "#16a34a" if _ch_vs_ly > 0 else "#dc2626"
+            _ly_txt = f"{_ly_arrow} {abs(_ch_vs_ly):.0f}%"
+        else:
+            _ly_col2, _ly_txt = "#94a3b8", "—"
+
+        _ch_cols[_ci].markdown(
+            _flatten_html(f"""
+<div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:16px 18px; box-shadow:0 1px 3px rgba(15,23,42,0.04);">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <div style="width:10px; height:10px; background:{_ch_col}; border-radius:50%;"></div>
+        <div style="font-size:0.92rem; font-weight:700; color:#0f172a;">{_ch}</div>
+    </div>
+    <div style="font-size:1.55rem; font-weight:800; color:#0f172a; line-height:1; letter-spacing:-0.02em;">{_fmt_won(_ch_rev)}<span style="font-size:0.78rem; font-weight:500; color:#94a3b8; margin-left:3px;">원</span></div>
+    <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:0.72rem;">
+        <span style="color:#64748b;">전년대비</span>
+        <span style="color:{_ly_col2}; font-weight:700;">{_ly_txt}</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.72rem; margin-top:3px;">
+        <span style="color:#64748b;">전주대비</span>
+        <span style="color:{_prev_col}; font-weight:700;">{_prev_arrow} {abs(_ch_vs_prev):.0f}%</span>
+    </div>
+</div>
+            """),
+            unsafe_allow_html=True,
+        )
+
+    st.write("")
+    st.markdown("---")
+
+
 # orders 범위는 데이터 있는 구간
 orders_min = orders["date"].min().date() if not orders.empty else None
 orders_max = orders["date"].max().date() if not orders.empty else None
