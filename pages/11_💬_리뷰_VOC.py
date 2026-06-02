@@ -26,9 +26,9 @@ from utils.ui import (
 
 
 setup_page(
-    page_title="리뷰 VOC",
+    page_title="리뷰관리",
     page_icon="💬",
-    header_title="💬 리뷰 감성 · 키워드 VOC",
+    header_title="💬 리뷰관리",
     header_subtitle="고객 목소리 → 다음 SKU 의 정답지 · 개선 우선순위",
 )
 
