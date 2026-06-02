@@ -673,8 +673,9 @@ st.markdown("---")
 # ==========================================================
 # 탭 구성
 # ==========================================================
-tab_reply, tab_sent, tab_kw, tab_neg, tab_prod = st.tabs([
+tab_reply, tab_inquiry, tab_sent, tab_kw, tab_neg, tab_prod = st.tabs([
     "💬 답글 관리",
+    "📨 문의 관리",
     "📊 감성 분포",
     "🔠 키워드 빈도",
     "🚨 부정 리뷰 분석",
@@ -1140,6 +1141,35 @@ def _suggest_reply(rating: int, text: str, product: str, brand: str) -> str:
     return " ".join(parts)
 
 
+def _suggest_inquiry_reply(title: str, content: str) -> str:
+    """문의 답변 초안 — 키워드 기반 안내 톤."""
+    c = f"{title} {content}"
+    parts = ["문의 주셔서 감사합니다."]
+    if any(k in c for k in ["배송", "언제", "도착", "발송", "출고"]):
+        parts.append(
+            "배송 관련 문의 주셨네요. 주문번호 확인 후 배송 현황을 "
+            "빠르게 안내드리겠습니다."
+        )
+    elif any(k in c for k in ["교환", "반품", "환불"]):
+        parts.append(
+            "교환·반품·환불 관련해서는 고객센터에서 신속히 처리 "
+            "도와드리겠습니다."
+        )
+    elif any(k in c for k in ["재고", "품절", "입고", "재입고"]):
+        parts.append(
+            "재고·입고 관련 문의는 확인 후 개별적으로 안내드리겠습니다."
+        )
+    elif any(k in c for k in ["사이즈", "크기", "규격", "치수"]):
+        parts.append(
+            "사이즈·규격 정보는 상세페이지를 참고하시거나 개별 안내 "
+            "도와드리겠습니다."
+        )
+    else:
+        parts.append("문의하신 내용 확인 후 정확하게 안내드리겠습니다.")
+    parts.append("추가 문의는 언제든 남겨주세요. 감사합니다.")
+    return " ".join(parts)
+
+
 with tab_reply:
     st.markdown("#### 💬 자사몰 리뷰 답글 관리")
     st.caption(
@@ -1533,6 +1563,198 @@ with tab_reply:
 
         if total_pages > 1:
             st.caption(f"📄 {page} / {total_pages} 페이지")
+
+
+# ==========================================================
+# TAB — 📨 문의 관리 (Cafe24 '문의하기' board_no=6)
+# ==========================================================
+with tab_inquiry:
+    st.markdown("#### 📨 자사몰 1:1 문의 관리")
+    st.caption(
+        "Cafe24 '문의하기' 게시판 — 미답변 우선. "
+        "답변 전송 즉시 고객에게 노출됩니다."
+    )
+
+    @st.cache_data(ttl=300, show_spinner="문의 불러오는 중…")
+    def _load_inquiries(days: int = 90) -> pd.DataFrame:
+        from api.cafe24 import load_all_cafe24_clients
+        from datetime import date as _d, timedelta as _td
+        clients = load_all_cafe24_clients()
+        since = _d.today() - _td(days=days)
+        until = _d.today()
+        dfs = []
+        for store, cl in clients.items():
+            b = ("똑똑연구소" if "똑똑" in store
+                 else "롤라루" if "롤라루" in store
+                 else "루티니스트" if "루티니" in store else "기타")
+            try:
+                df = cl.fetch_board_articles_df(6, since, until, b)
+                if not df.empty:
+                    dfs.append(df)
+            except Exception:
+                pass
+        return (pd.concat(dfs, ignore_index=True)
+                if dfs else pd.DataFrame())
+
+    inq = _load_inquiries()
+    if not inq.empty and selected_brand != "전체":
+        inq = inq[inq["brand"] == selected_brand]
+
+    if inq.empty:
+        st.info("최근 90일 문의가 없습니다.")
+    else:
+        from api.cafe24 import load_cafe24_client_by_mall_id as _lbm_i
+        inq = inq[inq["article_no"] > 0].sort_values("date", ascending=False)
+        inq_show = inq.head(30)
+
+        # 답변 여부 일괄 조회
+        _icache: dict = {}
+        inq_status: dict = {}
+        with st.spinner("답변 여부 확인 중…"):
+            for _, irow in inq_show.iterrows():
+                a_no = int(irow["article_no"])
+                m_id = str(irow["mall_id"])
+                if m_id not in _icache:
+                    _icache[m_id] = _lbm_i(m_id)
+                cl = _icache[m_id]
+                try:
+                    inq_status[a_no] = (
+                        cl.get_board_comments(6, a_no) if cl else []
+                    )
+                except Exception:
+                    inq_status[a_no] = None
+
+        unanswered = sum(
+            1 for a in inq_show["article_no"]
+            if not (inq_status.get(int(a)) or [])
+        )
+        st.markdown(
+            f"🔴 **미답변 {unanswered}건** / 최근 {len(inq_show)}건 표시 "
+            f"(전체 {len(inq)}건)"
+        )
+
+        for idx, irow in inq_show.iterrows():
+            a_no = int(irow["article_no"])
+            m_id = str(irow["mall_id"])
+            existing = inq_status.get(a_no) or []
+            answered = len(existing) > 0
+            date_s = str(irow["date"])[:10]
+            bc = BRAND_COLORS.get(irow["brand"], {}).get("primary", "#64748b")
+
+            with st.container(border=True):
+                h1, h2 = st.columns([3, 1])
+                with h1:
+                    if answered:
+                        badge, bg, fg = "✅ 답변완료", "#dcfce7", "#16a34a"
+                    else:
+                        badge, bg, fg = "🔴 미답변", "#fee2e2", "#dc2626"
+                    st.markdown(
+                        f"<span style='background:{bg};color:{fg};"
+                        f"padding:2px 9px;border-radius:999px;font-size:0.72rem;"
+                        f"font-weight:600;'>{badge}</span> "
+                        f"<span style='font-weight:700;color:#0f172a;'>"
+                        f"{irow['title'] or '(제목 없음)'}</span>",
+                        unsafe_allow_html=True,
+                    )
+                with h2:
+                    st.markdown(
+                        f"<div style='text-align:right;color:#64748b;"
+                        f"font-size:0.75rem;line-height:1.5;'>{irow['brand']}<br/>"
+                        f"📅 {date_s}<br/>#{a_no}</div>",
+                        unsafe_allow_html=True,
+                    )
+                if irow["content"]:
+                    st.markdown(
+                        f"<div style='background:#fbfaf6;border-left:3px solid "
+                        f"{bc};padding:12px 16px;border-radius:8px;margin:8px 0;"
+                        f"color:#0f172a;line-height:1.6;white-space:pre-wrap;'>"
+                        f"{irow['content']}</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                # 기존 답변 표시
+                if existing:
+                    for c in existing:
+                        cc = c.get("content", "")
+                        cd = str(c.get("created_date", ""))[:16].replace("T", " ")
+                        st.markdown(
+                            f"<div style='background:#eff6ff;border-left:3px solid "
+                            f"#2563eb;padding:10px 14px;border-radius:8px;"
+                            f"margin:4px 0;'>"
+                            f"<div style='font-size:0.72rem;color:#64748b;'>"
+                            f"<b>{c.get('writer','관리자')}</b> · {cd}</div>"
+                            f"<div style='margin-top:4px;color:#0f172a;'>{cc}</div>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
+
+                # 답변 입력
+                ikey = f"inq_text_{m_id}_{a_no}"
+                isend_k = f"inq_send_{m_id}_{a_no}"
+                iai_k = f"inq_ai_{m_id}_{a_no}"
+                iclear = f"_iclear_{ikey}"
+                isent = f"_isent_{ikey}"
+                iaiflag = f"_iai_{ikey}"
+
+                if st.session_state.get(iclear):
+                    st.session_state[ikey] = ""
+                    del st.session_state[iclear]
+                if st.session_state.get(iaiflag):
+                    st.session_state[ikey] = st.session_state[iaiflag]
+                    del st.session_state[iaiflag]
+                if st.session_state.get(isent):
+                    st.success(st.session_state[isent])
+                    del st.session_state[isent]
+
+                ic1, ic2 = st.columns([5, 1.2])
+                with ic1:
+                    st.text_area(
+                        "답변 작성", key=ikey, height=80,
+                        label_visibility="collapsed",
+                        placeholder="문의에 대한 답변을 작성하세요.",
+                    )
+                with ic2:
+                    isend_clicked = st.button(
+                        "📨 답변 전송", key=isend_k,
+                        type="primary", use_container_width=True,
+                    )
+                    iai_clicked = st.button(
+                        "🤖 AI 추천", key=iai_k, use_container_width=True,
+                    )
+
+                if iai_clicked:
+                    st.session_state[iaiflag] = _suggest_inquiry_reply(
+                        str(irow["title"]), str(irow["content"]),
+                    )
+                    st.rerun()
+
+                if isend_clicked:
+                    tv = (st.session_state.get(ikey) or "").strip()
+                    if not tv:
+                        st.warning("답변 본문을 입력하세요.")
+                    else:
+                        try:
+                            cl = _lbm_i(m_id)
+                            if cl is None:
+                                st.error(f"클라이언트 로드 실패 (mall_id={m_id})")
+                            else:
+                                res = cl.post_board_comment(6, a_no, tv)
+                                st.session_state[isent] = (
+                                    f"✅ 답변 전송 완료 "
+                                    f"(comment_no={res.get('comment_no','?')})"
+                                )
+                                st.session_state[iclear] = True
+                                st.cache_data.clear()
+                                st.rerun()
+                        except Exception as e:
+                            err = str(e)[:300]
+                            if "403" in err or "scope" in err.lower():
+                                st.error(
+                                    "❌ HTTP 403 — `mall.write_community` scope "
+                                    "필요. OAuth 재인증 확인."
+                                )
+                            else:
+                                st.error(f"❌ 전송 실패: {type(e).__name__}: {err}")
 
 
 # ==========================================================

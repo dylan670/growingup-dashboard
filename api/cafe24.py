@@ -608,6 +608,65 @@ class Cafe24Client:
         }
 
     # ============================================================
+    # 범용 게시판 글 수집 (문의하기 board_no=6, 1:1 상담 board_no=9 등)
+    # rating 없는 게시판용 — 제목/본문/작성자 수집
+    # ============================================================
+    def fetch_board_articles_df(
+        self, board_no: int, since: date, until: date, brand: str,
+        limit: int = 100,
+    ) -> pd.DataFrame:
+        """게시판 글 목록 → DataFrame (문의/상담 등).
+
+        반환 컬럼: date, brand, mall_id, board_no, article_no,
+                   title, content, writer
+        """
+        import re as _re
+        rows: list[dict] = []
+        offset = 0
+        while True:
+            try:
+                res = self._request(
+                    "GET", f"/boards/{board_no}/articles",
+                    params={
+                        "limit": limit, "offset": offset,
+                        "start_date": since.isoformat(),
+                        "end_date": until.isoformat(),
+                    },
+                ) or {}
+            except requests.HTTPError:
+                break
+            batch = res.get("articles", []) or []
+            for a in batch:
+                content = _re.sub(r"<[^>]+>", " ", str(a.get("content", "")))
+                content = _re.sub(r"\s+", " ", content).strip()
+                d = str(a.get("created_date") or a.get("written_date") or "")[:10]
+                try:
+                    a_no = int(a.get("article_no") or 0)
+                except (TypeError, ValueError):
+                    a_no = 0
+                rows.append({
+                    "date": d,
+                    "brand": brand,
+                    "mall_id": self.mall_id,
+                    "board_no": board_no,
+                    "article_no": a_no,
+                    "title": str(a.get("title") or "").strip(),
+                    "content": content,
+                    "writer": str(
+                        a.get("writer") or a.get("member_id") or ""
+                    ).strip(),
+                })
+            if len(batch) < limit:
+                break
+            offset += limit
+            if offset > 5000:
+                break
+        return pd.DataFrame(rows, columns=[
+            "date", "brand", "mall_id", "board_no",
+            "article_no", "title", "content", "writer",
+        ])
+
+    # ============================================================
     # 답글 (게시판 댓글) — 관리자가 리뷰에 답글 작성
     # 필요 scope: mall.write_community
     # ============================================================
