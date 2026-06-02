@@ -105,27 +105,96 @@ def inject_global_css() -> None:
     st.markdown(
         f"""
         <style>
-        /* ---------- 타이포그래피 — Pretendard (한국 UI 표준) ---------- */
+        /* ---------- 타이포그래피 — Pretendard Variable (한국 UI 표준) ---------- */
+        /* Variable 폰트 — 100~900 weight 자유롭게 사용 가능 */
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css');
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
         html, body, [class*="css"], button, input, textarea, select,
         .stMarkdown, .stText, .stButton, .stMetric, .stDataFrame,
         .stRadio, .stSelectbox, .stTabs, .stExpander, .stTextInput,
         h1, h2, h3, h4, h5, h6, p, span, div, label, a {{
-            font-family: 'Pretendard', 'Pretendard Variable', -apple-system,
+            font-family: 'Pretendard Variable', 'Pretendard', -apple-system,
                          BlinkMacSystemFont, system-ui, 'Segoe UI', 'Roboto',
                          'Helvetica Neue', Arial, 'Noto Sans KR',
                          sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            font-feature-settings: "ss03" 1;   /* Pretendard 정사각형 점 활성 */
         }}
 
-        /* 숫자 정렬용 — KPI 값, 표 숫자 칼럼 */
-        div[data-testid="stMetricValue"],
-        div[data-testid="stMetricDelta"],
-        .stDataFrame [data-testid*="column"] {{
-            font-feature-settings: "tnum" 1, "ss01" 1;
+        /* 추천 weight 위계 — 8단계 (한국 UI 표준 톤) */
+        /* h1 (페이지 제목) — ExtraBold 800 */
+        h1 {{
+            font-weight: 800 !important;
+            letter-spacing: -0.035em !important;
+            line-height: 1.15 !important;
+        }}
+        /* h2 (큰 섹션) — Bold 700 */
+        h2 {{
+            font-weight: 700 !important;
+            letter-spacing: -0.025em !important;
+        }}
+        /* h3, h4 (서브 섹션) — SemiBold 600 */
+        h3, h4 {{
+            font-weight: 600 !important;
+            letter-spacing: -0.015em !important;
+        }}
+        /* h5, h6 — Medium 500 */
+        h5, h6 {{
+            font-weight: 500 !important;
+        }}
+        /* 본문 — Regular 400 */
+        p {{
+            font-weight: 400 !important;
+            letter-spacing: -0.005em;
+        }}
+
+        /* 사이드바 섹션 헤더 (운영/협업/성장/시스템) — SemiBold 600 */
+        .nav-section-header {{
+            font-weight: 600 !important;
+        }}
+
+        /* 사이드바 메뉴 라벨 — Medium 500 */
+        section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {{
+            font-weight: 500 !important;
+        }}
+        /* 현재 페이지는 SemiBold */
+        section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"][aria-current="page"] {{
+            font-weight: 600 !important;
+        }}
+
+        /* KPI 카드 라벨 — Medium 500 */
+        div[data-testid="stMetric"] label {{
+            font-weight: 500 !important;
+        }}
+        /* KPI 값 — ExtraBold 800 + 숫자 정렬 */
+        div[data-testid="stMetricValue"] {{
+            font-weight: 800 !important;
+            letter-spacing: -0.025em !important;
             font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum" 1, "ss01" 1;
+        }}
+        div[data-testid="stMetricDelta"] {{
+            font-weight: 600 !important;
+            font-variant-numeric: tabular-nums;
+        }}
+
+        /* 표 숫자 — tabular-nums */
+        .stDataFrame [data-testid*="column"],
+        .stDataFrame td {{
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum" 1;
+        }}
+
+        /* 버튼 — Medium 500 */
+        .stButton button, button[kind] {{
+            font-weight: 500 !important;
+        }}
+
+        /* radio / selectbox — Medium 500 */
+        .stRadio label, .stSelectbox label {{
+            font-weight: 500 !important;
         }}
 
         /* ---------- 메인 영역 여백 ---------- */
