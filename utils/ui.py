@@ -110,6 +110,14 @@ def inject_global_css() -> None:
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css');
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
+        /* Material Icons / Symbols — Streamlit expander 화살표 등 아이콘용
+         * 명시적 import 없으면 'keyboard_arrow_right' 같은 글리프 이름이
+         * 텍스트 그대로 표시되는 버그 발생.
+         */
+        @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+
         html, body, [class*="css"], button, input, textarea, select,
         .stMarkdown, .stText, .stButton, .stMetric, .stDataFrame,
         .stRadio, .stSelectbox, .stTabs, .stExpander, .stTextInput,
@@ -125,11 +133,39 @@ def inject_global_css() -> None:
             font-feature-settings: "ss03" 1;   /* Pretendard 정사각형 점 활성 */
         }}
 
-        /* Streamlit 의 Material Icons (chevron, arrow 등) 강제 표시 */
-        .material-icons, .material-icons-outlined,
-        [class*="material-icons"], [data-icon] {{
-            font-family: 'Material Icons', 'Material Symbols Outlined',
+        /* Streamlit Material Icons / Symbols 강제 폰트 적용
+         * — body 시작 selector 로 specificity 강화 (Pretendard rule 보다 우선)
+         * — Streamlit 1.30+ 의 stIconMaterial / data-icon 등 모든 패턴 커버
+         */
+        body span[data-testid="stIconMaterial"],
+        body span[data-testid*="Icon"],
+        body i[class*="material-icon"],
+        body i[class*="material-symbol"],
+        body [class*="MaterialIcons"],
+        body [class*="material-icons"],
+        body [class*="material-symbols"],
+        body [data-icon],
+        body svg + span[aria-hidden="true"] {{
+            font-family: 'Material Symbols Outlined', 'Material Icons',
                          'Material Symbols Rounded' !important;
+            font-weight: normal !important;
+            font-style: normal !important;
+            font-size: inherit;
+            line-height: 1;
+            letter-spacing: normal !important;
+            text-transform: none !important;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }}
+
+        /* Streamlit expander 의 화살표 SVG/icon 위 텍스트 노출 방지 */
+        details summary [data-testid*="Icon"]::after,
+        details summary [data-testid*="Icon"]::before {{
+            content: none !important;
         }}
 
         /* 추천 weight 위계 — 8단계 (한국 UI 표준 톤) */
