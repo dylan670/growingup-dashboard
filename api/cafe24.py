@@ -732,12 +732,22 @@ class Cafe24Client:
                     a_no = int(a.get("article_no") or 0)
                 except (TypeError, ValueError):
                     a_no = 0
+                try:
+                    parent_no = int(a.get("parent_article_no") or 0)
+                except (TypeError, ValueError):
+                    parent_no = 0
+                try:
+                    depth = int(a.get("reply_depth") or 0)
+                except (TypeError, ValueError):
+                    depth = 0
                 rows.append({
                     "date": d,
                     "brand": brand,
                     "mall_id": self.mall_id,
                     "board_no": board_no,
                     "article_no": a_no,
+                    "parent_article_no": parent_no,
+                    "reply_depth": depth,
                     "title": str(a.get("title") or "").strip(),
                     "content": content,
                     "writer": str(
@@ -750,8 +760,9 @@ class Cafe24Client:
             if offset > 5000:
                 break
         return pd.DataFrame(rows, columns=[
-            "date", "brand", "mall_id", "board_no",
-            "article_no", "title", "content", "writer",
+            "date", "brand", "mall_id", "board_no", "article_no",
+            "parent_article_no", "reply_depth",
+            "title", "content", "writer",
         ])
 
     # ============================================================
