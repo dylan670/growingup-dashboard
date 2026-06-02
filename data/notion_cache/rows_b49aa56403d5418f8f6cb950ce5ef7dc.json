@@ -1,6 +1,132 @@
 {
-  "saved_at": "2026-06-01T01:02:13.624393Z",
+  "saved_at": "2026-06-02T01:02:24.360379Z",
   "data": [
+    {
+      "id": "373c081d-6cc9-808a-87a4-e9ae0a370839",
+      "title": "6월 1주차 경영지원팀 회의록",
+      "created_at": "2026-06-02T00:02:00.000Z",
+      "last_edited_at": "2026-06-02T00:27:00.000Z",
+      "url": "https://www.notion.so/6-1-373c081d6cc9808a87a4e9ae0a370839",
+      "properties": {
+        "생성자": "",
+        "댓글": "",
+        "팀": "경영지원",
+        "생성일자": "2026-06-02T00:02:00.000Z",
+        "참석자": [
+          "앤디",
+          "켈리"
+        ],
+        "confirm": false,
+        "팀장": [
+          "카라"
+        ]
+      },
+      "_raw_properties": {
+        "생성자": {
+          "id": "Y~hb",
+          "type": "created_by",
+          "created_by": {
+            "object": "user",
+            "id": "319d872b-594c-8108-a81d-0002fe62baae",
+            "name": "카라",
+            "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/4fcd41ea-f74e-424f-b19f-6db957b8e67a/kara_%EA%B9%80%EB%B3%B4%ED%98%84.jpg",
+            "type": "person",
+            "person": {
+              "email": "kara@openhan.kr"
+            }
+          }
+        },
+        "댓글": {
+          "id": "%5CZ%5C%5C",
+          "type": "rich_text",
+          "rich_text": []
+        },
+        "팀": {
+          "id": "b%7Chf",
+          "type": "select",
+          "select": {
+            "id": "0e52e2d9-b4b3-4d90-80ea-efef37dbf94a",
+            "name": "경영지원",
+            "color": "pink"
+          }
+        },
+        "생성일자": {
+          "id": "vq%5Ds",
+          "type": "created_time",
+          "created_time": "2026-06-02T00:02:00.000Z"
+        },
+        "참석자": {
+          "id": "x_el",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "2b8d872b-594c-810d-8b92-000244ce3912",
+              "name": "앤디",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/6cc9f8a9-2d92-43b2-b3be-61ce8fa9ec7f/KakaoTalk_20251127_115517653.jpg",
+              "type": "person",
+              "person": {
+                "email": "andy@openhan.kr"
+              }
+            },
+            {
+              "object": "user",
+              "id": "2ccd872b-594c-81cd-94db-0002883c96e3",
+              "name": "켈리",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/9b5d179b-50e2-460c-80fb-7f37fc1c798a/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7_2025-12-23_115952.png",
+              "type": "person",
+              "person": {
+                "email": "kelly@openhan.kr"
+              }
+            }
+          ]
+        },
+        "confirm": {
+          "id": "xv%5D%5B",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "팀장": {
+          "id": "%7C%5Cqy",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "319d872b-594c-8108-a81d-0002fe62baae",
+              "name": "카라",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/4fcd41ea-f74e-424f-b19f-6db957b8e67a/kara_%EA%B9%80%EB%B3%B4%ED%98%84.jpg",
+              "type": "person",
+              "person": {
+                "email": "kara@openhan.kr"
+              }
+            }
+          ]
+        },
+        "미팅 주제": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "6월 1주차 경영지원팀 회의록 ",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "6월 1주차 경영지원팀 회의록 ",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
     {
       "id": "36fc081d-6cc9-809a-a1dd-eeb244154b34",
       "title": "5월 4주차 글로벌팀 회의록",
@@ -118,7 +244,7 @@
       "id": "36fc081d-6cc9-8039-b16e-e827750548c8",
       "title": "5월 4주차 SCM팀 회의록",
       "created_at": "2026-05-29T07:08:00.000Z",
-      "last_edited_at": "2026-05-31T09:54:00.000Z",
+      "last_edited_at": "2026-06-01T12:44:00.000Z",
       "url": "https://www.notion.so/5-4-SCM-36fc081d6cc98039b16ee827750548c8",
       "properties": {
         "생성자": "",
@@ -946,7 +1072,7 @@
       "id": "36ec081d-6cc9-80fd-af7d-c593709d06c0",
       "title": "5월 4주차 마케팅팀 회의록",
       "created_at": "2026-05-28T00:42:00.000Z",
-      "last_edited_at": "2026-05-31T06:26:00.000Z",
+      "last_edited_at": "2026-06-02T00:59:00.000Z",
       "url": "https://www.notion.so/5-4-36ec081d6cc980fdaf7dc593709d06c0",
       "properties": {
         "생성자": "",
@@ -1094,7 +1220,7 @@
       "id": "36ec081d-6cc9-8037-a10d-f9a54b30db1f",
       "title": "5월 4주차 FC팀 회의록",
       "created_at": "2026-05-28T00:11:00.000Z",
-      "last_edited_at": "2026-05-31T06:45:00.000Z",
+      "last_edited_at": "2026-06-01T01:02:00.000Z",
       "url": "https://www.notion.so/5-4-FC-36ec081d6cc98037a10df9a54b30db1f",
       "properties": {
         "생성자": "",
@@ -1231,7 +1357,7 @@
       "id": "36dc081d-6cc9-80db-af4f-e83af168e68c",
       "title": "5월 4주차 그로잉업팀 회의록",
       "created_at": "2026-05-27T23:59:00.000Z",
-      "last_edited_at": "2026-05-31T06:26:00.000Z",
+      "last_edited_at": "2026-06-01T02:27:00.000Z",
       "url": "https://www.notion.so/5-4-36dc081d6cc980dbaf4fe83af168e68c",
       "properties": {
         "생성자": "",
@@ -45808,191 +45934,6 @@
                 "color": "default"
               },
               "plain_text": "11월 1주차 와우팀 회의록 ",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "2a3c081d-6cc9-807f-9ed6-cdbc1c797715",
-      "title": "11월 1주차 제품디자인팀 회의록",
-      "created_at": "2025-11-06T04:25:00.000Z",
-      "last_edited_at": "2025-11-11T10:00:00.000Z",
-      "url": "https://www.notion.so/11-1-2a3c081d6cc9807f9ed6cdbc1c797715",
-      "properties": {
-        "생성자": "",
-        "댓글": "",
-        "팀": "디자인팀",
-        "생성일자": "2025-11-06T04:25:00.000Z",
-        "참석자": [
-          "한스",
-          "안나 ",
-          "써니 ",
-          "오드리",
-          "제시카",
-          "로린",
-          "실버"
-        ],
-        "confirm": true,
-        "팀장": [
-          "안나 "
-        ]
-      },
-      "_raw_properties": {
-        "생성자": {
-          "id": "Y~hb",
-          "type": "created_by",
-          "created_by": {
-            "object": "user",
-            "id": "330bfc53-154b-4ff9-96ae-b86646b699c9",
-            "name": "안나 ",
-            "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/3c5a9a59-aa83-4336-b7e7-981ea5a5ab70/IMG_20180509_2.jpg",
-            "type": "person",
-            "person": {
-              "email": "anna@openhan.kr"
-            }
-          }
-        },
-        "댓글": {
-          "id": "%5CZ%5C%5C",
-          "type": "rich_text",
-          "rich_text": []
-        },
-        "팀": {
-          "id": "b%7Chf",
-          "type": "select",
-          "select": {
-            "id": "c83e5ebb-c684-40ad-9a32-2d33ab5d973b",
-            "name": "디자인팀",
-            "color": "orange"
-          }
-        },
-        "생성일자": {
-          "id": "vq%5Ds",
-          "type": "created_time",
-          "created_time": "2025-11-06T04:25:00.000Z"
-        },
-        "참석자": {
-          "id": "x_el",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "b197bd30-9e63-49ac-ab4a-baa0c44d34a3",
-              "name": "한스",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/5e17cee6-5f02-4234-a175-19d4e2e1db77/%EC%B5%9C%EC%B2%A0%EC%9A%A9.jpg",
-              "type": "person",
-              "person": {
-                "email": "hans@openhan.kr"
-              }
-            },
-            {
-              "object": "user",
-              "id": "330bfc53-154b-4ff9-96ae-b86646b699c9",
-              "name": "안나 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/3c5a9a59-aa83-4336-b7e7-981ea5a5ab70/IMG_20180509_2.jpg",
-              "type": "person",
-              "person": {
-                "email": "anna@openhan.kr"
-              }
-            },
-            {
-              "object": "user",
-              "id": "67547894-7c79-474c-bbda-d2a71f09ea47",
-              "name": "써니 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/50697721-0255-4ae1-ae6d-dd8e4e34f0cd/K-3184.jpg",
-              "type": "person",
-              "person": {
-                "email": "sunny@openhan.kr"
-              }
-            },
-            {
-              "object": "user",
-              "id": "a7698e43-1d5d-46a2-ae2c-cdd6180ed16f",
-              "name": "오드리",
-              "avatar_url": "https://lh3.googleusercontent.com/a-/AOh14Gg_2HSNci9Oi4MJ65LDav6T8CRvwt8URhXgSHFG=s100",
-              "type": "person",
-              "person": {
-                "email": "audrey@openhan.kr"
-              }
-            },
-            {
-              "object": "user",
-              "id": "301e3f8f-47ae-42ce-ac42-987d974b0a6b",
-              "name": "제시카",
-              "avatar_url": "https://lh3.googleusercontent.com/a/ACg8ocIka7_B5i732bgT9bmWwn52dF2ulQp52cm8AZ0W45w=s100",
-              "type": "person",
-              "person": {
-                "email": "jessica@openhan.kr"
-              }
-            },
-            {
-              "object": "user",
-              "id": "439870fb-befa-49b2-819b-2e9aa82f6f29",
-              "name": "로린",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/bfa69541-eaa2-40c5-b0da-3f823301523f/KakaoTalk_20220504_142318109.jpg",
-              "type": "person",
-              "person": {
-                "email": "loreen@openhan.kr"
-              }
-            },
-            {
-              "object": "user",
-              "id": "211d872b-594c-8127-930b-0002a649c02d",
-              "name": "실버",
-              "avatar_url": "https://lh3.googleusercontent.com/a/ACg8ocKcRUaJcyJ7dou-FIzqv7y_Qn_F7Zs5z76eSH0DsY60XWG1Qg=s100",
-              "type": "person",
-              "person": {
-                "email": "silver@openhan.kr"
-              }
-            },
-            {
-              "object": "user",
-              "id": "288d872b-594c-817c-bf85-0002126d827f"
-            }
-          ]
-        },
-        "confirm": {
-          "id": "xv%5D%5B",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "팀장": {
-          "id": "%7C%5Cqy",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "330bfc53-154b-4ff9-96ae-b86646b699c9",
-              "name": "안나 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/3c5a9a59-aa83-4336-b7e7-981ea5a5ab70/IMG_20180509_2.jpg",
-              "type": "person",
-              "person": {
-                "email": "anna@openhan.kr"
-              }
-            }
-          ]
-        },
-        "미팅 주제": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "11월 1주차 제품디자인팀 회의록",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "11월 1주차 제품디자인팀 회의록",
               "href": null
             }
           ]

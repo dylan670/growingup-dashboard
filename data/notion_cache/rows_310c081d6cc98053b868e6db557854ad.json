@@ -1,16 +1,2259 @@
 {
-  "saved_at": "2026-06-01T01:02:18.565380Z",
+  "saved_at": "2026-06-02T01:02:27.995664Z",
   "data": [
+    {
+      "id": "372c081d-6cc9-8126-bcad-f5b52a357d95",
+      "title": "광고게재",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc98126bcadf5b52a357d95",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T10:30:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T10:30:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "광고게재",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "광고게재",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-819d-98a6-d90d1e120a28",
+      "title": "1시 발주",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/1-372c081d6cc9819d98a6d90d1e120a28",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-05-11T13:00:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "딜런"
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": true
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-11T13:00:00.000+09:00",
+            "end": "2026-05-11T13:05:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "26cd872b-594c-81ab-b45d-00022527b143",
+              "name": "딜런",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
+              "type": "person",
+              "person": {
+                "email": "dylan@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": true
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "1시 발주",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "1시 발주",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-812c-a5b5-c73cef0d1f4a",
+      "title": "할일디비 확인",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc9812ca5b5c73cef0d1f4a",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-05-11T09:00:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-11T09:00:00.000+09:00",
+            "end": "2026-05-11T09:30:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "할일디비 확인",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "할일디비 확인",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8123-aef6-fe50916fc7e8",
+      "title": "11시 발주",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/11-372c081d6cc98123aef6fe50916fc7e8",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-05-11T11:00:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "딜런"
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-11T11:00:00.000+09:00",
+            "end": "2026-05-11T11:05:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "26cd872b-594c-81ab-b45d-00022527b143",
+              "name": "딜런",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
+              "type": "person",
+              "person": {
+                "email": "dylan@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "11시 발주",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "11시 발주",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-81f4-a820-f1cd9353254a",
+      "title": "현대자동차 주문 확인하기",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc981f4a820f1cd9353254a",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-05-26T08:00:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-26T08:00:00.000+09:00",
+            "end": "2026-05-26T08:05:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "현대자동차 주문 확인하기",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "현대자동차 주문 확인하기",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8184-81c4-d35a01c5eb1a",
+      "title": "허브",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc9818481c4d35a01c5eb1a",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T10:00:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T10:00:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "허브",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "허브",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8107-877c-d104f2d4b703",
+      "title": "메일확인",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc98107877cd104f2d4b703",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T09:45:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T09:45:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "메일확인",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "메일확인",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-810e-8653-e41b5436fd56",
+      "title": "현대자동차 주문 확인하기",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc9810e8653e41b5436fd56",
+      "properties": {
+        "자동보정": "",
+        "마감일시": "",
+        "날짜": "2026-05-26T13:55:00.000+09:00",
+        "보정완료": "",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": null
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-26T13:55:00.000+09:00",
+            "end": "2026-05-26T14:00:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": null
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "현대자동차 주문 확인하기",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "현대자동차 주문 확인하기",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8196-ae9b-f9798c0cb434",
+      "title": "네페 문의글 확인하기",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc98196ae9bf9798c0cb434",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-03-12T08:15:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-03-12T08:15:00.000+09:00",
+            "end": "2026-03-12T08:25:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "네페 문의글 확인하기",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "네페 문의글 확인하기",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8178-b496-ea1642728590",
+      "title": "광고 확인, 수정, 업로드",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc98178b496ea1642728590",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-05-11T09:00:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "딜런"
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-11T09:00:00.000+09:00",
+            "end": "2026-05-11T09:00:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "26cd872b-594c-81ab-b45d-00022527b143",
+              "name": "딜런",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
+              "type": "person",
+              "person": {
+                "email": "dylan@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "광고 확인, 수정, 업로드",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "광고 확인, 수정, 업로드",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8161-adc5-efc6681ac95b",
+      "title": "메타, 네이버, 쿠팡 광고 확인",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc98161adc5efc6681ac95b",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T13:00:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "딜런"
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T13:00:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "26cd872b-594c-81ab-b45d-00022527b143",
+              "name": "딜런",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
+              "type": "person",
+              "person": {
+                "email": "dylan@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "메타, 네이버, 쿠팡 광고 확인",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "메타, 네이버, 쿠팡 광고 확인",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8132-a248-c64a1085ee18",
+      "title": "STCO 재고확인",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/STCO-372c081d6cc98132a248c64a1085ee18",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T11:00:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T11:00:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "STCO 재고확인",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "STCO 재고확인",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-81ba-a00d-e235e9390bd6",
+      "title": "리뷰 답글 달기",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc981baa00de235e9390bd6",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T08:00:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T08:00:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "리뷰 답글 달기",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "리뷰 답글 달기",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-813c-89b1-dc34acfec6eb",
+      "title": "자사몰 취소/교환/반품 확인하기",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc9813c89b1dc34acfec6eb",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "",
+        "보정완료": "NO",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": null
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "자사몰 취소/교환/반품 확인하기",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "자사몰 취소/교환/반품 확인하기",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-817d-9ed1-f92c82d6d91c",
+      "title": "이지웰",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc9817d9ed1f92c82d6d91c",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "2026-05-11T10:15:00.000+09:00",
+        "날짜": "",
+        "보정완료": "NO",
+        "담당자": [],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": {
+            "start": "2026-05-11T10:15:00.000+09:00",
+            "end": "2026-05-11T10:30:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": null
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": []
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "이지웰",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "이지웰",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-813e-a28b-d741c36db02a",
+      "title": "재고동기화",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc9813ea28bd741c36db02a",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-05-11T09:30:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-11T09:30:00.000+09:00",
+            "end": "2026-05-11T09:45:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "재고동기화",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "재고동기화",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-81de-b7d8-fe461bda2a67",
+      "title": "일간통계 작성하기",
+      "created_at": "2026-06-01T21:30:00.000Z",
+      "last_edited_at": "2026-06-01T21:30:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc981deb7d8fe461bda2a67",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-05-11T08:00:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "클레어 "
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T21:30:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-11T08:00:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
+              "name": "클레어 ",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
+              "type": "person",
+              "person": {
+                "email": "claire@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T21:30:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "일간통계 작성하기",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "일간통계 작성하기",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8136-8493-f94a174fc573",
+      "title": "롤라루 스레드",
+      "created_at": "2026-06-01T20:01:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc981368493f94a174fc573",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T16:00:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "제인"
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T20:01:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T16:00:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "ae042761-c7f7-4a42-b1db-94bac29e148f",
+              "name": "제인",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/e1415c68-b4df-409f-b538-642583e61c96/P20210523_201347000_7BC7A4EC-197A-4498-8F69-A3B60EE757E8.jpg",
+              "type": "person",
+              "person": {
+                "email": "jane@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T20:01:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "롤라루 스레드",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "롤라루 스레드",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-813d-92b3-e76b2aae5778",
+      "title": "인스타 콘텐츠 제작",
+      "created_at": "2026-06-01T20:00:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc9813d92b3e76b2aae5778",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T09:00:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "제인"
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T20:00:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T09:00:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "ae042761-c7f7-4a42-b1db-94bac29e148f",
+              "name": "제인",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/e1415c68-b4df-409f-b538-642583e61c96/P20210523_201347000_7BC7A4EC-197A-4498-8F69-A3B60EE757E8.jpg",
+              "type": "person",
+              "person": {
+                "email": "jane@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T20:00:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "인스타 콘텐츠 제작",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "인스타 콘텐츠 제작",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-814e-9619-d38b6533f11c",
+      "title": "광고 콘텐츠 제작",
+      "created_at": "2026-06-01T20:00:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc9814e9619d38b6533f11c",
+      "properties": {
+        "자동보정": "YES",
+        "마감일시": "",
+        "날짜": "2026-06-02T10:30:00.000+09:00",
+        "보정완료": "YES",
+        "담당자": [
+          "제인"
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T20:00:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "TEl[",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-06-02T10:30:00.000+09:00",
+            "end": null,
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "ae042761-c7f7-4a42-b1db-94bac29e148f",
+              "name": "제인",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/e1415c68-b4df-409f-b538-642583e61c96/P20210523_201347000_7BC7A4EC-197A-4498-8F69-A3B60EE757E8.jpg",
+              "type": "person",
+              "person": {
+                "email": "jane@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T20:00:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "광고 콘텐츠 제작",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "광고 콘텐츠 제작",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "372c081d-6cc9-8113-b7c9-f924855eec61",
+      "title": "협찬확인",
+      "created_at": "2026-06-01T15:08:00.000Z",
+      "last_edited_at": "2026-06-01T15:08:00.000Z",
+      "url": "https://www.notion.so/372c081d6cc98113b7c9f924855eec61",
+      "properties": {
+        "자동보정": "NO",
+        "마감일시": "",
+        "날짜": "2026-05-11T10:00:00.000+09:00",
+        "보정완료": "NO",
+        "담당자": [
+          "딜런"
+        ],
+        "🔥 할일 DB": "",
+        "생성 일시": "2026-06-01T15:08:00.000Z",
+        "완료여부": false
+      },
+      "_raw_properties": {
+        "자동보정": {
+          "id": "CinA",
+          "type": "select",
+          "select": {
+            "id": "YkL^",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "마감일시": {
+          "id": "KQvy",
+          "type": "date",
+          "date": null
+        },
+        "날짜": {
+          "id": "O%7D%3CZ",
+          "type": "date",
+          "date": {
+            "start": "2026-05-11T10:00:00.000+09:00",
+            "end": "2026-05-11T11:00:00.000+09:00",
+            "time_zone": null
+          }
+        },
+        "보정완료": {
+          "id": "%5B%3A%3CT",
+          "type": "select",
+          "select": {
+            "id": "WyYM",
+            "name": "NO",
+            "color": "blue"
+          }
+        },
+        "담당자": {
+          "id": "%5C%5CYn",
+          "type": "people",
+          "people": [
+            {
+              "object": "user",
+              "id": "26cd872b-594c-81ab-b45d-00022527b143",
+              "name": "딜런",
+              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
+              "type": "person",
+              "person": {
+                "email": "dylan@openhan.kr"
+              }
+            }
+          ]
+        },
+        "🔥 할일 DB": {
+          "id": "%5E%3Dyh",
+          "type": "relation",
+          "relation": [],
+          "has_more": false
+        },
+        "생성 일시": {
+          "id": "fh%60h",
+          "type": "created_time",
+          "created_time": "2026-06-01T15:08:00.000Z"
+        },
+        "완료여부": {
+          "id": "yTyI",
+          "type": "checkbox",
+          "checkbox": false
+        },
+        "이름": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "text",
+              "text": {
+                "content": "협찬확인",
+                "link": null
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "협찬확인",
+              "href": null
+            }
+          ]
+        }
+      }
+    },
     {
       "id": "372c081d-6cc9-8086-94e9-e5233e7ac276",
       "title": "광고 소재 제작,업로드",
       "created_at": "2026-06-01T00:04:00.000Z",
-      "last_edited_at": "2026-06-01T00:05:00.000Z",
+      "last_edited_at": "2026-06-01T06:02:00.000Z",
       "url": "https://www.notion.so/372c081d6cc9808694e9e5233e7ac276",
       "properties": {
         "자동보정": "NO",
         "마감일시": "",
-        "날짜": "2026-06-01T16:00:00.000+09:00",
+        "날짜": "2026-06-01T16:30:00.000+09:00",
         "보정완료": "NO",
         "담당자": [
           "딜런"
@@ -38,8 +2281,8 @@
           "id": "O%7D%3CZ",
           "type": "date",
           "date": {
-            "start": "2026-06-01T16:00:00.000+09:00",
-            "end": "2026-06-01T18:00:00.000+09:00",
+            "start": "2026-06-01T16:30:00.000+09:00",
+            "end": "2026-06-01T18:30:00.000+09:00",
             "time_zone": null
           }
         },
@@ -113,13 +2356,13 @@
       "id": "372c081d-6cc9-80ab-819c-d5ccdef90a61",
       "title": "인스타 콘텐츠 제작",
       "created_at": "2026-06-01T00:04:00.000Z",
-      "last_edited_at": "2026-06-01T00:04:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
       "url": "https://www.notion.so/372c081d6cc980ab819cd5ccdef90a61",
       "properties": {
         "자동보정": "YES",
         "마감일시": "",
-        "날짜": "2026-02-24T09:00:00.000+09:00",
-        "보정완료": "NO",
+        "날짜": "2026-06-02T09:00:00.000+09:00",
+        "보정완료": "YES",
         "담당자": [
           "제인",
           "딜런"
@@ -147,8 +2390,8 @@
           "id": "O%7D%3CZ",
           "type": "date",
           "date": {
-            "start": "2026-02-24T09:00:00.000+09:00",
-            "end": "2026-02-24T10:30:00.000+09:00",
+            "start": "2026-06-02T09:00:00.000+09:00",
+            "end": null,
             "time_zone": null
           }
         },
@@ -156,9 +2399,9 @@
           "id": "%5B%3A%3CT",
           "type": "select",
           "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
           }
         },
         "담당자": {
@@ -232,13 +2475,13 @@
       "id": "372c081d-6cc9-8029-8cd2-f6f4ffc0f04e",
       "title": "광고 콘텐츠 제작",
       "created_at": "2026-06-01T00:04:00.000Z",
-      "last_edited_at": "2026-06-01T00:04:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
       "url": "https://www.notion.so/372c081d6cc980298cd2f6f4ffc0f04e",
       "properties": {
         "자동보정": "YES",
         "마감일시": "",
-        "날짜": "2026-02-24T10:30:00.000+09:00",
-        "보정완료": "NO",
+        "날짜": "2026-06-02T10:30:00.000+09:00",
+        "보정완료": "YES",
         "담당자": [
           "제인",
           "딜런"
@@ -266,8 +2509,8 @@
           "id": "O%7D%3CZ",
           "type": "date",
           "date": {
-            "start": "2026-02-24T10:30:00.000+09:00",
-            "end": "2026-02-24T12:00:00.000+09:00",
+            "start": "2026-06-02T10:30:00.000+09:00",
+            "end": null,
             "time_zone": null
           }
         },
@@ -275,9 +2518,9 @@
           "id": "%5B%3A%3CT",
           "type": "select",
           "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
           }
         },
         "담당자": {
@@ -459,7 +2702,7 @@
       "id": "372c081d-6cc9-806c-b676-feec5bc18fed",
       "title": "1시 발주",
       "created_at": "2026-06-01T00:03:00.000Z",
-      "last_edited_at": "2026-06-01T00:03:00.000Z",
+      "last_edited_at": "2026-06-01T06:02:00.000Z",
       "url": "https://www.notion.so/1-372c081d6cc9806cb676feec5bc18fed",
       "properties": {
         "자동보정": "NO",
@@ -471,7 +2714,7 @@
         ],
         "🔥 할일 DB": "",
         "생성 일시": "2026-06-01T00:03:00.000Z",
-        "완료여부": false
+        "완료여부": true
       },
       "_raw_properties": {
         "자동보정": {
@@ -536,7 +2779,7 @@
         "완료여부": {
           "id": "yTyI",
           "type": "checkbox",
-          "checkbox": false
+          "checkbox": true
         },
         "이름": {
           "id": "title",
@@ -567,7 +2810,7 @@
       "id": "372c081d-6cc9-80f2-9889-d3957a3b12e5",
       "title": "11시 발주",
       "created_at": "2026-06-01T00:03:00.000Z",
-      "last_edited_at": "2026-06-01T00:03:00.000Z",
+      "last_edited_at": "2026-06-01T06:02:00.000Z",
       "url": "https://www.notion.so/11-372c081d6cc980f29889d3957a3b12e5",
       "properties": {
         "자동보정": "NO",
@@ -579,7 +2822,7 @@
         ],
         "🔥 할일 DB": "",
         "생성 일시": "2026-06-01T00:03:00.000Z",
-        "완료여부": false
+        "완료여부": true
       },
       "_raw_properties": {
         "자동보정": {
@@ -644,7 +2887,7 @@
         "완료여부": {
           "id": "yTyI",
           "type": "checkbox",
-          "checkbox": false
+          "checkbox": true
         },
         "이름": {
           "id": "title",
@@ -675,13 +2918,13 @@
       "id": "372c081d-6cc9-8041-8184-ea1c073cdf0d",
       "title": "3시 발주",
       "created_at": "2026-06-01T00:02:00.000Z",
-      "last_edited_at": "2026-06-01T00:02:00.000Z",
+      "last_edited_at": "2026-06-01T22:48:00.000Z",
       "url": "https://www.notion.so/3-372c081d6cc980418184ea1c073cdf0d",
       "properties": {
         "자동보정": "YES",
         "마감일시": "",
-        "날짜": "2026-02-25T15:00:00.000+09:00",
-        "보정완료": "NO",
+        "날짜": "2026-06-02T15:00:00.000+09:00",
+        "보정완료": "YES",
         "담당자": [
           "딜런"
         ],
@@ -708,8 +2951,8 @@
           "id": "O%7D%3CZ",
           "type": "date",
           "date": {
-            "start": "2026-02-25T15:00:00.000+09:00",
-            "end": "2026-02-25T15:00:00.000+09:00",
+            "start": "2026-06-02T15:00:00.000+09:00",
+            "end": null,
             "time_zone": null
           }
         },
@@ -717,9 +2960,9 @@
           "id": "%5B%3A%3CT",
           "type": "select",
           "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
+            "id": "swu{",
+            "name": "YES",
+            "color": "pink"
           }
         },
         "담당자": {
@@ -783,7 +3026,7 @@
       "id": "371c081d-6cc9-81ac-840e-fb09d00bf666",
       "title": "네이버 자사몰 쿠팡 확인 및 세팅",
       "created_at": "2026-05-31T21:30:00.000Z",
-      "last_edited_at": "2026-06-01T00:03:00.000Z",
+      "last_edited_at": "2026-06-01T06:02:00.000Z",
       "url": "https://www.notion.so/371c081d6cc981ac840efb09d00bf666",
       "properties": {
         "자동보정": "YES",
@@ -795,7 +3038,7 @@
         ],
         "🔥 할일 DB": "",
         "생성 일시": "2026-05-31T21:30:00.000Z",
-        "완료여부": false
+        "완료여부": true
       },
       "_raw_properties": {
         "자동보정": {
@@ -860,7 +3103,7 @@
         "완료여부": {
           "id": "yTyI",
           "type": "checkbox",
-          "checkbox": false
+          "checkbox": true
         },
         "이름": {
           "id": "title",
@@ -1846,7 +4089,7 @@
       "id": "371c081d-6cc9-81be-beb2-ce7250e30725",
       "title": "3시 발주",
       "created_at": "2026-05-31T21:29:00.000Z",
-      "last_edited_at": "2026-05-31T22:48:00.000Z",
+      "last_edited_at": "2026-06-01T08:04:00.000Z",
       "url": "https://www.notion.so/3-371c081d6cc981bebeb2ce7250e30725",
       "properties": {
         "자동보정": "YES",
@@ -1858,7 +4101,7 @@
         ],
         "🔥 할일 DB": "",
         "생성 일시": "2026-05-31T21:29:00.000Z",
-        "완료여부": false
+        "완료여부": true
       },
       "_raw_properties": {
         "자동보정": {
@@ -1923,7 +4166,7 @@
         "완료여부": {
           "id": "yTyI",
           "type": "checkbox",
-          "checkbox": false
+          "checkbox": true
         },
         "이름": {
           "id": "title",
@@ -2378,7 +4621,7 @@
       "id": "371c081d-6cc9-8137-b34e-ed1cf40e64a1",
       "title": "메타, 네이버, 쿠팡 광고 확인",
       "created_at": "2026-05-31T21:29:00.000Z",
-      "last_edited_at": "2026-06-01T00:04:00.000Z",
+      "last_edited_at": "2026-06-01T06:02:00.000Z",
       "url": "https://www.notion.so/371c081d6cc98137b34eed1cf40e64a1",
       "properties": {
         "자동보정": "YES",
@@ -2390,7 +4633,7 @@
         ],
         "🔥 할일 DB": "",
         "생성 일시": "2026-05-31T21:29:00.000Z",
-        "완료여부": false
+        "완료여부": true
       },
       "_raw_properties": {
         "자동보정": {
@@ -2455,7 +4698,7 @@
         "완료여부": {
           "id": "yTyI",
           "type": "checkbox",
-          "checkbox": false
+          "checkbox": true
         },
         "이름": {
           "id": "title",
@@ -2810,7 +5053,7 @@
       "id": "371c081d-6cc9-81e5-84a9-d4fb985163cc",
       "title": "광고 콘텐츠 제작",
       "created_at": "2026-05-31T20:00:00.000Z",
-      "last_edited_at": "2026-05-31T22:48:00.000Z",
+      "last_edited_at": "2026-06-01T04:50:00.000Z",
       "url": "https://www.notion.so/371c081d6cc981e584a9d4fb985163cc",
       "properties": {
         "자동보정": "YES",
@@ -2822,7 +5065,7 @@
         ],
         "🔥 할일 DB": "",
         "생성 일시": "2026-05-31T20:00:00.000Z",
-        "완료여부": false
+        "완료여부": true
       },
       "_raw_properties": {
         "자동보정": {
@@ -2844,7 +5087,7 @@
           "type": "date",
           "date": {
             "start": "2026-06-01T10:30:00.000+09:00",
-            "end": null,
+            "end": "2026-06-01T14:00:00.000+09:00",
             "time_zone": null
           }
         },
@@ -2887,7 +5130,7 @@
         "완료여부": {
           "id": "yTyI",
           "type": "checkbox",
-          "checkbox": false
+          "checkbox": true
         },
         "이름": {
           "id": "title",
@@ -2918,19 +5161,19 @@
       "id": "371c081d-6cc9-81cb-a0f5-e01ea3e83ec7",
       "title": "인스타 콘텐츠 제작",
       "created_at": "2026-05-31T20:00:00.000Z",
-      "last_edited_at": "2026-06-01T00:23:00.000Z",
+      "last_edited_at": "2026-06-01T01:40:00.000Z",
       "url": "https://www.notion.so/371c081d6cc981cba0f5e01ea3e83ec7",
       "properties": {
         "자동보정": "YES",
         "마감일시": "",
-        "날짜": "2026-06-01T09:00:00.000+09:00",
+        "날짜": "2026-06-01T09:30:00.000+09:00",
         "보정완료": "YES",
         "담당자": [
           "제인"
         ],
         "🔥 할일 DB": "",
         "생성 일시": "2026-05-31T20:00:00.000Z",
-        "완료여부": false
+        "완료여부": true
       },
       "_raw_properties": {
         "자동보정": {
@@ -2951,8 +5194,8 @@
           "id": "O%7D%3CZ",
           "type": "date",
           "date": {
-            "start": "2026-06-01T09:00:00.000+09:00",
-            "end": "2026-06-01T10:00:00.000+09:00",
+            "start": "2026-06-01T09:30:00.000+09:00",
+            "end": "2026-06-01T10:30:00.000+09:00",
             "time_zone": null
           }
         },
@@ -2995,7 +5238,7 @@
         "완료여부": {
           "id": "yTyI",
           "type": "checkbox",
-          "checkbox": false
+          "checkbox": true
         },
         "이름": {
           "id": "title",
@@ -3026,7 +5269,7 @@
       "id": "371c081d-6cc9-81dd-bd80-f579f54f0949",
       "title": "롤라루 스레드",
       "created_at": "2026-05-31T20:00:00.000Z",
-      "last_edited_at": "2026-05-31T22:48:00.000Z",
+      "last_edited_at": "2026-06-01T06:32:00.000Z",
       "url": "https://www.notion.so/371c081d6cc981ddbd80f579f54f0949",
       "properties": {
         "자동보정": "YES",
@@ -3038,7 +5281,7 @@
         ],
         "🔥 할일 DB": "",
         "생성 일시": "2026-05-31T20:00:00.000Z",
-        "완료여부": false
+        "완료여부": true
       },
       "_raw_properties": {
         "자동보정": {
@@ -3060,7 +5303,7 @@
           "type": "date",
           "date": {
             "start": "2026-06-01T16:00:00.000+09:00",
-            "end": null,
+            "end": "2026-06-01T16:00:00.000+09:00",
             "time_zone": null
           }
         },
@@ -3103,7 +5346,7 @@
         "완료여부": {
           "id": "yTyI",
           "type": "checkbox",
-          "checkbox": false
+          "checkbox": true
         },
         "이름": {
           "id": "title",
@@ -29913,2244 +32156,6 @@
                 "color": "default"
               },
               "plain_text": "1시 발주",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-8191-9eba-e5f382f3451b",
-      "title": "이지웰",
-      "created_at": "2026-05-13T21:29:00.000Z",
-      "last_edited_at": "2026-05-13T21:29:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc981919ebae5f382f3451b",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "2026-05-11T10:15:00.000+09:00",
-        "날짜": "",
-        "보정완료": "NO",
-        "담당자": [],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T21:29:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": {
-            "start": "2026-05-11T10:15:00.000+09:00",
-            "end": "2026-05-11T10:30:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": null
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": []
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "이지웰",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "이지웰",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-817e-a481-ded7155e30b4",
-      "title": "STCO 재고확인",
-      "created_at": "2026-05-13T21:29:00.000Z",
-      "last_edited_at": "2026-05-13T22:48:00.000Z",
-      "url": "https://www.notion.so/STCO-35fc081d6cc9817ea481ded7155e30b4",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-14T11:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "클레어 "
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T21:29:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-14T11:00:00.000+09:00",
-            "end": null,
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
-              "name": "클레어 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
-              "type": "person",
-              "person": {
-                "email": "claire@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "STCO 재고확인",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "STCO 재고확인",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-8199-8e28-df89c42f1fe7",
-      "title": "허브",
-      "created_at": "2026-05-13T21:29:00.000Z",
-      "last_edited_at": "2026-05-13T22:48:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc981998e28df89c42f1fe7",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-14T10:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "클레어 "
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T21:29:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-14T10:00:00.000+09:00",
-            "end": null,
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
-              "name": "클레어 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
-              "type": "person",
-              "person": {
-                "email": "claire@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "허브",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "허브",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-8137-b0d4-c76707987bb5",
-      "title": "자사몰 취소/교환/반품 확인하기",
-      "created_at": "2026-05-13T21:29:00.000Z",
-      "last_edited_at": "2026-05-13T21:29:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc98137b0d4c76707987bb5",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "",
-        "날짜": "",
-        "보정완료": "NO",
-        "담당자": [
-          "클레어 "
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T21:29:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": null
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
-              "name": "클레어 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
-              "type": "person",
-              "person": {
-                "email": "claire@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "자사몰 취소/교환/반품 확인하기",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "자사몰 취소/교환/반품 확인하기",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-81ac-b467-fa6a4a563fc5",
-      "title": "광고 소재 제작",
-      "created_at": "2026-05-13T21:29:00.000Z",
-      "last_edited_at": "2026-05-15T00:14:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc981acb467fa6a4a563fc5",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-14T16:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "딜런"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T21:29:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-14T16:00:00.000+09:00",
-            "end": "2026-05-14T18:00:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "26cd872b-594c-81ab-b45d-00022527b143",
-              "name": "딜런",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
-              "type": "person",
-              "person": {
-                "email": "dylan@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "광고 소재 제작",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "광고 소재 제작",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-81b5-a41b-ce0600c029ea",
-      "title": "일간통계 작성하기",
-      "created_at": "2026-05-13T21:29:00.000Z",
-      "last_edited_at": "2026-05-13T21:29:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc981b5a41bce0600c029ea",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "",
-        "날짜": "2026-05-11T08:00:00.000+09:00",
-        "보정완료": "NO",
-        "담당자": [
-          "클레어 "
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T21:29:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-11T08:00:00.000+09:00",
-            "end": null,
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
-              "name": "클레어 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
-              "type": "person",
-              "person": {
-                "email": "claire@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "일간통계 작성하기",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "일간통계 작성하기",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-81c1-84de-fb3f9d1ad6b2",
-      "title": "롤라루 스레드",
-      "created_at": "2026-05-13T20:00:00.000Z",
-      "last_edited_at": "2026-05-13T22:48:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc981c184defb3f9d1ad6b2",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-14T16:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "제인"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T20:00:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-14T16:00:00.000+09:00",
-            "end": null,
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "ae042761-c7f7-4a42-b1db-94bac29e148f",
-              "name": "제인",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/e1415c68-b4df-409f-b538-642583e61c96/P20210523_201347000_7BC7A4EC-197A-4498-8F69-A3B60EE757E8.jpg",
-              "type": "person",
-              "person": {
-                "email": "jane@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T20:00:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "롤라루 스레드",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "롤라루 스레드",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-81b4-b455-f7006790d096",
-      "title": "광고 콘텐츠 제작",
-      "created_at": "2026-05-13T20:00:00.000Z",
-      "last_edited_at": "2026-05-14T08:52:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc981b4b455f7006790d096",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-14T10:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "제인"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T20:00:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-14T10:00:00.000+09:00",
-            "end": "2026-05-14T12:00:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "ae042761-c7f7-4a42-b1db-94bac29e148f",
-              "name": "제인",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/e1415c68-b4df-409f-b538-642583e61c96/P20210523_201347000_7BC7A4EC-197A-4498-8F69-A3B60EE757E8.jpg",
-              "type": "person",
-              "person": {
-                "email": "jane@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T20:00:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "광고 콘텐츠 제작",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "광고 콘텐츠 제작",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-817a-8c88-cd397e019e39",
-      "title": "인스타 콘텐츠 제작",
-      "created_at": "2026-05-13T20:00:00.000Z",
-      "last_edited_at": "2026-05-14T06:03:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc9817a8c88cd397e019e39",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-14T12:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "제인"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T20:00:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-14T12:00:00.000+09:00",
-            "end": "2026-05-14T15:00:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "ae042761-c7f7-4a42-b1db-94bac29e148f",
-              "name": "제인",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/e1415c68-b4df-409f-b538-642583e61c96/P20210523_201347000_7BC7A4EC-197A-4498-8F69-A3B60EE757E8.jpg",
-              "type": "person",
-              "person": {
-                "email": "jane@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T20:00:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "인스타 콘텐츠 제작",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "인스타 콘텐츠 제작",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-80fb-95bc-e243eba0aa57",
-      "title": "1시 발주",
-      "created_at": "2026-05-13T00:21:00.000Z",
-      "last_edited_at": "2026-05-13T07:29:00.000Z",
-      "url": "https://www.notion.so/1-35fc081d6cc980fb95bce243eba0aa57",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "",
-        "날짜": "2026-05-13T13:00:00.000+09:00",
-        "보정완료": "NO",
-        "담당자": [
-          "딜런"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T00:21:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-13T13:00:00.000+09:00",
-            "end": "2026-05-13T13:00:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "26cd872b-594c-81ab-b45d-00022527b143",
-              "name": "딜런",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
-              "type": "person",
-              "person": {
-                "email": "dylan@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T00:21:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "1시 발주",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "1시 발주",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-80a5-8ecf-dd684ddad834",
-      "title": "11시 발주",
-      "created_at": "2026-05-13T00:20:00.000Z",
-      "last_edited_at": "2026-05-13T07:28:00.000Z",
-      "url": "https://www.notion.so/11-35fc081d6cc980a58ecfdd684ddad834",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "",
-        "날짜": "2026-05-13T11:00:00.000+09:00",
-        "보정완료": "NO",
-        "담당자": [
-          "딜런"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T00:20:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-13T11:00:00.000+09:00",
-            "end": "2026-05-13T11:00:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "26cd872b-594c-81ab-b45d-00022527b143",
-              "name": "딜런",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
-              "type": "person",
-              "person": {
-                "email": "dylan@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T00:20:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "11시 발주",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "11시 발주",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-804e-ae60-e12e654345de",
-      "title": "협찬확인",
-      "created_at": "2026-05-13T00:20:00.000Z",
-      "last_edited_at": "2026-05-13T08:53:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc9804eae60e12e654345de",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "",
-        "날짜": "2026-05-13T11:00:00.000+09:00",
-        "보정완료": "NO",
-        "담당자": [
-          "딜런"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T00:20:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-13T11:00:00.000+09:00",
-            "end": "2026-05-13T12:00:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "26cd872b-594c-81ab-b45d-00022527b143",
-              "name": "딜런",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
-              "type": "person",
-              "person": {
-                "email": "dylan@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T00:20:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "협찬확인",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "협찬확인",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35fc081d-6cc9-802f-a5c4-ca1185076ef4",
-      "title": "메타, 네이버, 쿠팡 광고 확인",
-      "created_at": "2026-05-13T00:19:00.000Z",
-      "last_edited_at": "2026-05-15T00:14:00.000Z",
-      "url": "https://www.notion.so/35fc081d6cc9802fa5c4ca1185076ef4",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-14T10:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "딜런"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-13T00:19:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-14T10:00:00.000+09:00",
-            "end": "2026-05-14T13:00:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "26cd872b-594c-81ab-b45d-00022527b143",
-              "name": "딜런",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
-              "type": "person",
-              "person": {
-                "email": "dylan@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-13T00:19:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "메타, 네이버, 쿠팡 광고 확인",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "메타, 네이버, 쿠팡 광고 확인",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35ec081d-6cc9-8079-80cc-f47ff2d86637",
-      "title": "일간통계 작성하기",
-      "created_at": "2026-05-12T23:03:00.000Z",
-      "last_edited_at": "2026-05-12T23:03:00.000Z",
-      "url": "https://www.notion.so/35ec081d6cc9807980ccf47ff2d86637",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-13T08:15:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "클레어 "
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-12T23:03:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-13T08:15:00.000+09:00",
-            "end": null,
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
-              "name": "클레어 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
-              "type": "person",
-              "person": {
-                "email": "claire@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-12T23:03:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "일간통계 작성하기",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "일간통계 작성하기",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35ec081d-6cc9-80da-bc18-f21d9823895e",
-      "title": "일간통계 작성하기",
-      "created_at": "2026-05-12T23:02:00.000Z",
-      "last_edited_at": "2026-05-12T23:02:00.000Z",
-      "url": "https://www.notion.so/35ec081d6cc980dabc18f21d9823895e",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "",
-        "날짜": "2026-05-11T08:00:00.000+09:00",
-        "보정완료": "NO",
-        "담당자": [
-          "클레어 "
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-12T23:02:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-11T08:00:00.000+09:00",
-            "end": null,
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
-              "name": "클레어 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
-              "type": "person",
-              "person": {
-                "email": "claire@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-12T23:02:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "일간통계 작성하기",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "일간통계 작성하기",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35ec081d-6cc9-81e5-9c06-c333a3270448",
-      "title": "네이버 자사몰 쿠팡 확인 및 세팅",
-      "created_at": "2026-05-12T21:29:00.000Z",
-      "last_edited_at": "2026-05-13T07:28:00.000Z",
-      "url": "https://www.notion.so/35ec081d6cc981e59c06c333a3270448",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-13T09:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "딜런"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-12T21:29:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-13T09:00:00.000+09:00",
-            "end": null,
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "26cd872b-594c-81ab-b45d-00022527b143",
-              "name": "딜런",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
-              "type": "person",
-              "person": {
-                "email": "dylan@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-12T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "네이버 자사몰 쿠팡 확인 및 세팅",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "네이버 자사몰 쿠팡 확인 및 세팅",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35ec081d-6cc9-81a9-8196-eea87e24b4c5",
-      "title": "네페 문의글 확인하기",
-      "created_at": "2026-05-12T21:29:00.000Z",
-      "last_edited_at": "2026-05-12T21:29:00.000Z",
-      "url": "https://www.notion.so/35ec081d6cc981a98196eea87e24b4c5",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "",
-        "날짜": "2026-03-12T08:15:00.000+09:00",
-        "보정완료": "NO",
-        "담당자": [
-          "클레어 "
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-12T21:29:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-03-12T08:15:00.000+09:00",
-            "end": "2026-03-12T08:25:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
-              "name": "클레어 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
-              "type": "person",
-              "person": {
-                "email": "claire@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-12T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "네페 문의글 확인하기",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "네페 문의글 확인하기",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35ec081d-6cc9-8107-a2bf-e62d0321f633",
-      "title": "이지웰",
-      "created_at": "2026-05-12T21:29:00.000Z",
-      "last_edited_at": "2026-05-12T21:29:00.000Z",
-      "url": "https://www.notion.so/35ec081d6cc98107a2bfe62d0321f633",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "2026-05-11T10:15:00.000+09:00",
-        "날짜": "",
-        "보정완료": "NO",
-        "담당자": [],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-12T21:29:00.000Z",
-        "완료여부": false
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": {
-            "start": "2026-05-11T10:15:00.000+09:00",
-            "end": "2026-05-11T10:30:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": null
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": []
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-12T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": false
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "이지웰",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "이지웰",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35ec081d-6cc9-81e5-a341-e15b339cd6aa",
-      "title": "1시 발주",
-      "created_at": "2026-05-12T21:29:00.000Z",
-      "last_edited_at": "2026-05-19T07:05:00.000Z",
-      "url": "https://www.notion.so/1-35ec081d6cc981e5a341e15b339cd6aa",
-      "properties": {
-        "자동보정": "NO",
-        "마감일시": "",
-        "날짜": "2026-05-19T13:00:00.000+09:00",
-        "보정완료": "NO",
-        "담당자": [
-          "딜런"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-12T21:29:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "YkL^",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-19T13:00:00.000+09:00",
-            "end": "2026-05-19T13:05:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "WyYM",
-            "name": "NO",
-            "color": "blue"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "26cd872b-594c-81ab-b45d-00022527b143",
-              "name": "딜런",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
-              "type": "person",
-              "person": {
-                "email": "dylan@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-12T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "1시 발주",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "1시 발주",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35ec081d-6cc9-81c1-83dc-d9aebf945cba",
-      "title": "리뷰 답글 달기",
-      "created_at": "2026-05-12T21:29:00.000Z",
-      "last_edited_at": "2026-05-12T23:02:00.000Z",
-      "url": "https://www.notion.so/35ec081d6cc981c183dcd9aebf945cba",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-13T08:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "클레어 "
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-12T21:29:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-13T08:00:00.000+09:00",
-            "end": null,
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "33f2349e-2248-466a-8ef6-ab57505ba52f",
-              "name": "클레어 ",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/b523c967-d46f-4100-b416-46f02d1a4271/20190819_114302.png",
-              "type": "person",
-              "person": {
-                "email": "claire@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-12T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "리뷰 답글 달기",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "리뷰 답글 달기",
-              "href": null
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "35ec081d-6cc9-81d4-a035-dca34c5b2ccd",
-      "title": "광고 소재 제작",
-      "created_at": "2026-05-12T21:29:00.000Z",
-      "last_edited_at": "2026-05-13T08:53:00.000Z",
-      "url": "https://www.notion.so/35ec081d6cc981d4a035dca34c5b2ccd",
-      "properties": {
-        "자동보정": "YES",
-        "마감일시": "",
-        "날짜": "2026-05-13T16:00:00.000+09:00",
-        "보정완료": "YES",
-        "담당자": [
-          "딜런"
-        ],
-        "🔥 할일 DB": "",
-        "생성 일시": "2026-05-12T21:29:00.000Z",
-        "완료여부": true
-      },
-      "_raw_properties": {
-        "자동보정": {
-          "id": "CinA",
-          "type": "select",
-          "select": {
-            "id": "TEl[",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "마감일시": {
-          "id": "KQvy",
-          "type": "date",
-          "date": null
-        },
-        "날짜": {
-          "id": "O%7D%3CZ",
-          "type": "date",
-          "date": {
-            "start": "2026-05-13T16:00:00.000+09:00",
-            "end": "2026-05-13T16:00:00.000+09:00",
-            "time_zone": null
-          }
-        },
-        "보정완료": {
-          "id": "%5B%3A%3CT",
-          "type": "select",
-          "select": {
-            "id": "swu{",
-            "name": "YES",
-            "color": "pink"
-          }
-        },
-        "담당자": {
-          "id": "%5C%5CYn",
-          "type": "people",
-          "people": [
-            {
-              "object": "user",
-              "id": "26cd872b-594c-81ab-b45d-00022527b143",
-              "name": "딜런",
-              "avatar_url": "https://s3-us-west-2.amazonaws.com/public.notion-static.com/42bf10b0-d585-41d7-b183-05f7e9a74cbb/%EC%9C%A4%EB%8B%A4%EB%B9%88%EB%8B%98_%EC%A6%9D%EB%AA%85.jpg",
-              "type": "person",
-              "person": {
-                "email": "dylan@openhan.kr"
-              }
-            }
-          ]
-        },
-        "🔥 할일 DB": {
-          "id": "%5E%3Dyh",
-          "type": "relation",
-          "relation": [],
-          "has_more": false
-        },
-        "생성 일시": {
-          "id": "fh%60h",
-          "type": "created_time",
-          "created_time": "2026-05-12T21:29:00.000Z"
-        },
-        "완료여부": {
-          "id": "yTyI",
-          "type": "checkbox",
-          "checkbox": true
-        },
-        "이름": {
-          "id": "title",
-          "type": "title",
-          "title": [
-            {
-              "type": "text",
-              "text": {
-                "content": "광고 소재 제작",
-                "link": null
-              },
-              "annotations": {
-                "bold": false,
-                "italic": false,
-                "strikethrough": false,
-                "underline": false,
-                "code": false,
-                "color": "default"
-              },
-              "plain_text": "광고 소재 제작",
               "href": null
             }
           ]
