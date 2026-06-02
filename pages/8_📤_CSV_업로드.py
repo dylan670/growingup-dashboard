@@ -660,7 +660,28 @@ with tab_inv:
    파싱 결과 확인하세요.
         """)
 
-    from api.easyadmin_csv import process_uploaded, load_inventory, COLUMN_ALIASES
+    from api.easyadmin_csv import (
+        process_uploaded, load_inventory, COLUMN_ALIASES,
+        DEFAULT_BRAND_KEYWORDS, EXCLUDE_KEYWORDS,
+    )
+
+    # 브랜드 필터 옵션
+    fc1, fc2 = st.columns(2)
+    with fc1:
+        brand_kw_input = st.text_input(
+            "🏷 포함 브랜드 키워드 (쉼표 구분)",
+            value=", ".join(DEFAULT_BRAND_KEYWORDS),
+            help="상품명/브랜드/카테고리에서 이 키워드 중 하나라도 매칭되면 포함",
+        )
+    with fc2:
+        excl_kw_input = st.text_input(
+            "🚫 제외 키워드 (쉼표 구분)",
+            value=", ".join(EXCLUDE_KEYWORDS),
+            help="(사용안함), (단종) 같은 비활성 제품 제외용",
+        )
+
+    brand_kws = [k.strip() for k in brand_kw_input.split(",") if k.strip()]
+    excl_kws = [k.strip() for k in excl_kw_input.split(",") if k.strip()]
 
     uploaded_inv = st.file_uploader(
         "📂 이지어드민 재고 CSV/Excel",
@@ -672,11 +693,25 @@ with tab_inv:
     if uploaded_inv is not None:
         with st.spinner("📥 파싱 중..."):
             try:
-                parsed, info = process_uploaded(uploaded_inv)
-                st.success(
-                    f"✅ {info['parsed_rows']}건 파싱 완료 "
-                    f"(원본 {info['raw_rows']}행)"
+                parsed, info = process_uploaded(
+                    uploaded_inv,
+                    brand_keywords=brand_kws,
+                    exclude_keywords=excl_kws,
+                    apply_brand_filter=True,
                 )
+
+                # 필터 결과 요약
+                bf = info.get("brand_filter") or {}
+                st.success(
+                    f"✅ 원본 {info['raw_rows']:,}행 → "
+                    f"브랜드 필터 후 {info['filtered_rows']:,}행 → "
+                    f"파싱 완료 {info['parsed_rows']:,}건"
+                )
+                if bf:
+                    st.caption(
+                        f"포함 키워드: {', '.join(bf.get('keywords', []))}  ·  "
+                        f"제외 키워드: {', '.join(bf.get('exclude', []))}"
+                    )
 
                 # 매칭된 컬럼 표시
                 with st.expander("🔍 컬럼 매칭 결과", expanded=False):

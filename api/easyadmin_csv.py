@@ -31,21 +31,24 @@ UPLOAD_DIR = ROOT / "data" / "easyadmin_inventory_upload"
 # ==========================================================
 COLUMN_ALIASES: dict[str, list[str]] = {
     "sku":           ["SKU", "SKU코드", "상품코드", "옵션코드", "바코드",
-                      "관리코드", "재고관리코드", "ProductCode"],
+                      "관리코드", "재고관리코드", "대표상품코드",
+                      "ProductCode"],
     "product":       ["상품명", "제품명", "상품이름", "ProductName", "Name"],
     "option":        ["옵션", "옵션명", "옵션값", "Option"],
-    "stock":         ["현재고", "재고", "재고수량", "가용재고", "정상재고",
-                      "출고가능재고", "Stock", "Qty", "Quantity"],
-    "safety_stock":  ["안전재고", "최소재고", "SafetyStock"],
-    "incoming":      ["입고예정", "입고예정수량", "발주수량", "Incoming",
-                      "이동중", "이동중수량"],
+    "stock":         ["가용재고", "현재고", "재고", "재고수량",
+                      "정상재고", "출고가능재고",
+                      "Stock", "Qty", "Quantity"],
+    "safety_stock":  ["경고수량", "안전재고", "최소재고", "위험수량",
+                      "SafetyStock"],
+    "incoming":      ["입고대기", "입고예정", "입고예정수량", "발주수량",
+                      "Incoming", "이동중", "이동중수량"],
     "sold_30d":      ["30일판매", "월판매량", "30일판매량", "최근30일",
                       "월매출수량", "Sold30d"],
     "sold_7d":       ["7일판매", "주간판매", "7일판매량", "Sold7d"],
-    "category":      ["카테고리", "분류", "Category"],
+    "category":      ["카테고리", "분류", "Category", "복종"],
     "brand":         ["브랜드", "Brand"],
     "price":         ["판매가", "가격", "단가", "Price"],
-    "warehouse":     ["창고", "창고명", "Warehouse"],
+    "warehouse":     ["창고", "창고명", "로케이션", "Warehouse"],
     "last_in_date":  ["마지막입고일", "최근입고일", "LastInDate"],
     "last_out_date": ["마지막출고일", "최근출고일", "LastOutDate"],
 }
@@ -90,12 +93,39 @@ def _brand_from_product(p: str) -> str:
     return "기타"
 
 
+def _is_html_xls(data: bytes) -> bool:
+    """이지어드민의 .xls 는 종종 HTML 파일임. 헤더로 감지."""
+    head = data[:300].lower()
+    return b"<html" in head or b"<table" in head
+
+
+def _read_html_xls(data: bytes) -> pd.DataFrame:
+    """HTML 형식 .xls (이지어드민 export) 파싱.
+
+    첫 행이 컬럼 헤더로 들어오는 케이스 대응 → 자동 보정.
+    """
+    tables = pd.read_html(io.BytesIO(data), encoding="utf-8")
+    if not tables:
+        return pd.DataFrame()
+    t = tables[0]
+    # 컬럼이 숫자 (0,1,2,...) 이고 첫 행이 한글 헤더면 → 첫 행을 헤더로
+    if list(t.columns) == list(range(len(t.columns))) and len(t) > 1:
+        header = t.iloc[0].astype(str).tolist()
+        t = t.iloc[1:].copy()
+        t.columns = header
+        t = t.reset_index(drop=True)
+    return t
+
+
 def _read_any(path: Path) -> pd.DataFrame:
-    """CSV / Excel / TSV 자동 감지 + 인코딩 fallback."""
+    """CSV / Excel / HTML(.xls) / TSV 자동 감지 + 인코딩 fallback."""
     suffix = path.suffix.lower()
     if suffix in (".xlsx", ".xls", ".xlsm"):
+        # 이지어드민 HTML xls 우선 시도
+        raw = path.read_bytes()
+        if _is_html_xls(raw):
+            return _read_html_xls(raw)
         return pd.read_excel(path, dtype=object)
-    # csv / tsv
     sep = "\t" if suffix == ".tsv" else ","
     for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
         try:
@@ -111,6 +141,8 @@ def _read_uploaded(data: bytes, filename: str) -> pd.DataFrame:
     """업로드 파일 bytes → DataFrame."""
     suffix = Path(filename).suffix.lower()
     if suffix in (".xlsx", ".xls", ".xlsm"):
+        if _is_html_xls(data):
+            return _read_html_xls(data)
         return pd.read_excel(io.BytesIO(data), dtype=object)
     sep = "\t" if suffix == ".tsv" else ","
     for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
@@ -124,6 +156,77 @@ def _read_uploaded(data: bytes, filename: str) -> pd.DataFrame:
         io.BytesIO(data), sep=sep, encoding="utf-8",
         encoding_errors="replace", dtype=object,
     )
+
+
+# ==========================================================
+# 브랜드 키워드 필터 — 우리 운영 브랜드만 남김
+# ==========================================================
+DEFAULT_BRAND_KEYWORDS: list[str] = ["롤라루", "똑똑", "루티니스트", "러닝"]
+EXCLUDE_KEYWORDS: list[str] = ["사용안함", "단종", "테스트"]
+
+
+def filter_to_our_brands(
+    df: pd.DataFrame,
+    keywords: list[str] | None = None,
+    exclude: list[str] | None = None,
+    search_cols: list[str] | None = None,
+) -> tuple[pd.DataFrame, dict]:
+    """우리 브랜드 키워드 + 활성 제품만 필터링.
+
+    Args:
+        df: parse_inventory_dataframe() 결과 또는 원본 DataFrame
+        keywords: 포함 키워드 (기본 ['롤라루','똑똑','루티니스트','러닝'])
+        exclude: 제외 키워드 (기본 ['사용안함','단종','테스트'])
+        search_cols: 검색 대상 컬럼 (기본 ['brand','product','category'] 또는
+                     원본 한글 컬럼)
+
+    Returns: (filtered_df, info_dict)
+    """
+    if df.empty:
+        return df, {"before": 0, "after": 0}
+
+    kws = keywords if keywords is not None else DEFAULT_BRAND_KEYWORDS
+    exs = exclude if exclude is not None else EXCLUDE_KEYWORDS
+
+    # 검색 대상 컬럼 자동 탐지
+    if search_cols is None:
+        candidates = ["brand", "product", "category",
+                      "브랜드", "상품명", "카테고리"]
+        search_cols = [c for c in candidates if c in df.columns]
+
+    if not search_cols:
+        return df, {"before": len(df), "after": len(df), "warning": "search columns not found"}
+
+    # 포함 마스크
+    include_mask = pd.Series(False, index=df.index)
+    for col in search_cols:
+        col_data = df[col].fillna("").astype(str)
+        for kw in kws:
+            include_mask = include_mask | col_data.str.contains(
+                kw, regex=False, na=False,
+            )
+
+    # 제외 마스크
+    exclude_mask = pd.Series(False, index=df.index)
+    for col in search_cols:
+        col_data = df[col].fillna("").astype(str)
+        for ex in exs:
+            exclude_mask = exclude_mask | col_data.str.contains(
+                ex, regex=False, na=False,
+            )
+
+    final_mask = include_mask & ~exclude_mask
+    filtered = df[final_mask].copy().reset_index(drop=True)
+
+    info = {
+        "before": len(df),
+        "after": len(filtered),
+        "include_matched": int(include_mask.sum()),
+        "excluded": int((include_mask & exclude_mask).sum()),
+        "keywords": kws,
+        "exclude": exs,
+    }
+    return filtered, info
 
 
 # ==========================================================
@@ -199,9 +302,14 @@ def parse_inventory_dataframe(raw: pd.DataFrame) -> pd.DataFrame:
         if detected["last_out_date"] else ""
     )
 
-    # 브랜드 — column 이 있으면 그대로, 없으면 제품명에서 추론
+    # 브랜드 — column 이 있으면 그대로, 비어있거나 'nan' 이면 제품명 fallback
     if detected["brand"]:
-        out["brand"] = raw[detected["brand"]].astype(str).str.strip()
+        raw_brand = raw[detected["brand"]].fillna("").astype(str).str.strip()
+        from_product = out["product"].apply(_brand_from_product)
+        out["brand"] = [
+            str(rb) if str(rb) and str(rb).lower() != "nan" else str(fp)
+            for rb, fp in zip(raw_brand.tolist(), from_product.tolist())
+        ]
     else:
         out["brand"] = out["product"].apply(_brand_from_product)
 
@@ -251,24 +359,49 @@ def save_uploaded_file(uploaded, target_dir: Path | None = None) -> Path:
     return target
 
 
-def process_uploaded(uploaded) -> tuple[pd.DataFrame, dict]:
-    """업로드 파일 한 번에 처리 — 저장 + 파싱 + 저장.
+def process_uploaded(
+    uploaded,
+    brand_keywords: list[str] | None = None,
+    exclude_keywords: list[str] | None = None,
+    apply_brand_filter: bool = True,
+) -> tuple[pd.DataFrame, dict]:
+    """업로드 파일 한 번에 처리 — 저장 + 파싱 + 브랜드 필터 + 저장.
 
-    반환: (파싱된 DataFrame, info dict)
+    Args:
+        uploaded: Streamlit UploadedFile
+        brand_keywords: 포함 키워드 (기본 ['롤라루','똑똑','루티니스트','러닝'])
+        exclude_keywords: 제외 키워드 (기본 ['사용안함','단종','테스트'])
+        apply_brand_filter: False 면 필터 미적용 (전체 저장)
+
+    Returns: (필터링된 DataFrame, info dict)
     """
     saved_path = save_uploaded_file(uploaded)
     raw = _read_uploaded(uploaded.getvalue(), uploaded.name)
-    parsed = parse_inventory_dataframe(raw)
+
+    # 1) 원본 단계에서 한글 컬럼 기반 브랜드 필터 (raw 더 정확)
+    filter_info: dict = {}
+    raw_filtered = raw
+    if apply_brand_filter:
+        raw_filtered, filter_info = filter_to_our_brands(
+            raw,
+            keywords=brand_keywords,
+            exclude=exclude_keywords,
+        )
+
+    # 2) 정규화 파싱
+    parsed = parse_inventory_dataframe(raw_filtered)
     save_inventory(parsed)
 
     info = {
         "saved_path": str(saved_path),
         "raw_rows": len(raw),
+        "filtered_rows": len(raw_filtered),
         "parsed_rows": len(parsed),
         "raw_columns": list(raw.columns),
         "matched_columns": {
             k: _detect_column(raw, k) for k in COLUMN_ALIASES.keys()
         },
+        "brand_filter": filter_info if apply_brand_filter else None,
     }
     return parsed, info
 
