@@ -21,6 +21,7 @@ from api.notion_meetings import (
     cache_load, cache_save, cache_age_seconds,
     create_meeting_page, add_page_comment, list_page_comments,
     list_workspace_users,
+    update_meeting_properties, append_page_blocks, replace_page_content,
 )
 
 
@@ -604,6 +605,143 @@ def render_meetings_view(db_id_arg: str):
                         _render_blocks(blocks)
                 except Exception as e:
                     st.warning(f"본문 조회 실패: {e}")
+
+                # ============================================
+                # ✏️ 수정 / 본문 추가 섹션
+                # ============================================
+                page_id_edit = m.get("id", "")
+                with st.expander("✏️ 회의록 수정", expanded=False):
+                    # 현재 props 값
+                    cur_title = title
+                    cur_team = str(props.get("팀") or "")
+                    cur_confirm = bool(props.get("confirm") or False)
+                    cur_comment = str(props.get("댓글") or "")
+
+                    # 1) 속성 (Properties) 편집 폼
+                    st.markdown("**🏷 속성 편집**")
+                    with st.form(f"edit_props_{page_id_edit}"):
+                        edit_title = st.text_input(
+                            "미팅 주제", value=cur_title,
+                        )
+                        teams_local = sorted({
+                            str((r.get("properties", {}) or {}).get("팀") or "").strip()
+                            for r in (rows or [])
+                            if (r.get("properties", {}) or {}).get("팀")
+                        })
+                        team_opts_local = list(teams_local) if teams_local else ["그로잉업"]
+                        edit_team = st.selectbox(
+                            "팀",
+                            team_opts_local,
+                            index=team_opts_local.index(cur_team) if cur_team in team_opts_local else 0,
+                        )
+
+                        # 참석자 — 노션 사용자 목록 (캐싱)
+                        @st.cache_data(ttl=600, show_spinner=False)
+                        def _users_cached():
+                            return list_workspace_users()
+
+                        users_local = _users_cached()
+                        user_opts = {u["name"] or u["id"][:8]: u["id"] for u in users_local if u.get("id")}
+
+                        # 현재 참석자 — properties 의 list 에서 이름 매칭
+                        cur_participants = props.get("참석자") or []
+                        if not isinstance(cur_participants, list):
+                            cur_participants = []
+                        edit_participants_names = st.multiselect(
+                            "참석자",
+                            options=list(user_opts.keys()),
+                            default=[
+                                n for n in user_opts.keys()
+                                if n in cur_participants
+                            ],
+                        )
+                        edit_participants = [user_opts[n] for n in edit_participants_names]
+
+                        edit_confirm = st.checkbox(
+                            "✅ 확정 (confirm)", value=cur_confirm,
+                        )
+                        edit_comment = st.text_input(
+                            "댓글 컬럼 (rich_text)",
+                            value=cur_comment,
+                            help="페이지 정식 댓글이 아닌 회의록 속성 '댓글' 컬럼",
+                        )
+
+                        if st.form_submit_button("💾 속성 저장", type="primary"):
+                            try:
+                                update_meeting_properties(
+                                    page_id=page_id_edit,
+                                    title=edit_title if edit_title != cur_title else None,
+                                    team=edit_team if edit_team != cur_team else None,
+                                    participants=(
+                                        edit_participants
+                                        if edit_participants_names else None
+                                    ),
+                                    confirm=edit_confirm,
+                                    comment_text=(
+                                        edit_comment if edit_comment != cur_comment else None
+                                    ),
+                                )
+                                st.success("✅ 속성 저장 완료")
+                                st.cache_data.clear()
+                                time.sleep(0.6)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ 저장 실패: {e}")
+
+                    # 2) 본문 추가 (append)
+                    st.markdown("**📝 본문 끝에 추가**")
+                    with st.form(f"append_body_{page_id_edit}"):
+                        new_para = st.text_area(
+                            "추가할 내용 (줄바꿈 = paragraph 분리)",
+                            placeholder="추가 안건: ...\n결정 사항: ...",
+                            height=120,
+                        )
+                        if st.form_submit_button("➕ 본문 추가"):
+                            if not new_para.strip():
+                                st.warning("내용을 입력하세요.")
+                            else:
+                                try:
+                                    append_page_blocks(page_id_edit, new_para)
+                                    st.success("✅ 본문 추가 완료")
+                                    st.cache_data.clear()
+                                    time.sleep(0.6)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ 추가 실패: {e}")
+
+                    # 3) 본문 전체 교체 (위험 — 확인 체크 필요)
+                    st.markdown("**🔄 본문 전체 교체** "
+                                "<span style='color:#dc2626; font-size:0.78rem;'>"
+                                "(주의: 기존 본문 모두 삭제됨)</span>",
+                                unsafe_allow_html=True)
+                    with st.form(f"replace_body_{page_id_edit}"):
+                        new_body = st.text_area(
+                            "새 본문 (기존 내용 완전 대체)",
+                            placeholder="회의 내용 새로 작성...",
+                            height=160,
+                        )
+                        confirm_replace = st.checkbox(
+                            "⚠️ 기존 본문 완전 삭제 동의",
+                        )
+                        if st.form_submit_button("🔄 본문 교체", type="secondary"):
+                            if not confirm_replace:
+                                st.warning("'기존 본문 삭제 동의' 체크 필요.")
+                            elif not new_body.strip():
+                                st.warning("새 본문 입력 필요.")
+                            else:
+                                try:
+                                    result = replace_page_content(
+                                        page_id_edit, new_body,
+                                    )
+                                    st.success(
+                                        f"✅ 교체 완료 — "
+                                        f"기존 {result['deleted_blocks']}개 블록 삭제 + 새 본문 작성"
+                                    )
+                                    st.cache_data.clear()
+                                    time.sleep(0.6)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ 교체 실패: {e}")
 
                 # ============================================
                 # 💬 노션 댓글 섹션

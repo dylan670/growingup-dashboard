@@ -601,6 +601,176 @@ def create_meeting_page(
         raise RuntimeError(f"회의록 생성 실패 HTTP {status}: {body}")
 
 
+def update_meeting_properties(
+    page_id: str,
+    title: str | None = None,
+    team: str | None = None,
+    participants: list[str] | None = None,
+    confirm: bool | None = None,
+    comment_text: str | None = None,
+) -> dict:
+    """회의록 페이지의 properties 수정 (제목/팀/참석자/confirm/댓글 컬럼).
+
+    None 인 인자는 건드리지 않음 (부분 업데이트).
+
+    Args:
+        page_id: 노션 페이지 id
+        title: 새 미팅 주제
+        team: 새 팀 select 값
+        participants: 새 참석자 user id 리스트 (전체 교체)
+        confirm: 확정 체크박스
+        comment_text: '댓글' rich_text 컬럼 (정식 페이지 댓글이 아님)
+
+    Returns: 수정된 페이지 정보
+    """
+    token, _ = _get_creds()
+    if not token:
+        raise RuntimeError("NOTION_TOKEN 없음")
+
+    properties: dict[str, Any] = {}
+    if title is not None:
+        properties["미팅 주제"] = {
+            "title": [{"text": {"content": title}}],
+        }
+    if team is not None:
+        properties["팀"] = {"select": {"name": team}} if team else {"select": None}
+    if participants is not None:
+        properties["참석자"] = {
+            "people": [{"id": uid} for uid in participants],
+        }
+    if confirm is not None:
+        properties["confirm"] = {"checkbox": bool(confirm)}
+    if comment_text is not None:
+        properties["댓글"] = {
+            "rich_text": [{"text": {"content": comment_text}}],
+        }
+
+    if not properties:
+        raise ValueError("수정할 properties 가 없음")
+
+    try:
+        resp = requests.patch(
+            f"{NOTION_API_BASE}/pages/{page_id}",
+            headers=_headers(token),
+            json={"properties": properties},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.HTTPError as e:
+        body = e.response.text[:300] if e.response is not None else ""
+        status = e.response.status_code if e.response is not None else "?"
+        if status == 403:
+            raise RuntimeError(
+                f"노션 페이지 수정 권한 없음 (HTTP 403). "
+                f"integration 의 'Update content' 권한 필요. 응답: {body}"
+            )
+        raise RuntimeError(f"페이지 수정 실패 HTTP {status}: {body}")
+
+
+def append_page_blocks(page_id: str, content: str) -> dict:
+    """페이지 본문 끝에 paragraph 블록 추가 (기존 내용 보존).
+
+    Args:
+        page_id: 페이지 id
+        content: 추가할 텍스트 (줄바꿈은 paragraph 별로 분리)
+    """
+    token, _ = _get_creds()
+    if not token:
+        raise RuntimeError("NOTION_TOKEN 없음")
+    if not content.strip():
+        raise ValueError("추가할 내용 비어있음")
+
+    children: list[dict] = []
+    for para in content.split("\n"):
+        para = para.strip()
+        if not para:
+            continue
+        children.append({
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [{"text": {"content": para}}],
+            },
+        })
+
+    if not children:
+        raise ValueError("유효한 블록 없음")
+
+    try:
+        resp = requests.patch(
+            f"{NOTION_API_BASE}/blocks/{page_id}/children",
+            headers=_headers(token),
+            json={"children": children},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.HTTPError as e:
+        body = e.response.text[:300] if e.response is not None else ""
+        status = e.response.status_code if e.response is not None else "?"
+        if status == 403:
+            raise RuntimeError(
+                f"본문 추가 권한 없음 (HTTP 403). 'Insert content' 권한 필요."
+            )
+        raise RuntimeError(f"본문 추가 실패 HTTP {status}: {body}")
+
+
+def replace_page_content(page_id: str, content: str) -> dict:
+    """페이지 본문 전체 교체 — 기존 블록 모두 삭제 후 새로 작성 (위험).
+
+    주의: 기존 본문이 완전히 사라짐. 백업 권장.
+    """
+    token, _ = _get_creds()
+    if not token:
+        raise RuntimeError("NOTION_TOKEN 없음")
+
+    # 1. 기존 블록 조회
+    existing_blocks = []
+    cursor = None
+    while True:
+        params: dict = {"page_size": 100}
+        if cursor:
+            params["start_cursor"] = cursor
+        resp = requests.get(
+            f"{NOTION_API_BASE}/blocks/{page_id}/children",
+            headers=_headers(token), params=params, timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        existing_blocks.extend(data.get("results", []))
+        if not data.get("has_more"):
+            break
+        cursor = data.get("next_cursor")
+
+    # 2. 기존 블록 모두 삭제
+    deleted = 0
+    for b in existing_blocks:
+        bid = b.get("id")
+        if not bid:
+            continue
+        try:
+            r = requests.delete(
+                f"{NOTION_API_BASE}/blocks/{bid}",
+                headers=_headers(token), timeout=10,
+            )
+            if r.status_code in (200, 204):
+                deleted += 1
+        except Exception:
+            pass
+
+    # 3. 새 본문 추가
+    if content.strip():
+        result = append_page_blocks(page_id, content)
+    else:
+        result = {"object": "list", "results": []}
+
+    return {
+        "deleted_blocks": deleted,
+        "new_content": result,
+    }
+
+
 def add_page_comment(page_id: str, text: str) -> dict:
     """노션 페이지에 댓글 추가 (정식 comment).
 
