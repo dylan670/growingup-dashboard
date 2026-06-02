@@ -397,10 +397,11 @@ def _render_last_upload_card(d: Path, label: str) -> None:
 # ==========================================================
 # 탭 구성
 # ==========================================================
-tab_sales, tab_ads, tab_inv, tab_help = st.tabs([
+tab_sales, tab_ads, tab_inv, tab_cost, tab_help = st.tabs([
     "🛒 쿠팡 판매 CSV",
     "📣 쿠팡 광고 CSV",
     "📦 이지어드민 재고",
+    "💰 제품 원가",
     "📖 사용 가이드",
 ])
 
@@ -769,6 +770,82 @@ with tab_inv:
             "소진 임박 (≤14일)",
             f"{int((stored['days_left'] <= 14).sum()):,}",
         )
+
+
+# ----------------------------------------------------------
+# 💰 제품 원가 마스터
+# ----------------------------------------------------------
+with tab_cost:
+    st.markdown("### 💰 제품 원가 업로드")
+    st.caption(
+        "SKU/제품별 원가를 입력하면 매출관리 페이지의 '원가율' 자동 계산. "
+        "(이지어드민 또는 회계 시스템에서 export)"
+    )
+
+    with st.expander("📌 어떤 형식이 필요한가요?", expanded=False):
+        st.markdown("""
+**최소 컬럼** (이름이 다르면 fuzzy 매칭):
+- `product` (또는 `상품명`/`제품명`) — 제품명
+- `unit_cost` (또는 `원가`/`cost`/`공급가`/`매입가`) — 단가 원가
+
+선택 컬럼:
+- `sku` (또는 `SKU`/`상품코드`)
+
+**예시 CSV**:
+```
+product,unit_cost
+똑똑떡뻥 30g 4개,4500
+김똑똑 어린이김 30개,6800
+롤라루 캐리어 20인치,55000
+...
+```
+
+이지어드민의 '공급가' 컬럼이 들어있는 재고 CSV 도 사용 가능합니다.
+        """)
+
+    from api.product_costs import process_uploaded as _proc_cost, load_costs
+
+    uploaded_cost = st.file_uploader(
+        "📂 제품 원가 CSV/Excel",
+        type=["csv", "xlsx", "xls", "tsv"],
+        accept_multiple_files=False,
+        key="product_cost_upload",
+    )
+
+    if uploaded_cost is not None:
+        with st.spinner("📥 파싱 중..."):
+            try:
+                parsed, info = _proc_cost(uploaded_cost)
+                st.success(
+                    f"✅ {info['parsed_rows']:,}건 원가 등록 "
+                    f"(원본 {info['raw_rows']}행)"
+                )
+
+                with st.expander("🔍 컬럼 매칭", expanded=False):
+                    st.json(info["matched_columns"])
+                    st.caption(f"원본 컬럼: {', '.join(info['raw_columns'])}")
+
+                if not parsed.empty:
+                    st.markdown("**📋 등록된 원가 (상위 20)**")
+                    show = parsed.head(20).copy()
+                    show["unit_cost"] = show["unit_cost"].apply(
+                        lambda v: f"₩{int(v):,}"
+                    )
+                    st.dataframe(show, hide_index=True, width="stretch")
+            except Exception as e:
+                st.error(f"❌ 파싱 실패: {type(e).__name__}: {e}")
+
+    # 저장된 원가 확인
+    st.divider()
+    st.markdown("##### 💾 현재 저장된 원가")
+    stored = load_costs()
+    if stored.empty:
+        st.info("아직 등록된 원가 데이터가 없습니다.")
+    else:
+        s1, s2, s3 = st.columns(3)
+        s1.metric("등록 SKU", f"{len(stored):,}")
+        s2.metric("평균 원가", f"₩{int(stored['unit_cost'].mean()):,}")
+        s3.metric("총 원가합", f"₩{int(stored['unit_cost'].sum()):,}")
 
 
 # ----------------------------------------------------------

@@ -169,13 +169,34 @@ if not orders.empty:
         value_color="#f59e0b",
         extra=_target_extra,
     ), unsafe_allow_html=True)
-    # 6. 원가율 — 데이터 없음
-    _k[5].markdown(_snap_card(
-        "원가율", "—", "원가 데이터 없음", value_color="#94a3b8",
-    ), unsafe_allow_html=True)
-    # 7. 환불율 — 데이터 없음
+    # 6. 원가율 — product_costs.parquet 활용
+    try:
+        from api.product_costs import load_costs, compute_cost_ratio
+        _costs = load_costs()
+        _cost_info = compute_cost_ratio(_wk_df, _costs)
+        if _cost_info["matched_orders"] > 0:
+            _cr = _cost_info["cost_ratio"]
+            _k[5].markdown(_snap_card(
+                "원가율",
+                f"{_cr:.1f}%",
+                f"매칭 {_cost_info['matched_orders']}/{_cost_info['matched_orders'] + _cost_info['unmatched_orders']}건",
+                value_color="#dc2626" if _cr >= 60 else "#f59e0b" if _cr >= 40 else "#16a34a",
+            ), unsafe_allow_html=True)
+        else:
+            _k[5].markdown(_snap_card(
+                "원가율",
+                "—",
+                "원가 미등록 — CSV 업로드 → 💰 제품 원가",
+                value_color="#94a3b8",
+            ), unsafe_allow_html=True)
+    except Exception:
+        _k[5].markdown(_snap_card(
+            "원가율", "—", "원가 데이터 없음", value_color="#94a3b8",
+        ), unsafe_allow_html=True)
+    # 7. 환불율 — 데이터 없음 (sync 보강 필요)
     _k[6].markdown(_snap_card(
-        "환불율", "—", "환불 데이터 없음", value_color="#94a3b8",
+        "환불율", "—", "sync 보강 예정",
+        value_color="#94a3b8",
     ), unsafe_allow_html=True)
 
     st.write("")
@@ -358,6 +379,127 @@ if not orders.empty:
         legend=dict(orientation="h", y=1.08, x=0),
     )
     st.plotly_chart(_fig_ch, use_container_width=True)
+
+    # ========================================================
+    # 🗓 일자별 매출 캘린더 히트맵 (GitHub contribution 스타일)
+    # ========================================================
+    st.markdown(
+        _flatten_html("""
+<div style="display:flex; align-items:baseline; gap:14px; margin-top:18px; margin-bottom:6px;">
+    <div style="font-size:1.0rem; font-weight:700; color:#0f172a;">🗓 일자별 매출 캘린더</div>
+    <div style="font-size:0.78rem; color:#94a3b8;">진할수록 매출 큼 · 빈 셀 = 데이터 없음</div>
+</div>
+        """),
+        unsafe_allow_html=True,
+    )
+
+    # 일자별 매출 (빈 날 0)
+    _daily = orders.groupby(orders["date"].dt.date)["revenue"].sum()
+    _daily.index = pd.to_datetime(_daily.index)
+    _full_range = pd.date_range(_daily.index.min(), _daily.index.max())
+    _daily_full = pd.Series(0, index=_full_range)
+    _daily_full[_daily.index] = _daily.values
+
+    _hm_df = pd.DataFrame({
+        "date": _daily_full.index,
+        "revenue": _daily_full.values,
+    })
+    _hm_df["weekday"] = _hm_df["date"].dt.dayofweek
+    _hm_df["iso_year"] = _hm_df["date"].dt.isocalendar().year
+    _hm_df["iso_week"] = _hm_df["date"].dt.isocalendar().week
+    _hm_df["week_key"] = (
+        _hm_df["iso_year"].astype(str)
+        + "-W"
+        + _hm_df["iso_week"].astype(str).str.zfill(2)
+    )
+    _hm_df["date_str"] = _hm_df["date"].dt.strftime("%Y-%m-%d (%a)")
+    _hm_df["month"] = _hm_df["date"].dt.month
+
+    _heatmap = _hm_df.pivot_table(
+        index="weekday", columns="week_key", values="revenue", fill_value=0,
+    )
+    _text_pivot = _hm_df.pivot_table(
+        index="weekday", columns="week_key", values="date_str",
+        aggfunc="first", fill_value="",
+    )
+
+    # x축 라벨 — 매월 첫 주는 월 이름, 나머지는 빈
+    _month_labels = []
+    _seen_months = set()
+    for wk in _heatmap.columns:
+        # 그 주의 시작일 추정
+        try:
+            year, w_part = wk.split("-W")
+            sample_row = _hm_df[_hm_df["week_key"] == wk].iloc[0]
+            mo = int(sample_row["month"])
+            if mo not in _seen_months:
+                _month_labels.append(f"{mo}월")
+                _seen_months.add(mo)
+            else:
+                _month_labels.append("")
+        except Exception:
+            _month_labels.append("")
+
+    # 사용자 정의 hovertext
+    _hover_text = []
+    for r_idx, row in enumerate(_text_pivot.values):
+        hr = []
+        for c_idx, cell in enumerate(row):
+            rev = _heatmap.values[r_idx][c_idx]
+            if cell:
+                hr.append(f"{cell}<br>매출: ₩{int(rev):,}")
+            else:
+                hr.append("")
+        _hover_text.append(hr)
+
+    _fig_hm = go.Figure(go.Heatmap(
+        z=_heatmap.values,
+        x=_month_labels,
+        y=["월", "화", "수", "목", "금", "토", "일"],
+        text=_hover_text,
+        hovertemplate="%{text}<extra></extra>",
+        colorscale=[
+            [0.0, "#f1f5f9"],
+            [0.15, "#dbeafe"],
+            [0.4, "#93c5fd"],
+            [0.7, "#3b82f6"],
+            [1.0, "#1e40af"],
+        ],
+        showscale=True,
+        colorbar=dict(
+            title=dict(text="매출", side="right"),
+            tickformat=",",
+            len=0.75,
+            thickness=10,
+        ),
+        xgap=3, ygap=3,
+        zmin=0,
+    ))
+    _fig_hm.update_layout(
+        height=260,
+        margin=dict(l=10, r=10, t=10, b=10),
+        xaxis=dict(
+            title="", tickfont=dict(size=11, color="#64748b"),
+            side="top", showgrid=False,
+        ),
+        yaxis=dict(
+            title="", tickfont=dict(size=10, color="#94a3b8"),
+            autorange="reversed", showgrid=False,
+        ),
+        plot_bgcolor="white",
+    )
+    st.plotly_chart(_fig_hm, use_container_width=True)
+
+    # 인사이트
+    _best_day = _daily.idxmax()
+    _worst_day = _daily.idxmin()
+    _avg_day = _daily.mean()
+    st.caption(
+        f"💡 최고 매출일 **{_best_day.strftime('%m/%d')}** "
+        f"₩{int(_daily.max()):,}  ·  "
+        f"평균 일매출 ₩{int(_avg_day):,}  ·  "
+        f"데이터 {len(_daily)}일"
+    )
 
     st.markdown("---")
 
