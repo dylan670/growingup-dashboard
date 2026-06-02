@@ -1155,11 +1155,26 @@ with tab_reply:
             brand_cfg = BRAND_COLORS.get(row["brand"], {})
             brand_bg = brand_cfg.get("bg_soft", "#f8fafc")
             brand_color = brand_cfg.get("primary", "#64748b")
+            # 네이버페이 구매평 판별 (텍스트 패턴)
+            text_str = str(row.get("text", ""))
+            is_naverpay = (
+                "네이버 페이 구매평" in text_str
+                or "네이버페이 구매평" in text_str
+            )
 
             with st.container(border=True):
                 # 헤더 — 별점 / 브랜드 / 제품 / 날짜 / 매장
                 hcol1, hcol2 = st.columns([3, 1.2])
                 with hcol1:
+                    np_badge = ""
+                    if is_naverpay:
+                        np_badge = (
+                            "<span style='background:#ede9fe; color:#6d28d9; "
+                            "padding:2px 8px; border-radius:999px; "
+                            "font-size:0.7rem; font-weight:600; "
+                            "border:1px solid #ddd6fe; margin-left:8px;'>"
+                            "🟢 N Pay</span>"
+                        )
                     st.markdown(
                         f"<div style='font-size:1.1rem; line-height:1.4;'>"
                         f"<span style='color:#fbbf24;'>{stars}</span>"
@@ -1170,6 +1185,7 @@ with tab_reply:
                         f"padding:2px 10px; border-radius:999px; font-size:0.75rem;"
                         f"font-weight:600; border:1px solid {brand_color}33;'>"
                         f"{row['brand']}</span>"
+                        f"{np_badge}"
                         f"<span style='color:#0f172a; margin-left:10px; "
                         f"font-weight:600;'>{row['product']}</span>"
                         f"</div>",
@@ -1202,6 +1218,12 @@ with tab_reply:
                     img_str = str(_raw_img).strip()
                     if img_str.lower() == "nan":
                         img_str = ""
+                # 네이버페이 리뷰는 사진이 자사몰 API 로 안 옴 (안내)
+                if not img_str and is_naverpay:
+                    st.caption(
+                        "🟢 네이버페이 구매평 — 사진은 자사몰 API 로 전달되지 "
+                        "않습니다. 네이버 스마트스토어 admin 에서 확인 가능."
+                    )
                 if img_str:
                     img_urls = [u for u in img_str.split("|")
                                 if u.strip() and u.strip().lower() != "nan"]
