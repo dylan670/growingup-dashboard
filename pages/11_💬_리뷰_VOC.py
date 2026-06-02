@@ -1085,6 +1085,61 @@ with tab_prod:
 # ==========================================================
 # TAB 5 — 💬 답글 관리 (Cafe24 자사몰 리뷰에 관리자 답글)
 # ==========================================================
+def _suggest_reply(rating: int, text: str, product: str, brand: str) -> str:
+    """규칙 기반 답글 초안 — 별점 + 키워드 감지.
+
+    LLM 키 없이 동작. 별점대별 톤 + 키워드별 맞춤 문구 조합.
+    """
+    t = str(text)
+    parts: list[str] = []
+
+    if rating >= 4:
+        parts.append("소중한 후기 남겨주셔서 진심으로 감사합니다! 😊")
+        if "배송" in t or "빠르" in t:
+            parts.append("빠른 배송에 만족하셨다니 기쁩니다.")
+        if any(k in t for k in ["예뻐", "예쁘", "디자인", "색"]):
+            parts.append("디자인을 마음에 들어 해주셔서 감사해요.")
+        if any(k in t for k in ["튼튼", "퀄리티", "품질", "고급"]):
+            parts.append("제품 품질을 좋게 봐주셔서 큰 힘이 됩니다.")
+        if any(k in t for k in ["재구매", "또", "다시"]):
+            parts.append("다시 찾아주셔서 더욱 감사드립니다.")
+        parts.append(
+            "앞으로도 더 좋은 제품과 서비스로 보답하겠습니다. "
+            "다음에도 만족스러운 경험 드릴게요!"
+        )
+    elif rating == 3:
+        parts.append(
+            "후기 남겨주셔서 감사합니다. 기대에 충분히 부응하지 "
+            "못한 점 양해 부탁드립니다."
+        )
+        if any(k in t for k in ["작", "사이즈", "크기"]):
+            parts.append("사이즈 안내를 더 명확하게 보완하겠습니다.")
+        if any(k in t for k in ["배송", "느리", "늦"]):
+            parts.append("배송 과정을 다시 점검해 개선하겠습니다.")
+        parts.append(
+            "말씀 주신 부분 꼼꼼히 살펴 더 나은 제품으로 "
+            "찾아뵙겠습니다. 감사합니다."
+        )
+    else:  # 1~2점
+        parts.append(
+            "불편을 드려 진심으로 죄송합니다. 소중한 의견 "
+            "무겁게 받아들이겠습니다."
+        )
+        if any(k in t for k in ["배송", "느리", "늦", "안 와", "안와"]):
+            parts.append("배송 지연 문제는 즉시 점검하여 개선하겠습니다.")
+        if any(k in t for k in ["작", "사이즈", "크기", "양", "부족"]):
+            parts.append("사이즈·구성 안내를 더 정확히 하겠습니다.")
+        if any(k in t for k in ["불량", "하자", "고장", "터", "찢"]):
+            parts.append(
+                "제품 상태 관련해서는 교환·환불 도와드리겠습니다."
+            )
+        parts.append(
+            "고객센터로 연락 주시면 신속히 도와드리겠습니다. "
+            "더 나은 모습으로 보답하겠습니다."
+        )
+    return " ".join(parts)
+
+
 with tab_reply:
     st.markdown("#### 💬 자사몰 리뷰 답글 관리")
     st.caption(
@@ -1175,10 +1230,10 @@ with tab_reply:
                 key="reply_star_filter",
             )
         with col_f2:
-            mall_options = sorted(reply_pool["mall_id"].unique().tolist())
-            mall_filter = st.multiselect(
-                "매장", mall_options, default=mall_options,
-                key="reply_mall_filter",
+            reply_status_filter = st.selectbox(
+                "답글 상태", ["전체", "미작성만", "작성완료만"],
+                key="reply_status_filter",
+                help="기존 답글 여부로 필터 (현재 페이지 기준 조회)",
             )
         with col_f3:
             sort_mode = st.selectbox(
@@ -1191,9 +1246,9 @@ with tab_reply:
                 key="reply_search_kw",
             )
 
+        # 매장 필터는 상단 브랜드 선택으로 대체됨 (중복 제거)
         rp = reply_pool[
             reply_pool["rating"].astype(int).isin(star_filter)
-            & reply_pool["mall_id"].isin(mall_filter)
         ].copy()
         if search_kw.strip():
             rp = rp[rp["text"].str.contains(
@@ -1221,6 +1276,26 @@ with tab_reply:
         start = (page - 1) * PAGE_SIZE
         page_rows = rp.iloc[start:start + PAGE_SIZE]
 
+        # ---- 현재 페이지 리뷰들의 기존 답글 일괄 조회 (배지/필터/표시용) ----
+        reply_status: dict = {}
+        if not page_rows.empty:
+            from api.cafe24 import load_cafe24_client_by_mall_id as _load_by_mall
+            _cl_cache: dict = {}
+            with st.spinner("기존 답글 확인 중…"):
+                for _, prow in page_rows.iterrows():
+                    a_no = int(prow["article_no"])
+                    b_no = int(prow["board_no"]) if prow["board_no"] else 4
+                    m_id = str(prow["mall_id"])
+                    if m_id not in _cl_cache:
+                        _cl_cache[m_id] = _load_by_mall(m_id)
+                    cl = _cl_cache[m_id]
+                    try:
+                        reply_status[a_no] = (
+                            cl.get_board_comments(b_no, a_no) if cl else []
+                        )
+                    except Exception:
+                        reply_status[a_no] = None  # 조회 실패 = 알 수 없음
+
         # ---- 카드 list ----
         for idx, row in page_rows.iterrows():
             article_no = int(row["article_no"])
@@ -1240,6 +1315,14 @@ with tab_reply:
                 "네이버 페이 구매평" in text_str
                 or "네이버페이 구매평" in text_str
             )
+
+            # 기존 답글 여부 + 답글 상태 필터
+            existing_comments = reply_status.get(article_no) or []
+            has_reply = len(existing_comments) > 0
+            if reply_status_filter == "미작성만" and has_reply:
+                continue
+            if reply_status_filter == "작성완료만" and not has_reply:
+                continue
 
             with st.container(border=True):
                 # 헤더 — 별점 / 브랜드 / 제품 / 날짜 / 매장
@@ -1271,12 +1354,18 @@ with tab_reply:
                         unsafe_allow_html=True,
                     )
                 with hcol2:
+                    if has_reply:
+                        rb_txt, rb_color, rb_bg = "✅ 답글완료", "#16a34a", "#dcfce7"
+                    else:
+                        rb_txt, rb_color, rb_bg = "⬜ 미작성", "#94a3b8", "#f1f5f9"
                     st.markdown(
-                        f"<div style='text-align:right; color:#64748b; "
-                        f"font-size:0.78rem; line-height:1.5;'>"
-                        f"📅 {date_str}<br/>"
-                        f"🏪 {mall_id}<br/>"
-                        f"#{article_no}"
+                        f"<div style='text-align:right; line-height:1.5;'>"
+                        f"<span style='background:{rb_bg}; color:{rb_color}; "
+                        f"padding:2px 9px; border-radius:999px; font-size:0.72rem; "
+                        f"font-weight:600;'>{rb_txt}</span>"
+                        f"<div style='color:#64748b; font-size:0.78rem; "
+                        f"margin-top:4px;'>"
+                        f"📅 {date_str}<br/>🏪 {mall_id}<br/>#{article_no}</div>"
                         f"</div>",
                         unsafe_allow_html=True,
                     )
@@ -1327,18 +1416,47 @@ with tab_reply:
                         if len(img_urls) > 4:
                             st.caption(f"+ {len(img_urls)-4}장 더")
 
+                # 기존 답글 자동 표시 (일괄 조회 결과)
+                if existing_comments:
+                    st.markdown(
+                        "<div style='font-size:0.8rem; color:#16a34a; "
+                        "font-weight:700; margin:10px 0 2px;'>"
+                        "💬 작성된 답글</div>",
+                        unsafe_allow_html=True,
+                    )
+                    for c in existing_comments:
+                        cdate = (str(c.get("created_date", ""))[:16]
+                                 .replace("T", " "))
+                        cwriter = c.get("writer", "관리자")
+                        ccontent = c.get("content", "")
+                        st.markdown(
+                            f"<div style='background:#eff6ff; "
+                            f"border-left:3px solid #2563eb; padding:10px 14px; "
+                            f"border-radius:8px; margin:4px 0;'>"
+                            f"<div style='font-size:0.72rem; color:#64748b;'>"
+                            f"<b>{cwriter}</b> · {cdate} · "
+                            f"#{c.get('comment_no','?')}</div>"
+                            f"<div style='margin-top:4px; color:#0f172a;'>"
+                            f"{ccontent}</div></div>",
+                            unsafe_allow_html=True,
+                        )
+
                 # 답글 입력
                 reply_key = f"reply_text_{mall_id}_{article_no}"
                 btn_key = f"reply_send_{mall_id}_{article_no}"
-                view_key = f"reply_view_{mall_id}_{article_no}"
+                ai_btn_key = f"reply_ai_{mall_id}_{article_no}"
                 clear_flag = f"_clear_{reply_key}"
                 sent_flag = f"_sent_{reply_key}"
+                ai_flag = f"_ai_{reply_key}"
 
                 # 직전 전송 성공 시 입력칸 초기화 (위젯 생성 前이어야 에러 X)
                 if st.session_state.get(clear_flag):
                     st.session_state[reply_key] = ""
                     del st.session_state[clear_flag]
-
+                # AI 추천 초안 적용 (위젯 생성 前)
+                if st.session_state.get(ai_flag):
+                    st.session_state[reply_key] = st.session_state[ai_flag]
+                    del st.session_state[ai_flag]
                 # 직전 전송 성공 메시지 (rerun 후 표시)
                 if st.session_state.get(sent_flag):
                     st.success(st.session_state[sent_flag])
@@ -1359,10 +1477,18 @@ with tab_reply:
                         "💬 답글 전송", key=btn_key,
                         type="primary", use_container_width=True,
                     )
-                    view_clicked = st.button(
-                        "🔍 기존 답글 보기", key=view_key,
+                    ai_clicked = st.button(
+                        "🤖 AI 추천", key=ai_btn_key,
                         use_container_width=True,
+                        help="별점·내용 기반 답글 초안 자동 생성 → 수정 후 전송",
                     )
+
+                if ai_clicked:
+                    st.session_state[ai_flag] = _suggest_reply(
+                        rating_int, text_str,
+                        str(row.get("product", "")), str(row.get("brand", "")),
+                    )
+                    st.rerun()
 
                 if send_clicked:
                     text_val = (st.session_state.get(reply_key) or "").strip()
@@ -1404,41 +1530,6 @@ with tab_reply:
                                 )
                             else:
                                 st.error(f"❌ 전송 실패: {type(e).__name__}: {err}")
-
-                if view_clicked:
-                    try:
-                        from api.cafe24 import load_cafe24_client_by_mall_id
-                        client = load_cafe24_client_by_mall_id(mall_id)
-                        if client is None:
-                            st.error("클라이언트 로드 실패")
-                        else:
-                            existing = client.get_board_comments(
-                                board_no, article_no,
-                            )
-                            if not existing:
-                                st.info("기존 답글이 없습니다.")
-                            else:
-                                for c in existing:
-                                    cdate = (c.get("created_date", "")[:16]
-                                             .replace("T", " "))
-                                    cwriter = c.get("writer", "?")
-                                    ccontent = c.get("content", "")
-                                    st.markdown(
-                                        f"<div style='background:#eff6ff; "
-                                        f"border-left:3px solid #2563eb; "
-                                        f"padding:10px 14px; border-radius:8px; "
-                                        f"margin:6px 0;'>"
-                                        f"<div style='font-size:0.75rem; "
-                                        f"color:#64748b;'>"
-                                        f"<b>{cwriter}</b> · {cdate} · "
-                                        f"#{c.get('comment_no','?')}</div>"
-                                        f"<div style='margin-top:4px; "
-                                        f"color:#0f172a;'>{ccontent}</div>"
-                                        f"</div>",
-                                        unsafe_allow_html=True,
-                                    )
-                    except Exception as e:
-                        st.error(f"조회 실패: {type(e).__name__}: {str(e)[:200]}")
 
         if total_pages > 1:
             st.caption(f"📄 {page} / {total_pages} 페이지")
