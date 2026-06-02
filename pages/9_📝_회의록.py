@@ -613,70 +613,89 @@ def render_meetings_view(db_id_arg: str):
 
                 if blocks or st.session_state[edit_key]:
                     st.divider()
-                    # 본문 라벨 + 편집 토글 버튼
-                    body_l, body_r = st.columns([5, 1])
-                    with body_l:
+
+                    # ====================================================
+                    # 📝 본문 — 상단 액션 바 (큼지막한 수정 버튼)
+                    # ====================================================
+                    action_l, action_r = st.columns([3, 2])
+                    with action_l:
                         st.markdown(
-                            "<div style='font-size:0.78rem; color:#94a3b8; "
-                            "font-weight:600; margin-bottom:6px;'>📝 본문</div>",
+                            "<div style='font-size:1.02rem; font-weight:700; "
+                            "color:#0f172a; padding-top:4px;'>📝 본문</div>",
                             unsafe_allow_html=True,
                         )
-                    with body_r:
+                    with action_r:
                         if not st.session_state[edit_key]:
-                            if st.button("✏️ 편집",
-                                         key=f"btn_edit_{page_id_view}",
-                                         use_container_width=True):
+                            if st.button(
+                                "✏️ 수정하기",
+                                key=f"btn_edit_{page_id_view}",
+                                type="primary",
+                                use_container_width=True,
+                            ):
                                 st.session_state[edit_key] = True
                                 st.rerun()
                         else:
-                            if st.button("❌ 취소",
-                                         key=f"btn_cancel_{page_id_view}",
-                                         use_container_width=True):
-                                st.session_state[edit_key] = False
-                                st.rerun()
+                            cancel_col, save_col = st.columns(2)
+                            with cancel_col:
+                                if st.button(
+                                    "❌ 취소",
+                                    key=f"btn_cancel_{page_id_view}",
+                                    use_container_width=True,
+                                ):
+                                    st.session_state[edit_key] = False
+                                    st.rerun()
+                            with save_col:
+                                save_clicked = st.button(
+                                    "💾 노션에 저장",
+                                    key=f"btn_save_{page_id_view}",
+                                    type="primary",
+                                    use_container_width=True,
+                                )
 
                     if st.session_state[edit_key]:
-                        # 편집 모드 — markdown textarea
-                        current_md = blocks_to_markdown(blocks) if blocks else ""
+                        # ─── 편집 모드 — markdown textarea ───
+                        current_md = (
+                            blocks_to_markdown(blocks) if blocks else ""
+                        )
+                        # 본문 길이에 따라 높이 동적 (최소 300, 최대 700)
+                        line_count = current_md.count("\n") + 1
+                        dynamic_h = max(300, min(700, line_count * 22 + 40))
+
+                        st.caption(
+                            "💡 마크다운: # 제목 · ## 부제 · - 리스트 · "
+                            "- [x] 완료 · - [ ] 미완료 · > 인용 · ``` 코드 · --- 구분선"
+                        )
                         edited = st.text_area(
-                            "본문 (마크다운 지원: # / ## / - / 1. / > / ```)",
+                            "본문",
                             value=current_md,
-                            height=300,
+                            height=dynamic_h,
                             key=f"body_md_{page_id_view}",
                             label_visibility="collapsed",
                         )
-                        bt1, bt2, _ = st.columns([1, 1, 4])
-                        with bt1:
-                            if st.button("💾 저장 (노션 동기화)",
-                                         key=f"btn_save_{page_id_view}",
-                                         type="primary",
-                                         use_container_width=True):
-                                if edited.strip() == current_md.strip():
-                                    st.info("변경 사항 없음")
-                                else:
-                                    try:
-                                        with st.spinner("📤 노션에 저장 중..."):
-                                            r = replace_page_content_smart(
-                                                page_id_view, edited,
-                                            )
-                                        st.success(
-                                            f"✅ 저장 완료 — "
-                                            f"기존 {r['deleted_blocks']}개 → "
-                                            f"신규 {r['added_blocks']}개 블록"
+
+                        # 저장 처리
+                        if save_clicked:
+                            if edited.strip() == current_md.strip():
+                                st.info("변경 사항 없음")
+                            else:
+                                try:
+                                    with st.spinner("📤 노션에 저장 중..."):
+                                        r = replace_page_content_smart(
+                                            page_id_view, edited,
                                         )
-                                        st.session_state[edit_key] = False
-                                        st.cache_data.clear()
-                                        time.sleep(0.6)
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"❌ 저장 실패: {e}")
-                        with bt2:
-                            st.caption(
-                                "💡 # 제목 · - 리스트 · - [x] 체크 · "
-                                "> 인용 · ``` 코드"
-                            )
+                                    st.success(
+                                        f"✅ 저장 완료 — "
+                                        f"기존 {r['deleted_blocks']}개 → "
+                                        f"신규 {r['added_blocks']}개 블록"
+                                    )
+                                    st.session_state[edit_key] = False
+                                    st.cache_data.clear()
+                                    time.sleep(0.6)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ 저장 실패: {e}")
                     else:
-                        # 보기 모드 — 기존 렌더링
+                        # ─── 보기 모드 — 기존 렌더링 ───
                         _render_blocks(blocks)
 
                 # ============================================
