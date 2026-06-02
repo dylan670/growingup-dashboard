@@ -278,6 +278,16 @@ elif _source == "live":
 
 
 # ==========================================================
+# 채널 화이트리스트 — 실데이터 sync 가능한 채널만 노출
+#   - 자사몰 (Cafe24): OAuth 재인증 완료, mall.read_community
+#   - 네이버: 일반 셀러용 리뷰 API 미제공 → 제외
+#   - 쿠팡: 셀러센터 리뷰 API 없음 → 제외
+# 추후 채널 추가 시 이 리스트에 'naver' / '쿠팡' 추가하면 자동 노출됨.
+# ==========================================================
+ALLOWED_CHANNELS = ["자사몰"]
+enriched = enriched[enriched["channel"].isin(ALLOWED_CHANNELS)].copy()
+
+# ==========================================================
 # 사이드바 필터
 # ==========================================================
 st.sidebar.markdown("#### 🔎 필터")
@@ -294,7 +304,7 @@ selected_channels = st.sidebar.multiselect(
     "채널",
     all_channels,
     default=all_channels,
-    help="네이버 / 자사몰 / 쿠팡 등 채널별 분리해서 보기",
+    help="실데이터 sync 채널만 노출 (현재: 자사몰)",
 )
 
 # 기간
