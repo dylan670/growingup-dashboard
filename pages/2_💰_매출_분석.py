@@ -193,11 +193,35 @@ if not orders.empty:
         _k[5].markdown(_snap_card(
             "원가율", "—", "원가 데이터 없음", value_color="#94a3b8",
         ), unsafe_allow_html=True)
-    # 7. 환불율 — 데이터 없음 (sync 보강 필요)
-    _k[6].markdown(_snap_card(
-        "환불율", "—", "sync 보강 예정",
-        value_color="#94a3b8",
-    ), unsafe_allow_html=True)
+    # 7. 환불율 — refunds.csv 활용
+    try:
+        from utils.data import load_refunds
+        _refunds = load_refunds()
+        if not _refunds.empty:
+            _ref_wk = _refunds[
+                (_refunds["date"] >= _wk_start)
+                & (_refunds["date"] <= _wk_end)
+            ]
+            _wk_refund_amt = int(_ref_wk["refund_amount"].sum())
+            _wk_refund_cnt = len(_ref_wk)
+            # 환불율 = 환불액 / 매출
+            _rr = (_wk_refund_amt / _wk_rev * 100) if _wk_rev > 0 else 0
+            _k[6].markdown(_snap_card(
+                "환불율",
+                f"{_rr:.2f}%",
+                f"환불 {_wk_refund_cnt}건 · ₩{_wk_refund_amt:,}",
+                value_color="#dc2626" if _rr >= 5 else "#f59e0b" if _rr >= 2 else "#16a34a",
+            ), unsafe_allow_html=True)
+        else:
+            _k[6].markdown(_snap_card(
+                "환불율", "—",
+                "환불 미수집 — sync 시 자동 수집",
+                value_color="#94a3b8",
+            ), unsafe_allow_html=True)
+    except Exception:
+        _k[6].markdown(_snap_card(
+            "환불율", "—", "환불 데이터 없음", value_color="#94a3b8",
+        ), unsafe_allow_html=True)
 
     st.write("")
 

@@ -12,6 +12,7 @@ DATA_DIR.mkdir(exist_ok=True)
 ADS_FILE = DATA_DIR / "ads.csv"
 ORDERS_FILE = DATA_DIR / "orders.csv"
 REVIEWS_FILE = DATA_DIR / "reviews.csv"
+REFUNDS_FILE = DATA_DIR / "refunds.csv"
 # 쿠팡 벤더 발주 전용 (로켓배송 B2B — 실 소비자 판매 아님, 제품 분석에만 반영)
 COUPANG_INBOUND_FILE = DATA_DIR / "coupang_inbound.csv"
 
@@ -526,4 +527,76 @@ def merge_reviews(
     merged = merged.sort_values(["date", "channel", "brand"]).reset_index(drop=True)
     REVIEWS_FILE.parent.mkdir(parents=True, exist_ok=True)
     merged.to_csv(REVIEWS_FILE, index=False, encoding="utf-8-sig")
+    return removed, len(new_df)
+
+
+def load_refunds() -> pd.DataFrame:
+    """환불 데이터 로드 (data/refunds.csv).
+
+    스키마: date, order_id, customer_id, channel, store, product,
+            option, quantity, refund_amount, refund_type
+    """
+    if not REFUNDS_FILE.exists():
+        return pd.DataFrame(columns=[
+            "date", "order_id", "customer_id", "channel", "store",
+            "product", "option", "quantity", "refund_amount", "refund_type",
+        ])
+    try:
+        df = pd.read_csv(REFUNDS_FILE, encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        df = pd.read_csv(REFUNDS_FILE, encoding="utf-8", encoding_errors="replace")
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["refund_amount"] = pd.to_numeric(
+        df.get("refund_amount", 0), errors="coerce",
+    ).fillna(0)
+    df["quantity"] = pd.to_numeric(
+        df.get("quantity", 0), errors="coerce",
+    ).fillna(0)
+    return df.dropna(subset=["date"])
+
+
+def merge_refunds(new_df: pd.DataFrame, store: str) -> tuple[int, int]:
+    """특정 스토어 × 날짜 범위의 환불 데이터 교체."""
+    if len(new_df) == 0:
+        return 0, 0
+
+    new_df = new_df.copy()
+    new_df["date"] = new_df["date"].astype(str)
+    min_date = new_df["date"].min()
+    max_date = new_df["date"].max()
+
+    if REFUNDS_FILE.exists():
+        try:
+            existing = pd.read_csv(REFUNDS_FILE, encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            existing = pd.read_csv(REFUNDS_FILE, encoding="utf-8")
+        existing["date"] = existing["date"].astype(str)
+        mask = (
+            (existing["store"] == store)
+            & (existing["date"] >= min_date)
+            & (existing["date"] <= max_date)
+        )
+        removed = int(mask.sum())
+        existing = existing[~mask]
+    else:
+        existing = pd.DataFrame()
+        removed = 0
+
+    cols = ["date", "order_id", "customer_id", "channel", "store",
+            "product", "option", "quantity", "refund_amount", "refund_type"]
+    for c in cols:
+        if c not in new_df.columns:
+            new_df[c] = ""
+    new_df = new_df[cols]
+
+    if not existing.empty:
+        for c in cols:
+            if c not in existing.columns:
+                existing[c] = ""
+        existing = existing[cols]
+
+    merged = pd.concat([existing, new_df], ignore_index=True)
+    merged = merged.sort_values(["date", "store"]).reset_index(drop=True)
+    REFUNDS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    merged.to_csv(REFUNDS_FILE, index=False, encoding="utf-8-sig")
     return removed, len(new_df)

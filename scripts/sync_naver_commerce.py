@@ -23,7 +23,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from api.naver_commerce import load_commerce_clients_from_env  # noqa: E402
-from utils.data import merge_store_orders  # noqa: E402
+from utils.data import merge_store_orders, merge_refunds  # noqa: E402
 
 
 LOG_FILE = ROOT / "data" / "sync_log.txt"
@@ -98,6 +98,22 @@ def main() -> int:
         except Exception as e:
             log(f"[{store}] 병합 실패 — {type(e).__name__}: {e}")
             overall_exit = 3
+
+        # 환불 데이터 sync
+        try:
+            ref_df = client.fetch_refunds_df(since, until, store)
+            if not ref_df.empty:
+                ref_removed, ref_added = merge_refunds(ref_df, store)
+                ref_total = int(ref_df["refund_amount"].sum())
+                log(
+                    f"[{store}] 환불: {len(ref_df)}건 / 합계 {ref_total:,}원 "
+                    f"(기존 {ref_removed} 제거, 신규 {ref_added} 추가)"
+                )
+            else:
+                log(f"[{store}] 환불 없음")
+        except Exception as e:
+            # 환불 실패는 warning (전체 sync 는 성공)
+            log(f"[{store}] 환불 sync 실패 (skip) — {type(e).__name__}: {e}")
 
     log(f"전체 동기화 종료 (exit={overall_exit})")
     return overall_exit

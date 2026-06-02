@@ -310,6 +310,160 @@ class NaverCommerceClient:
         ])
 
     # ============================================================
+    # 환불/취소/반품/교환 데이터 수집
+    # ============================================================
+    def fetch_refunds_df(
+        self, since: date, until: date, store: str,
+    ) -> pd.DataFrame:
+        """기간 내 환불/취소/반품/교환 데이터 수집.
+
+        네이버 커머스 API 의 last-changed-statuses 를 cancel/return/exchange
+        type 으로 조회 → 주문 상세에서 환불 금액 추출.
+
+        반환 스키마 (refunds.csv):
+            date, order_id, customer_id, channel, store, product,
+            option, quantity, refund_amount, refund_type
+        """
+        import hashlib
+
+        def _hash_id(raw: Any) -> str:
+            if raw is None or str(raw) == "":
+                return "NS-UNKNOWN"
+            return "NS-" + hashlib.md5(str(raw).encode("utf-8")).hexdigest()[:8].upper()
+
+        # 환불 status type 별 조회 (CANCEL / RETURN / EXCHANGE)
+        # 네이버 API 의 lastChangedType 값:
+        #   CANCEL_REQUEST: 취소 요청
+        #   RETURN_REQUEST: 반품 요청
+        #   EXCHANGE_REQUEST: 교환 요청
+        #   CANCELED: 취소 완료 (실제 환불)
+        REFUND_TYPES = [
+            "CANCELED", "CANCEL_REQUEST",
+            "RETURNED", "RETURN_REQUEST",
+            "EXCHANGED", "EXCHANGE_REQUEST",
+        ]
+
+        all_changed: list[dict] = []
+        current = since
+        while current <= until:
+            from_str = f"{current.isoformat()}T00:00:00.000+09:00"
+            next_day = current + timedelta(days=1)
+            to_str = f"{next_day.isoformat()}T00:00:00.000+09:00"
+
+            for r_type in REFUND_TYPES:
+                try:
+                    changed = self.get_changed_orders(from_str, to_str, r_type)
+                    for c in changed:
+                        c["_refund_type"] = r_type
+                    all_changed.extend(changed)
+                except requests.HTTPError as e:
+                    # 일부 type 은 응답 안 할 수도 — 무시
+                    code = e.response.status_code if e.response is not None else 0
+                    if code == 400:
+                        # 알 수 없는 type → 다음
+                        continue
+                    raise
+                except Exception:
+                    continue
+            current += timedelta(days=1)
+
+        # 중복 제거 (productOrderId + refund_type)
+        seen: set[tuple] = set()
+        unique_changed: list[dict] = []
+        for c in all_changed:
+            oid = c.get("productOrderId")
+            rt = c.get("_refund_type")
+            key = (oid, rt)
+            if not oid or key in seen:
+                continue
+            seen.add(key)
+            unique_changed.append(c)
+
+        if not unique_changed:
+            return pd.DataFrame(columns=[
+                "date", "order_id", "customer_id", "channel",
+                "store", "product", "option", "quantity",
+                "refund_amount", "refund_type",
+            ])
+
+        # 주문 상세 일괄 조회
+        order_ids = [str(c.get("productOrderId")) for c in unique_changed]
+        details = self.get_order_details(order_ids)
+        # productOrderId → detail 매핑
+        detail_map: dict[str, dict] = {}
+        for d in details:
+            po = d.get("productOrder") if isinstance(d, dict) else None
+            order = d.get("order") if isinstance(d, dict) else None
+            src = d if not (po or order) else {**d, **(po or {}), **(order or {})}
+            oid = str(src.get("productOrderId") or "")
+            if oid:
+                detail_map[oid] = src
+
+        # type → 한글 매핑
+        TYPE_KO = {
+            "CANCELED": "취소", "CANCEL_REQUEST": "취소요청",
+            "RETURNED": "반품", "RETURN_REQUEST": "반품요청",
+            "EXCHANGED": "교환", "EXCHANGE_REQUEST": "교환요청",
+        }
+
+        rows: list[dict] = []
+        for c in unique_changed:
+            oid = str(c.get("productOrderId"))
+            src = detail_map.get(oid, {})
+            if not src:
+                continue
+
+            # 환불 일자 (취소/반품 처리일 우선)
+            ref_date_raw = (
+                src.get("cancelCompletedDate")
+                or src.get("returnCompletedDate")
+                or src.get("claimRequestDate")
+                or src.get("paymentDate")
+                or ""
+            )
+            ref_date = ref_date_raw[:10] if ref_date_raw else ""
+            if not ref_date:
+                continue
+            if ref_date < since.isoformat() or ref_date > until.isoformat():
+                continue
+
+            buyer_key = (
+                src.get("ordererId") or src.get("ordererNo")
+                or src.get("buyerId") or src.get("buyerNo")
+                or src.get("ordererName") or ""
+            )
+            refund_amt = (
+                src.get("cancelCompletedAmount")
+                or src.get("refundAmount")
+                or src.get("totalPaymentAmount")
+                or src.get("totalProductAmount")
+                or 0
+            )
+            option_val = (
+                src.get("productOption")
+                or src.get("productOptionName") or ""
+            )
+
+            rows.append({
+                "date": ref_date,
+                "order_id": oid,
+                "customer_id": _hash_id(buyer_key),
+                "channel": "네이버",
+                "store": store,
+                "product": str(src.get("productName") or ""),
+                "option": str(option_val).strip(),
+                "quantity": int(src.get("quantity") or 1),
+                "refund_amount": int(refund_amt or 0),
+                "refund_type": TYPE_KO.get(c.get("_refund_type"), c.get("_refund_type")),
+            })
+
+        return pd.DataFrame(rows, columns=[
+            "date", "order_id", "customer_id", "channel",
+            "store", "product", "option", "quantity",
+            "refund_amount", "refund_type",
+        ])
+
+    # ============================================================
     # 리뷰 (상품후기) 수집
     # ============================================================
     def fetch_reviews_df(
