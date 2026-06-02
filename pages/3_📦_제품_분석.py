@@ -227,12 +227,18 @@ if not _orders_hero.empty:
             horizontal=True,
             label_visibility="collapsed",
             key="prod_cat_mode",
+            help="주=최근 7일 · 월=최근 30일 · 누적=전체 기간",
         )
 
     if _cat_mode == "주":
+        # 최근 7일
         _cat_df = _week_df.copy()
     elif _cat_mode == "월":
-        _cat_df = _orders_hero[_orders_hero["date"] >= _month_start].copy()
+        # 최근 30일 (rolling) — '이번 달 1일부터' 로 하면 월초에
+        # 주(7일)보다 작아지는 역전이 생겨 30일 rolling 으로 통일
+        _cat_df = _orders_hero[
+            _orders_hero["date"] >= _end_d - _td(days=29)
+        ].copy()
     else:
         _cat_df = _orders_hero.copy()
     _cat_df["cat"] = _cat_df["product"].apply(_categorize)
