@@ -258,8 +258,8 @@ def inject_global_css() -> None:
         }}
 
         section[data-testid="stSidebar"] {{
-            background: #ffffff;
-            border-right: 1px solid {BORDER_MEDIUM};
+            background: #faf8f3;
+            border-right: 1px solid #e7e2d5;
         }}
         section[data-testid="stSidebar"] > div:first-child {{
             padding-top: 1.2rem;
