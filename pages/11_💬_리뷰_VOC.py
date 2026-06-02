@@ -262,6 +262,66 @@ if _source == "demo":
 elif _source == "live":
     last_sync = _meta.get("last_sync_at", "")[:19]
     total = _meta.get("last_sync_total", 0)
+    # ---- 상단 새로고침 버튼 (Live 모드 전용) ----
+    rcol1, rcol2 = st.columns([5, 1.2])
+    with rcol2:
+        refresh = st.button(
+            "🔄 리뷰 새로고침", use_container_width=True,
+            type="primary", key="reviews_refresh_top",
+            help="자사몰 3개 매장에서 최근 14일치 리뷰 다시 가져오기",
+        )
+    if refresh:
+        with st.spinner("자사몰 리뷰 sync 중… (약 10~30초)"):
+            from datetime import date as _date, timedelta as _td
+            from api.cafe24 import load_all_cafe24_clients
+            from utils.data import merge_reviews as _merge_reviews
+            try:
+                _clients = load_all_cafe24_clients()
+                _since = _date.today() - _td(days=14)
+                _until = _date.today()
+                _total_new = 0
+                _failed = []
+                for _store, _client in _clients.items():
+                    try:
+                        _df = _client.fetch_reviews_df(_since, _until, _store)
+                        if _df.empty:
+                            continue
+                        _b = ("똑똑연구소" if "똑똑" in _store
+                              else "롤라루" if "롤라루" in _store
+                              else "루티니스트" if "루티니" in _store
+                              else "기타")
+                        _r, _a = _merge_reviews(_df, channel="자사몰", brand=_b)
+                        _total_new += _a
+                    except Exception as _e:
+                        _failed.append(f"{_store}: {type(_e).__name__}")
+                # meta marker 갱신
+                import json as _json
+                from datetime import datetime as _dt
+                from pathlib import Path as _Path
+                _ROOT = _Path(__file__).parent.parent
+                _meta_path = _ROOT / "data" / "reviews_meta.json"
+                _new_meta = {
+                    "source": "live",
+                    "last_sync_at": _dt.now().isoformat(),
+                    "last_sync_total": _total_new,
+                    "last_sync_failed": len(_failed),
+                }
+                _meta_path.write_text(
+                    _json.dumps(_new_meta, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                st.cache_data.clear()
+                if _failed:
+                    st.warning(
+                        f"⚠️ {_total_new}건 갱신 · 실패 {len(_failed)}건: "
+                        + ", ".join(_failed)
+                    )
+                else:
+                    st.success(f"✅ {_total_new}건 새로고침 완료")
+                st.rerun()
+            except Exception as _e:
+                st.error(f"❌ 새로고침 실패: {type(_e).__name__}: {_e}")
+
     st.markdown(
         f"""
         <div style="background: #dcfce7; border-left: 4px solid #16a34a;
@@ -1133,6 +1193,31 @@ with tab_reply:
                     f"white-space:pre-wrap;'>{row['text']}</div>",
                     unsafe_allow_html=True,
                 )
+
+                # 첨부 사진 (image_urls 컬럼 '|' 구분)
+                img_str = str(row.get("image_urls") or "").strip()
+                if img_str:
+                    img_urls = [u for u in img_str.split("|") if u.strip()]
+                    if img_urls:
+                        # 최대 4개 한 줄에 표시 (썸네일)
+                        n = min(4, len(img_urls))
+                        img_cols = st.columns(n)
+                        for i, url in enumerate(img_urls[:n]):
+                            with img_cols[i]:
+                                # st.image 는 protocol-relative 안 되므로 https: 강제
+                                if url.startswith("//"):
+                                    url = "https:" + url
+                                try:
+                                    st.image(url, use_container_width=True)
+                                except Exception:
+                                    st.markdown(
+                                        f"<a href='{url}' target='_blank' "
+                                        f"style='font-size:0.78rem;'>"
+                                        f"🖼 사진 {i+1}</a>",
+                                        unsafe_allow_html=True,
+                                    )
+                        if len(img_urls) > 4:
+                            st.caption(f"+ {len(img_urls)-4}장 더")
 
                 # 답글 입력
                 reply_key = f"reply_text_{mall_id}_{article_no}"

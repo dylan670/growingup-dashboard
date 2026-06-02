@@ -44,6 +44,23 @@ def bootstrap_env() -> None:
         # secrets 접근 자체 실패 (로컬에 파일 없음) → 조용히 스킵
         pass
 
+    # ----------------------------------------------------------
+    # Cafe24 토큰 파일 복원 (Streamlit Cloud — ephemeral fs)
+    # ----------------------------------------------------------
+    # CAFE24_TOKENS_JSON env 가 있으면 data/cafe24_tokens.json 으로 씀.
+    # 답글 작성처럼 페이지에서 직접 client 로드할 때 토큰 필요.
+    try:
+        from pathlib import Path
+        tokens_env = os.getenv("CAFE24_TOKENS_JSON", "").strip()
+        if tokens_env:
+            tf = Path(__file__).parent.parent / "data" / "cafe24_tokens.json"
+            tf.parent.mkdir(parents=True, exist_ok=True)
+            # 기존 파일이 없거나 빈 파일이면 환경변수에서 복원
+            if not tf.exists() or tf.stat().st_size < 50:
+                tf.write_text(tokens_env, encoding="utf-8")
+    except Exception:
+        pass
+
 
 # ==========================================================
 # 자동 실행 — import 즉시 env 승격

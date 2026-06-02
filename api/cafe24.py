@@ -476,7 +476,7 @@ class Cafe24Client:
         rows = [r for r in rows if r is not None]
         return pd.DataFrame(rows, columns=[
             "date", "channel", "brand", "product", "rating", "text",
-            "mall_id", "board_no", "article_no",
+            "mall_id", "board_no", "article_no", "image_urls",
         ])
 
     @staticmethod
@@ -550,6 +550,28 @@ class Cafe24Client:
         except (TypeError, ValueError):
             article_no = 0
 
+        # 첨부 이미지 URL — list 로 옴, protocol-relative URL 도 정규화
+        image_urls: list[str] = []
+        for fld in ("attach_file_urls", "attached_file_urls",
+                    "image_urls", "attached_images"):
+            v = r.get(fld)
+            if isinstance(v, list):
+                for item in v:
+                    u = ""
+                    if isinstance(item, dict):
+                        u = item.get("url") or item.get("image_url") or ""
+                    elif isinstance(item, str):
+                        u = item
+                    u = str(u).strip()
+                    if u.startswith("//"):
+                        u = "https:" + u
+                    elif u.startswith("/"):
+                        u = "https://" + u.lstrip("/")
+                    if u:
+                        image_urls.append(u)
+                break  # 첫 매칭 필드만
+        image_urls_str = "|".join(image_urls)
+
         return {
             "date": d_str,
             "channel": "자사몰",
@@ -560,6 +582,7 @@ class Cafe24Client:
             "mall_id": mall_id,
             "board_no": board_no,
             "article_no": article_no,
+            "image_urls": image_urls_str,
         }
 
     # ============================================================
