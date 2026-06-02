@@ -152,19 +152,41 @@ class Cafe24Client:
 
     # ---------- 토큰 파일 영속화 ----------
     def _load_tokens(self) -> None:
-        if not TOKEN_FILE.exists():
-            return
-        try:
-            with open(TOKEN_FILE, encoding="utf-8") as f:
-                all_tokens = json.load(f)
-            my = all_tokens.get(self.mall_id) or {}
-            self._access_token = my.get("access_token")
-            self._refresh_token = my.get("refresh_token")
-            exp_str = my.get("expires_at")
-            if exp_str:
-                self._expires_at = datetime.fromisoformat(exp_str)
-        except Exception:
-            pass
+        """파일 우선 → env (CAFE24_TOKENS_JSON) fallback.
+
+        Cloud 에서는 파일이 ephemeral 하고 env_bootstrap 의 파일 복원이
+        타이밍/경로 문제로 실패할 수 있어 env 도 직접 본다.
+        """
+        # 1. 파일에서 로드 시도
+        if TOKEN_FILE.exists():
+            try:
+                with open(TOKEN_FILE, encoding="utf-8") as f:
+                    all_tokens = json.load(f)
+                my = all_tokens.get(self.mall_id) or {}
+                self._access_token = my.get("access_token")
+                self._refresh_token = my.get("refresh_token")
+                exp_str = my.get("expires_at")
+                if exp_str:
+                    self._expires_at = datetime.fromisoformat(exp_str)
+                if self._access_token:
+                    return
+            except Exception:
+                pass
+
+        # 2. env fallback — CAFE24_TOKENS_JSON (Streamlit Cloud Secrets)
+        import os as _os
+        tokens_env = _os.getenv("CAFE24_TOKENS_JSON", "").strip()
+        if tokens_env:
+            try:
+                all_tokens = json.loads(tokens_env)
+                my = all_tokens.get(self.mall_id) or {}
+                self._access_token = my.get("access_token")
+                self._refresh_token = my.get("refresh_token")
+                exp_str = my.get("expires_at")
+                if exp_str:
+                    self._expires_at = datetime.fromisoformat(exp_str)
+            except Exception:
+                pass
 
     def _save_tokens(self) -> None:
         TOKEN_FILE.parent.mkdir(exist_ok=True)
