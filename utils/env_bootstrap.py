@@ -45,6 +45,29 @@ def bootstrap_env() -> None:
         pass
 
     # ----------------------------------------------------------
+    # [supabase_1688] 섹션 → SUPABASE_URL / SUPABASE_KEY 승격
+    # (Cafe24 토큰 공유 저장소로 사용 — rotation 동기화)
+    # ----------------------------------------------------------
+    try:
+        import streamlit as _st
+        _sup = {}
+        try:
+            _sup = dict(_st.secrets.get("supabase_1688", {}))
+        except Exception:
+            _sup = {}
+        _url = str(_sup.get("url", "")).rstrip("/")
+        # service_role key 전용 — anon key 는 토큰 테이블 접근 금지(RLS).
+        # service_key 없으면 SUPABASE_KEY 미설정 → Supabase 토큰 동기화 skip
+        # → 기존 파일/secrets 방식으로 안전하게 fallback.
+        _key = _sup.get("service_key") or _sup.get("service_role_key") or ""
+        if _url and "SUPABASE_URL" not in os.environ:
+            os.environ["SUPABASE_URL"] = _url
+        if _key and "SUPABASE_KEY" not in os.environ:
+            os.environ["SUPABASE_KEY"] = str(_key)
+    except Exception:
+        pass
+
+    # ----------------------------------------------------------
     # Cafe24 토큰 파일 복원 (Streamlit Cloud — ephemeral fs)
     # ----------------------------------------------------------
     # CAFE24_TOKENS_JSON env 가 있으면 data/cafe24_tokens.json 으로 씀.

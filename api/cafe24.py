@@ -31,6 +31,68 @@ import requests
 
 TOKEN_FILE = Path(__file__).parent.parent / "data" / "cafe24_tokens.json"
 
+# Supabase 토큰 공유 테이블 — 로컬/Cloud 가 같은 토큰 사용 (rotation 동기화)
+SUPABASE_TOKEN_TABLE = "cafe24_tokens"
+
+
+def _supabase_creds() -> tuple[str, str]:
+    """SUPABASE_URL / SUPABASE_KEY (env_bootstrap 이 secrets 에서 승격)."""
+    import os
+    return (
+        os.getenv("SUPABASE_URL", "").rstrip("/"),
+        os.getenv("SUPABASE_KEY", ""),
+    )
+
+
+def _supabase_load_all_tokens() -> dict:
+    """Supabase cafe24_tokens 테이블 → {mall_id: {...}}."""
+    url, key = _supabase_creds()
+    if not url or not key:
+        return {}
+    try:
+        resp = requests.get(
+            f"{url}/rest/v1/{SUPABASE_TOKEN_TABLE}",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            params={"select": "mall_id,access_token,refresh_token,expires_at"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return {r["mall_id"]: r for r in (resp.json() or [])}
+    except Exception:
+        return {}
+
+
+def _supabase_save_token(
+    mall_id: str, access_token: str | None,
+    refresh_token: str | None, expires_at: str | None,
+) -> bool:
+    """Supabase upsert (merge-duplicates) — rotation 시 공유 저장."""
+    url, key = _supabase_creds()
+    if not url or not key or not mall_id:
+        return False
+    try:
+        resp = requests.post(
+            f"{url}/rest/v1/{SUPABASE_TOKEN_TABLE}",
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates",
+            },
+            params={"on_conflict": "mall_id"},
+            json={
+                "mall_id": mall_id,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "expires_at": expires_at,
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return True
+    except Exception:
+        return False
+
 # OAuth 스코프
 DEFAULT_SCOPES = [
     "mall.read_application",
@@ -152,11 +214,30 @@ class Cafe24Client:
 
     # ---------- 토큰 파일 영속화 ----------
     def _load_tokens(self) -> None:
-        """파일 우선 → env (CAFE24_TOKENS_JSON) fallback.
+        """Supabase(공유) → 파일 → env (CAFE24_TOKENS_JSON) 순으로 로드.
 
-        Cloud 에서는 파일이 ephemeral 하고 env_bootstrap 의 파일 복원이
-        타이밍/경로 문제로 실패할 수 있어 env 도 직접 본다.
+        Supabase 를 최우선 — 로컬/Cloud 가 같은 토큰을 공유해
+        refresh rotation 이 양쪽에 동기화됨.
         """
+        # 0. Supabase 공유 저장소 (최우선)
+        try:
+            sb = _supabase_load_all_tokens()
+            my = sb.get(self.mall_id) or {}
+            if my.get("access_token"):
+                self._access_token = my.get("access_token")
+                self._refresh_token = my.get("refresh_token")
+                exp_str = my.get("expires_at")
+                if exp_str:
+                    try:
+                        self._expires_at = datetime.fromisoformat(
+                            str(exp_str).replace("Z", "").replace("+00:00", "")
+                        )
+                    except Exception:
+                        pass
+                return
+        except Exception:
+            pass
+
         # 1. 파일에서 로드 시도
         if TOKEN_FILE.exists():
             try:
@@ -197,13 +278,20 @@ class Cafe24Client:
                     all_tokens = json.load(f)
             except Exception:
                 pass
+        exp_iso = self._expires_at.isoformat() if self._expires_at else None
         all_tokens[self.mall_id] = {
             "access_token": self._access_token,
             "refresh_token": self._refresh_token,
-            "expires_at": self._expires_at.isoformat() if self._expires_at else None,
+            "expires_at": exp_iso,
         }
         with open(TOKEN_FILE, "w", encoding="utf-8") as f:
             json.dump(all_tokens, f, indent=2, ensure_ascii=False)
+
+        # Supabase 공유 저장소에도 upsert (로컬/Cloud rotation 동기화)
+        _supabase_save_token(
+            self.mall_id, self._access_token,
+            self._refresh_token, exp_iso,
+        )
 
     # ---------- API 호출 공통 ----------
     def _ensure_valid_token(self) -> str:
