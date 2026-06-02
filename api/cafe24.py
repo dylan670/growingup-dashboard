@@ -866,6 +866,54 @@ class Cafe24Client:
         )
         return True
 
+    def post_board_reply_article(
+        self, board_no: int, parent_article_no: int, content: str,
+        title: str = "답변드립니다", writer: str = "관리자",
+    ) -> dict:
+        """문의에 운영자 '답변글'(reply article) 작성.
+
+        문의 게시판은 답변이 댓글이 아니라 parent_article_no 로 연결된
+        별도 게시글(reply_depth+1)로 등록됨 → admin 과 동일 경로.
+        scope: mall.write_community 필요.
+
+        body 형식이 문서에 불명확 → 여러 변형 순차 시도.
+        """
+        content = (content or "").strip()
+        if not content:
+            raise ValueError("답변 본문이 비어있습니다.")
+
+        inner = {
+            "parent_article_no": parent_article_no,
+            "title": title,
+            "content": content,
+            "writer": writer,
+            "password": "growup24",
+        }
+        candidate_bodies = [
+            {"shop_no": 1, "request": {**inner, "board_category_no": 1}},
+            {"shop_no": 1, "request": inner},
+            {"request": inner},
+            {"shop_no": 1, "article": inner},
+        ]
+
+        last_err = ""
+        for i, body in enumerate(candidate_bodies, 1):
+            try:
+                res = self._request(
+                    "POST", f"/boards/{board_no}/articles",
+                    json_body=body,
+                ) or {}
+                return (res.get("article")
+                        or res.get("request") or res)
+            except requests.HTTPError as e:
+                code = e.response.status_code if e.response is not None else 0
+                txt = e.response.text[:300] if e.response is not None else ""
+                last_err = f"try{i} HTTP {code}: {txt}"
+                if code in (401, 403):
+                    raise RuntimeError(last_err)
+                continue
+        raise RuntimeError(f"답변글 작성 실패 — 모든 형식 실패. {last_err}")
+
     @staticmethod
     def _brand_of_store(store: str) -> str:
         s = str(store).replace(" ", "")

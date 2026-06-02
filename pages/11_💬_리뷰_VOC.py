@@ -1741,10 +1741,18 @@ with tab_inquiry:
                                         f"클라이언트 로드 실패 (mall_id={m_id})"
                                     )
                                 else:
-                                    res = cl.post_board_comment(6, a_no, tv)
+                                    _title = (
+                                        f"RE: {irow['title']}"
+                                        if irow['title'] else "답변드립니다"
+                                    )
+                                    res = cl.post_board_reply_article(
+                                        6, a_no, tv, title=_title,
+                                    )
+                                    _no = (res.get('article_no')
+                                           or res.get('reply_article_no') or '?')
                                     st.session_state[isent] = (
-                                        f"✅ 답변 전송 완료 "
-                                        f"(comment_no={res.get('comment_no','?')})"
+                                        f"✅ 답변글 등록 완료 (#{_no}) — "
+                                        f"고객에게 답변완료로 표시됩니다."
                                     )
                                     st.session_state[iclear] = True
                                     st.cache_data.clear()
