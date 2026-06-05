@@ -47,16 +47,10 @@ def _load_orders() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
-def _load_images() -> dict:
-    p = ROOT / "data" / "product_images.csv"
-    if not p.exists():
-        return {}
-    df = pd.read_csv(p, encoding="utf-8-sig")
-    return {
-        str(n).strip(): str(u).strip()
-        for n, u in zip(df["name"], df["image_url"])
-        if pd.notna(n) and pd.notna(u)
-    }
+def _load_images():
+    """이미지 캐시 DataFrame (정교한 fuzzy 매칭용 — utils.product_images)."""
+    from utils.product_images import load_image_cache
+    return load_image_cache()
 
 
 def _brand_of(p: str) -> str:
@@ -70,15 +64,17 @@ def _brand_of(p: str) -> str:
     return "기타"
 
 
-def _find_image(name: str, img_map: dict) -> str:
-    if not isinstance(name, str) or not name:
+def _find_image(name: str, cache_df) -> str:
+    """utils.product_images 의 fuzzy 매칭 (SKU 토큰 보정) 사용.
+
+    단순 substring 대신 SequenceMatcher + 모델명/SKU 키워드 보정 →
+    제각각인 채널별 제품명도 매칭률 상승.
+    """
+    from utils.product_images import find_image
+    try:
+        return find_image(str(name), cache_df, min_ratio=0.4) or ""
+    except Exception:
         return ""
-    if name in img_map:
-        return img_map[name]
-    for ik, url in img_map.items():
-        if ik and ik in name:
-            return url
-    return ""
 
 
 orders = _load_orders()
