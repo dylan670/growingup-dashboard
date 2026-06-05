@@ -1,7 +1,7 @@
-"""무신사 캘린더 (채널별 행사/프로모션) Notion 연동.
+"""롤라루 행사 캘린더 (채널별 행사/프로모션) Notion 연동.
 
 회의록(notion_meetings)과 동일한 Integration · REST 패턴 재사용.
-DB: 🕶️ 무신사 캘린더 (그로잉업팀 > 롤라루 캘린더)
+DB: 🕶️ 롤라루 캘린더 (그로잉업팀 > 롤라루 캘린더, inline DB 제목은 '무신사 캘린더')
 스키마: 이름(title) · 날짜(date) · 브랜드(select) · 판매처(select)
 
 ⚠️ 대시보드 Notion Integration 이 이 DB(또는 상위 페이지)에
@@ -24,7 +24,7 @@ from api.notion_meetings import (
     cache_load,
 )
 
-# 무신사 캘린더 inline DB id (행사 데이터)
+# 롤라루 행사 캘린더 inline DB id (DB 제목은 '무신사 캘린더')
 EVENTS_DB_ID = "342c081d6cc980e09a06ed3daabcc7e3"
 _CACHE_KEY = "rows_events_musinsa"
 

@@ -1,7 +1,7 @@
 """행사관리 — 팀 일정 + 브랜드 행사 통합 캘린더 (Notion 연동).
 
 📅 팀 일정   : 그로잉업팀 캘린더 (담당자별 업무 — 클레어/딜런/제인 …)
-🎉 브랜드 행사: 🕶️ 무신사 캘린더 (브랜드·판매처별 프로모션/세일)
+🎉 브랜드 행사: 🕶️ 롤라루 캘린더 (브랜드·판매처별 프로모션/세일)
 """
 from __future__ import annotations
 
@@ -223,7 +223,7 @@ with tab_team:
 
 
 # ============================================================
-# TAB 2 — 브랜드 행사 (무신사 캘린더)
+# TAB 2 — 브랜드 행사 (롤라루 캘린더)
 # ============================================================
 with tab_brand:
     edf = _load_events_df()
@@ -234,7 +234,7 @@ with tab_brand:
 <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:22px 26px; margin-top:16px;">
     <div style="font-size:1.05rem; font-weight:700; color:#78350f;">📭 브랜드 행사 데이터 없음</div>
     <div style="font-size:0.88rem; color:#92400e; margin-top:10px; line-height:1.7;">
-        Notion <b>🕶️ 무신사 캘린더</b>(롤라루 캘린더) 를 불러오지 못했습니다.<br>
+        Notion <b>🕶️ 롤라루 캘린더</b> 를 불러오지 못했습니다.<br>
         <b>롤라루 캘린더</b> 페이지를 대시보드 Integration(<b>그로잉업팀 대시보드</b>)에 공유해 주세요:
         <ol style="margin-top:8px; padding-left:20px;">
             <li>Notion <b>🕶️ 롤라루 캘린더</b> 페이지 → 우측 상단 <code>···</code></li>
