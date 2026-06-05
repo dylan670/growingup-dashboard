@@ -9,7 +9,7 @@ DB: 🕶️ 무신사 캘린더 (그로잉업팀 > 롤라루 캘린더)
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from api.notion_meetings import (
@@ -27,6 +27,24 @@ from api.notion_meetings import (
 # 무신사 캘린더 inline DB id (행사 데이터)
 EVENTS_DB_ID = "342c081d6cc980e09a06ed3daabcc7e3"
 _CACHE_KEY = "rows_events_musinsa"
+
+# 그로잉업팀 캘린더 inline DB id (팀 업무/일정 데이터)
+TEAM_CAL_DB_ID = "310c081d6cc98053b868e6db557854ad"
+_TEAM_CACHE_KEY = "rows_team_schedule"
+
+
+def _extract_people(prop: dict) -> list[str]:
+    """담당자(person) 프로퍼티 → 이름 리스트. (Integration user-read 권한 필요)"""
+    out = []
+    for pp in (prop or {}).get("people", []):
+        nm = (pp.get("name") or "").strip()
+        if nm:
+            out.append(nm)
+    return out
+
+
+def _extract_checkbox(prop: dict) -> bool:
+    return bool((prop or {}).get("checkbox", False))
 
 
 def load_events(max_count: int = 300, use_cache: bool = True) -> list[dict]:
@@ -81,6 +99,71 @@ def load_events(max_count: int = 300, use_cache: bool = True) -> list[dict]:
             pass
     elif use_cache:
         cached, _ = cache_load(_CACHE_KEY)
+        if cached:
+            return cached
+    return rows
+
+
+def load_team_schedule(
+    days_back: int = 7, max_count: int = 400, use_cache: bool = True,
+) -> list[dict]:
+    """그로잉업팀 캘린더(팀 업무 일정) 로드.
+
+    반환: [{name, date_start, date_end, assignees:[..], done:bool}], 날짜 오름차순.
+    `날짜 ≥ 오늘-days_back` 서버사이드 필터로 최근·예정만 (운영 태스크 폭주 방지).
+    Integration 미연결/실패 시 캐시 → 빈 리스트 fallback.
+    """
+    token, _ = _get_creds()
+    if not token:
+        cached, _ = cache_load(_TEAM_CACHE_KEY) if use_cache else (None, None)
+        return cached or []
+
+    after = (date.today() - timedelta(days=days_back)).isoformat()
+    url = f"{NOTION_API_BASE}/databases/{TEAM_CAL_DB_ID}/query"
+    rows: list[dict] = []
+    cursor: str | None = None
+
+    try:
+        while len(rows) < max_count:
+            payload: dict[str, Any] = {
+                "page_size": 100,
+                "filter": {"property": "날짜", "date": {"on_or_after": after}},
+                "sorts": [{"property": "날짜", "direction": "ascending"}],
+            }
+            if cursor:
+                payload["start_cursor"] = cursor
+            resp = _post_with_retry(url, _headers(token), payload, timeout=20)
+            if resp is None or not resp.ok:
+                break
+            data = resp.json()
+            for r in data.get("results", []):
+                p = r.get("properties", {})
+                date_obj = _extract_date_full(p.get("날짜", {}))
+                if not date_obj or not (date_obj or {}).get("start"):
+                    continue
+                rows.append({
+                    "name": _extract_title(p.get("이름", {})),
+                    "date_start": (date_obj or {}).get("start", ""),
+                    "date_end": (date_obj or {}).get("end", "") or "",
+                    "assignees": _extract_people(p.get("담당자", {})),
+                    "done": _extract_checkbox(p.get("완료여부", {})),
+                })
+            if not data.get("has_more"):
+                break
+            cursor = data.get("next_cursor")
+    except Exception:
+        cached, _ = cache_load(_TEAM_CACHE_KEY) if use_cache else (None, None)
+        return cached or []
+
+    rows.sort(key=lambda x: x.get("date_start") or "9999")
+
+    if rows:
+        try:
+            cache_save(_TEAM_CACHE_KEY, rows)
+        except Exception:
+            pass
+    elif use_cache:
+        cached, _ = cache_load(_TEAM_CACHE_KEY)
         if cached:
             return cached
     return rows
