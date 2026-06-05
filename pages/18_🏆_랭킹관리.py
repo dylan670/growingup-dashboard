@@ -246,17 +246,29 @@ if not inv.empty:
                 f'border-radius:8px; display:flex; align-items:center; '
                 f'justify-content:center; font-size:1.8rem; color:{primary};">📦</div>'
             )
-            short = product[:22] + "..." if len(product) > 22 else product
+            option = str(sku.get("option", "") or "").strip()
+            if option.lower() in ("nan", "none"):
+                option = ""
+            short = product[:20] + "..." if len(product) > 20 else product
+            opt_short = option[:26] + "..." if len(option) > 26 else option
+            opt_html = (
+                f'<div style="font-size:0.66rem; color:#64748b; '
+                f'line-height:1.2; height:16px; overflow:hidden;" '
+                f'title="{option}">🔖 {opt_short}</div>'
+                if option else
+                '<div style="height:16px;"></div>'
+            )
             with s_cols[col_i]:
                 st.markdown(
                     _flatten_html(f"""
-<div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:10px; min-height:220px; box-shadow:0 1px 3px rgba(15,23,42,0.04);">
+<div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:10px; min-height:236px; box-shadow:0 1px 3px rgba(15,23,42,0.04);">
     <div style="position:relative; margin-bottom:8px;">
         {img_html}
         <div style="position:absolute; top:6px; left:6px; background:#f59e0b; color:white; border-radius:999px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:0.74rem; font-weight:700;">{rank}</div>
     </div>
     <div style="font-size:0.66rem; color:{text_c}; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">{brand}</div>
-    <div style="font-size:0.74rem; color:#0f172a; font-weight:600; line-height:1.3; margin-top:3px; height:32px; overflow:hidden;" title="{product}">{short}</div>
+    <div style="font-size:0.74rem; color:#0f172a; font-weight:600; line-height:1.3; margin-top:3px; height:30px; overflow:hidden;" title="{product}">{short}</div>
+    {opt_html}
     <div style="margin-top:6px; padding-top:6px; border-top:1px solid #f1f5f9;">
         <div style="display:flex; justify-content:space-between; font-size:0.7rem;">
             <span style="color:#94a3b8;">재고</span>

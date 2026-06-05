@@ -150,6 +150,86 @@ st.markdown("---")
 
 
 # ============================================================
+# 재고 베스트 10 — 이미지 카드 (재고액 상위, 옵션 포함)
+# ============================================================
+if not inv.empty:
+    st.markdown("### 📦 재고 베스트 10")
+    st.caption("재고액 (재고수량 × 판매가) 기준 상위 10 · 회수·할인 후보")
+
+    from utils.product_images import load_image_cache, find_image
+    _img_cache = load_image_cache()
+
+    def _flat14(h: str) -> str:
+        return "".join(ln.strip() for ln in h.strip().split("\n"))
+
+    _inv_top = inv.copy()
+    _inv_top["value"] = _inv_top["stock"] * _inv_top["price"]
+    _inv_top = _inv_top.sort_values("value", ascending=False).head(10)
+
+    _ncol = 5
+    for _ri in range(0, len(_inv_top), _ncol):
+        _scols = st.columns(_ncol)
+        for _ci, (_, _sku) in enumerate(
+            _inv_top.iloc[_ri:_ri + _ncol].iterrows()
+        ):
+            _rank = _ri + _ci + 1
+            _prod = str(_sku["product"])
+            _brand = _sku.get("brand", "기타")
+            _bc = BRAND_COLORS.get(_brand, {})
+            _pri = _bc.get("primary", "#64748b")
+            _soft = _bc.get("bg_soft", "#f8fafc")
+            _txtc = _bc.get("text", "#0f172a")
+            try:
+                _url = find_image(_prod, _img_cache, min_ratio=0.4) or ""
+            except Exception:
+                _url = ""
+            _img = (
+                f'<img src="{_url}" style="width:100%; height:110px; '
+                f'object-fit:cover; border-radius:8px;" />'
+                if _url else
+                f'<div style="width:100%; height:110px; background:{_soft}; '
+                f'border-radius:8px; display:flex; align-items:center; '
+                f'justify-content:center; font-size:1.8rem; '
+                f'color:{_pri};">📦</div>'
+            )
+            _opt = str(_sku.get("option", "") or "").strip()
+            if _opt.lower() in ("nan", "none"):
+                _opt = ""
+            _ps = _prod[:20] + "..." if len(_prod) > 20 else _prod
+            _os = _opt[:26] + "..." if len(_opt) > 26 else _opt
+            _oh = (
+                f'<div style="font-size:0.66rem; color:#64748b; '
+                f'line-height:1.2; height:16px; overflow:hidden;" '
+                f'title="{_opt}">🔖 {_os}</div>'
+                if _opt else '<div style="height:16px;"></div>'
+            )
+            with _scols[_ci]:
+                st.markdown(_flat14(f"""
+<div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:10px; min-height:236px; box-shadow:0 1px 3px rgba(15,23,42,0.04);">
+    <div style="position:relative; margin-bottom:8px;">
+        {_img}
+        <div style="position:absolute; top:6px; left:6px; background:#f59e0b; color:white; border-radius:999px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:0.74rem; font-weight:700;">{_rank}</div>
+    </div>
+    <div style="font-size:0.66rem; color:{_txtc}; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">{_brand}</div>
+    <div style="font-size:0.74rem; color:#0f172a; font-weight:600; line-height:1.3; margin-top:3px; height:30px; overflow:hidden;" title="{_prod}">{_ps}</div>
+    {_oh}
+    <div style="margin-top:6px; padding-top:6px; border-top:1px solid #f1f5f9;">
+        <div style="display:flex; justify-content:space-between; font-size:0.7rem;">
+            <span style="color:#94a3b8;">재고</span>
+            <span style="color:{_txtc}; font-weight:700;">{int(_sku['stock']):,}개</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-top:2px;">
+            <span style="color:#94a3b8;">재고액</span>
+            <span style="color:#b45309; font-weight:700;">₩{int(_sku['value']/10000):,}만</span>
+        </div>
+    </div>
+</div>
+                """), unsafe_allow_html=True)
+
+    st.markdown("---")
+
+
+# ============================================================
 # 상세 표 — 검색 + 정렬
 # ============================================================
 st.markdown("### 🔍 재고 상세")
