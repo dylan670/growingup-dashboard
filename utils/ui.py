@@ -739,7 +739,6 @@ _NAV_PAGES: list[tuple[str, str, str, str]] = [
 # SOON 표시할 페이지 (사이드바에 작은 회색 라벨)
 _SOON_PAGES: set[str] = {
     "pages/16_📋_발주관리.py",
-    "pages/17_🎉_행사관리.py",
     "pages/19_🤖_AI_어시스턴트.py",
 }
 
