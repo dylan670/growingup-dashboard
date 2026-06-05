@@ -189,12 +189,22 @@ def load_manual_image_overrides() -> pd.DataFrame:
     CSV 컬럼: store, name_keyword, image_url
     name_keyword 가 주문 product 이름에 포함되면 image_url 사용 (substring match).
     """
+    cols = ["store", "name_keyword", "image_url"]
     if not MANUAL_IMAGES_CSV.exists():
-        return pd.DataFrame(columns=["store", "name_keyword", "image_url"])
+        return pd.DataFrame(columns=cols)
     try:
-        return pd.read_csv(MANUAL_IMAGES_CSV)
+        df = pd.read_csv(MANUAL_IMAGES_CSV)
+        if not {"store", "name_keyword", "image_url"}.issubset(df.columns):
+            return pd.DataFrame(columns=cols)
+        # 주석(#) 행 · 빈 값 · placeholder(path/to·example) 제외
+        # → 사용법 주석/샘플이 실제 매핑으로 오인되는 것 방지
+        df = df[~df["store"].astype(str).str.strip().str.startswith("#")]
+        df = df.dropna(subset=["name_keyword", "image_url"])
+        df = df[~df["image_url"].astype(str).str.contains(
+            "path/to|example|placeholder", case=False, na=False)]
+        return df
     except Exception:
-        return pd.DataFrame(columns=["store", "name_keyword", "image_url"])
+        return pd.DataFrame(columns=cols)
 
 
 # SKU 구별 키워드 — 강/약 2단계
