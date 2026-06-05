@@ -238,12 +238,132 @@ st.markdown("---")
 # ==========================================================
 # 탭 구성
 # ==========================================================
-tab_cat, tab_flavor, tab_bundle, tab_roas = st.tabs([
+tab_reco, tab_cat, tab_flavor, tab_bundle, tab_roas = st.tabs([
+    "💡 확장 추천",
     "🍱 카테고리 분포",
     "👅 맛 선호도",
     "📦 번들 vs 단품",
     "📊 SKU 효율 (ROAS)",
 ])
+
+
+# ==========================================================
+# TAB 0 — 💡 확장 추천 (맛×카테고리 갭 + 리뷰 VOC)
+# ==========================================================
+with tab_reco:
+    st.markdown("##### 💡 SKU 확장 추천 — 맛 × 카테고리 갭 매트릭스")
+    st.caption(
+        "잘 팔리는 맛을 아직 안 만든 카테고리로 확장 = 가장 안전한 신 SKU 전략. "
+        "색이 진할수록 매출 큼 · 빈칸 = 미진출(확장 후보)"
+    )
+
+    _rc = filtered[filtered["primary_flavor"] != "(맛 정보 없음)"].copy()
+    if _rc.empty:
+        st.info("맛 정보가 추출되는 제품이 없어 추천을 만들 수 없습니다.")
+    else:
+        _flavor_rev = _rc.groupby("primary_flavor")["revenue"].sum()
+        _cat_rev = _rc.groupby("category")["revenue"].sum()
+        _flavor_order = _flavor_rev.sort_values(ascending=False).index.tolist()
+        _cat_order = _cat_rev.sort_values(ascending=False).index.tolist()
+
+        _pivot = _rc.pivot_table(
+            index="primary_flavor", columns="category",
+            values="revenue", aggfunc="sum", fill_value=0,
+        ).reindex(index=_flavor_order, columns=_cat_order, fill_value=0)
+
+        # ---- 갭 히트맵 ----
+        _z = _pivot.values
+        _txt = [
+            [(f"₩{int(v/1e4)}만" if v > 0 else "➕ 후보") for v in row]
+            for row in _z
+        ]
+        _fig_gap = go.Figure(go.Heatmap(
+            z=_z, x=_pivot.columns.tolist(), y=_pivot.index.tolist(),
+            colorscale=[[0, "#f8fafc"], [0.0001, "#e0e7ff"], [1, "#2563eb"]],
+            text=_txt, texttemplate="%{text}",
+            textfont={"size": 11},
+            hovertemplate="%{y} × %{x}<br>매출 ₩%{z:,.0f}<extra></extra>",
+            showscale=False, xgap=3, ygap=3,
+        ))
+        _fig_gap.update_layout(
+            height=max(280, len(_pivot) * 46),
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(side="top", tickfont=dict(size=12)),
+            yaxis=dict(tickfont=dict(size=12), autorange="reversed"),
+        )
+        st.plotly_chart(_fig_gap, use_container_width=True)
+
+        # ---- 우선 확장 후보 (베스트 맛 × 미진출 카테고리) ----
+        st.markdown("###### 🎯 우선 확장 후보 (판매 데이터 기반)")
+        _cands = []
+        for _fl in _flavor_order[:6]:
+            for _cat in _cat_order:
+                if _pivot.loc[_fl, _cat] == 0:
+                    _score = _flavor_rev[_fl] * _cat_rev[_cat]
+                    _cands.append((_fl, _cat, _flavor_rev[_fl],
+                                   _cat_rev[_cat], _score))
+        _cands.sort(key=lambda x: -x[4])
+
+        if _cands:
+            for _fl, _cat, _frev, _crev, _ in _cands[:6]:
+                st.markdown(
+                    _flatten_html(f"""
+<div style="background:#eff6ff; border-left:3px solid #2563eb; padding:10px 14px; border-radius:8px; margin:5px 0;">
+<span style="font-weight:700; color:#1e40af;">{_fl} {_cat}</span>
+<span style="color:#64748b; font-size:0.8rem; margin-left:8px;">신규 검토 — {_fl} 맛 ₩{int(_frev/1e4):,}만 · {_cat} 카테고리 ₩{int(_crev/1e4):,}만 규모</span>
+</div>
+                    """),
+                    unsafe_allow_html=True,
+                )
+            st.caption(
+                "💡 점수 = (해당 맛 총매출 × 카테고리 총매출) — "
+                "인기 맛과 큰 카테고리의 교차가 우선순위 상위"
+            )
+        else:
+            st.success(
+                "주요 맛 × 카테고리 조합이 대부분 진출됨 — "
+                "신규 맛 개발 또는 사이즈/번들 변형 검토 권장"
+            )
+
+        # ---- 리뷰 VOC 힌트 ----
+        st.markdown("###### 💬 리뷰 VOC 힌트")
+        _rv_path = ROOT / "data" / "reviews.csv"
+        _rv = pd.DataFrame()
+        if _rv_path.exists():
+            try:
+                _rv = pd.read_csv(_rv_path)
+                _rv = _rv[_rv["brand"] == "똑똑연구소"].copy()
+            except Exception:
+                _rv = pd.DataFrame()
+
+        if _rv.empty:
+            st.caption(
+                "자사몰 리뷰 데이터가 아직 적습니다. "
+                "리뷰가 쌓이면 고객이 원하는 맛·형태를 자동 추출합니다."
+            )
+        else:
+            _neg = _rv[_rv["rating"] <= 3]
+            _pos = _rv[_rv["rating"] >= 4]
+            _vc1, _vc2 = st.columns(2)
+            with _vc1:
+                st.markdown(
+                    f"<div style='font-size:0.82rem; color:#16a34a; "
+                    f"font-weight:600;'>👍 긍정 {len(_pos)}건 — 강점 유지</div>",
+                    unsafe_allow_html=True,
+                )
+                for _t in _pos["text"].head(3):
+                    st.caption(f"· {str(_t)[:60]}")
+            with _vc2:
+                st.markdown(
+                    f"<div style='font-size:0.82rem; color:#dc2626; "
+                    f"font-weight:600;'>👎 개선요청 {len(_neg)}건 — 신제품 힌트</div>",
+                    unsafe_allow_html=True,
+                )
+                if len(_neg):
+                    for _t in _neg["text"].head(3):
+                        st.caption(f"· {str(_t)[:60]}")
+                else:
+                    st.caption("· 부정 리뷰 없음")
 
 
 # ==========================================================
