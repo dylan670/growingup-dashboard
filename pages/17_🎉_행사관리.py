@@ -30,6 +30,9 @@ def _flatten_html(html: str) -> str:
 _today = pd.Timestamp(datetime.now().date())
 _WD = "월화수목금토일"
 
+# 롤라루 캘린더 Notion 링크 (사용자 제공) — 행사 탭에서 바로 열기
+NOTION_CAL_URL = "https://www.notion.so/openhan/342c081d6cc9802aa83efedde63b75bc"
+
 # 담당자 색상 팔레트 (이름순 고정 매핑 → 색 일관성)
 _PERSON_PALETTE = [
     "#6366f1", "#ec4899", "#14b8a6", "#f59e0b", "#8b5cf6",
@@ -230,22 +233,26 @@ with tab_brand:
 
     if edf.empty:
         st.markdown(
-            _flatten_html("""
-<div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:22px 26px; margin-top:16px;">
-    <div style="font-size:1.05rem; font-weight:700; color:#78350f;">📭 브랜드 행사 데이터 없음</div>
-    <div style="font-size:0.88rem; color:#92400e; margin-top:10px; line-height:1.7;">
-        Notion <b>🕶️ 롤라루 캘린더</b> 를 불러오지 못했습니다.<br>
-        <b>롤라루 캘린더</b> 페이지를 대시보드 Integration(<b>그로잉업팀 대시보드</b>)에 공유해 주세요:
-        <ol style="margin-top:8px; padding-left:20px;">
-            <li>Notion <b>🕶️ 롤라루 캘린더</b> 페이지 → 우측 상단 <code>···</code></li>
-            <li><b>연결(Connections)</b> → <b>그로잉업팀 대시보드</b> 추가 (⚠️ Claude 말고)</li>
-        </ol>
-        연결 후 새로고침하면 자동 반영됩니다.
-    </div>
+            _flatten_html(f"""
+<div style="background:linear-gradient(135deg,#ecfeff 0%,#e0f2fe 100%); border:1px solid #bae6fd; border-radius:14px; padding:26px 28px; margin-top:16px; text-align:center;">
+    <div style="font-size:2.2rem;">🕶️</div>
+    <div style="font-size:1.15rem; font-weight:700; color:#0c4a6e; margin-top:6px;">롤라루 행사 캘린더</div>
+    <div style="font-size:0.86rem; color:#0369a1; margin-top:6px;">Notion 롤라루 캘린더에서 행사·프로모션 일정을 확인하세요</div>
+    <a href="{NOTION_CAL_URL}" target="_blank" style="display:inline-block; margin-top:16px; background:#0ea5e9; color:white; font-size:0.95rem; font-weight:700; padding:11px 28px; border-radius:10px; text-decoration:none;">🔗 Notion에서 캘린더 열기</a>
 </div>
             """),
             unsafe_allow_html=True,
         )
+        with st.expander("💡 이 화면 안에 달력을 '그대로' 띄우고 싶다면"):
+            st.markdown(
+                "**가장 쉬운 방법** — Notion에서 롤라루 캘린더 페이지 → 우측 상단 "
+                "**공유 → '웹에 게시'** 켜기 → 나온 링크를 저에게 주세요. "
+                "그럼 이 화면에 달력을 그대로 박아드릴게요.\n\n"
+                "> ⚠️ '웹에 게시'는 **링크를 아는 사람은 누구나** 볼 수 있게 됩니다. "
+                "내부 일정이라 공개해도 괜찮은지 먼저 확인해 주세요.\n\n"
+                "**자동 업데이트까지 원하면** — 대시보드 Integration('그로잉업팀 대시보드') "
+                "연결 (비공개·안전하지만 설정이 조금 더 복잡)."
+            )
     else:
         def _status(row) -> str:
             if row["start"] > _today:
