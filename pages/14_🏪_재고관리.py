@@ -16,6 +16,7 @@ import streamlit as st
 
 from utils.ui import (
     setup_page, BRAND_COLORS, TEXT_MAIN, TEXT_MUTED, TEXT_FAINT,
+    format_won_compact,
 )
 from api.easyadmin_csv import load_inventory
 
@@ -61,7 +62,8 @@ critical = int((inv["days_left"] <= 7).sum())
 
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("📦 현재 재고", f"{total_qty:,}개", f"{sku_count} SKU")
-k2.metric("💰 재고액 (판매가)", f"₩{total_value:,}")
+k2.metric("💰 재고액 (판매가)", format_won_compact(total_value),
+          help=f"정확한 금액: ₩{total_value:,}")
 k3.metric("📥 입고 예정", f"{incoming_total:,}개")
 k4.metric("🚨 7일 내 품절", f"{critical}건")
 k5.metric("🏷 브랜드", f"{len(brands)}개")
