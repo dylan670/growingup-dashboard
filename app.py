@@ -469,6 +469,86 @@ if not _has_inv:
         unsafe_allow_html=True,
     )
 else:
+    # ── 재고 베스트 10 (이미지 카드 · 재고액 상위 · 옵션 포함) ──
+    try:
+        from api.easyadmin_csv import load_inventory as _load_inv_full
+        from utils.product_images import (
+            load_image_cache as _lic, find_image as _fi,
+        )
+        _invf = _load_inv_full()
+    except Exception:
+        _invf = pd.DataFrame()
+
+    if not _invf.empty and {"stock", "price", "product"}.issubset(_invf.columns):
+        _icache = _lic()
+        _itop = _invf.copy()
+        _itop["value"] = _itop["stock"] * _itop["price"]
+        _itop = _itop.sort_values("value", ascending=False).head(10)
+        st.markdown(
+            "<div style='font-size:0.92rem; font-weight:700; color:#0f172a; "
+            "margin-bottom:8px;'>🏆 재고 베스트 10 "
+            "<span style='font-size:0.74rem; color:#94a3b8; font-weight:400;'>"
+            "· 재고액(재고×판매가) 상위 · 회수·할인 후보</span></div>",
+            unsafe_allow_html=True,
+        )
+        for _ri in range(0, len(_itop), 5):
+            _sc = st.columns(5)
+            for _ci, (_, _sku) in enumerate(_itop.iloc[_ri:_ri + 5].iterrows()):
+                _rk = _ri + _ci + 1
+                _pdname = str(_sku["product"])
+                _br = _sku.get("brand", "기타")
+                _bcc = BRAND_COLORS.get(_br, {})
+                _pri = _bcc.get("primary", "#64748b")
+                _sft = _bcc.get("bg_soft", "#f8fafc")
+                _tx = _bcc.get("text", "#0f172a")
+                try:
+                    _u = _fi(_pdname, _icache, min_ratio=0.4) or ""
+                except Exception:
+                    _u = ""
+                _im = (
+                    f'<img src="{_u}" style="width:100%; height:100px; '
+                    f'object-fit:cover; border-radius:8px;" />'
+                    if _u else
+                    f'<div style="width:100%; height:100px; background:{_sft}; '
+                    f'border-radius:8px; display:flex; align-items:center; '
+                    f'justify-content:center; font-size:1.6rem; '
+                    f'color:{_pri};">📦</div>'
+                )
+                _op = str(_sku.get("option", "") or "").strip()
+                if _op.lower() in ("nan", "none"):
+                    _op = ""
+                _pss = _pdname[:18] + "..." if len(_pdname) > 18 else _pdname
+                _oss = _op[:24] + "..." if len(_op) > 24 else _op
+                _ohh = (
+                    f'<div style="font-size:0.64rem; color:#64748b; '
+                    f'line-height:1.2; height:15px; overflow:hidden;" '
+                    f'title="{_op}">🔖 {_oss}</div>'
+                    if _op else '<div style="height:15px;"></div>'
+                )
+                with _sc[_ci]:
+                    st.markdown(_flatten_html(f"""
+<div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:9px; min-height:215px; box-shadow:0 1px 3px rgba(15,23,42,0.04);">
+    <div style="position:relative; margin-bottom:7px;">
+        {_im}
+        <div style="position:absolute; top:5px; left:5px; background:#f59e0b; color:white; border-radius:999px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700;">{_rk}</div>
+    </div>
+    <div style="font-size:0.64rem; color:{_tx}; font-weight:600; text-transform:uppercase;">{_br}</div>
+    <div style="font-size:0.72rem; color:#0f172a; font-weight:600; line-height:1.3; margin-top:2px; height:28px; overflow:hidden;" title="{_pdname}">{_pss}</div>
+    {_ohh}
+    <div style="margin-top:5px; padding-top:5px; border-top:1px solid #f1f5f9;">
+        <div style="display:flex; justify-content:space-between; font-size:0.68rem;">
+            <span style="color:#94a3b8;">재고</span>
+            <span style="color:{_tx}; font-weight:700;">{int(_sku['stock']):,}개</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.68rem; margin-top:2px;">
+            <span style="color:#94a3b8;">재고액</span>
+            <span style="color:#b45309; font-weight:700;">₩{int(_sku['value']/10000):,}만</span>
+        </div>
+    </div>
+</div>
+                    """), unsafe_allow_html=True)
+        st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+
     inv_cols = st.columns(4)
 
     # ── ① 소진 임박 ──
