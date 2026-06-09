@@ -18,7 +18,7 @@ from utils.ui import (
     setup_page, BRAND_COLORS, TEXT_MAIN, TEXT_MUTED, TEXT_FAINT,
     format_won_compact,
 )
-from api.easyadmin_csv import load_inventory
+from api.easyadmin_csv import load_inventory, value_basis
 
 
 setup_page(
@@ -53,8 +53,9 @@ if inv.empty:
 # ============================================================
 # 상단 KPI
 # ============================================================
+_vcol, _vlabel = value_basis(inv)
 total_qty = int(inv["stock"].sum())
-total_value = int((inv["stock"] * inv["price"]).sum())
+total_value = int((inv["stock"] * inv[_vcol]).sum())
 sku_count = len(inv)
 brands = inv["brand"].value_counts().to_dict()
 incoming_total = int(inv["incoming"].sum())
@@ -62,7 +63,7 @@ critical = int((inv["days_left"] <= 7).sum())
 
 k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric("📦 현재 재고", f"{total_qty:,}개", f"{sku_count} SKU")
-k2.metric("💰 재고액 (판매가)", format_won_compact(total_value),
+k2.metric(f"💰 재고액 ({_vlabel})", format_won_compact(total_value),
           help=f"정확한 금액: ₩{total_value:,}")
 k3.metric("📥 입고 예정", f"{incoming_total:,}개")
 k4.metric("🚨 7일 내 품절", f"{critical}건")
@@ -78,15 +79,15 @@ chart_l, chart_r = st.columns(2)
 
 with chart_l:
     st.markdown(
-        _flatten_html("""
+        _flatten_html(f"""
 <div style="font-size:1rem; font-weight:700; color:#0f172a; margin-bottom:2px;">브랜드별 재고 비율</div>
-<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:12px;">재고액 (재고수량 × 판매가) 기준</div>
+<div style="font-size:0.78rem; color:#94a3b8; margin-bottom:12px;">재고액 (재고수량 × {_vlabel}) 기준</div>
         """),
         unsafe_allow_html=True,
     )
 
     by_brand = inv.copy()
-    by_brand["value"] = by_brand["stock"] * by_brand["price"]
+    by_brand["value"] = by_brand["stock"] * by_brand[_vcol]
     brand_agg = by_brand.groupby("brand")["value"].sum().sort_values(ascending=False)
     if not brand_agg.empty:
         colors = [
@@ -156,7 +157,7 @@ st.markdown("---")
 # ============================================================
 if not inv.empty:
     st.markdown("### 📦 재고 베스트 10")
-    st.caption("재고액 (재고수량 × 판매가) 기준 상위 10 · 회수·할인 후보")
+    st.caption(f"재고액 (재고수량 × {_vlabel}) 기준 상위 10 · 회수·할인 후보")
 
     from utils.product_images import load_image_cache, find_image
     _img_cache = load_image_cache()
@@ -165,7 +166,7 @@ if not inv.empty:
         return "".join(ln.strip() for ln in h.strip().split("\n"))
 
     _inv_top = inv.copy()
-    _inv_top["value"] = _inv_top["stock"] * _inv_top["price"]
+    _inv_top["value"] = _inv_top["stock"] * _inv_top[_vcol]
     _inv_top = _inv_top.sort_values("value", ascending=False).head(10)
 
     _ncol = 5
@@ -242,7 +243,7 @@ search_q = st.text_input(
 )
 
 display = inv.copy()
-display["value"] = display["stock"] * display["price"]
+display["value"] = display["stock"] * display[_vcol]
 display = display.sort_values("value", ascending=False)
 
 if search_q.strip():
@@ -254,7 +255,7 @@ if search_q.strip():
     )
     display = display[mask]
 
-st.caption(f"전체 {len(inv)}건 중 **{len(display)}건** 표시")
+st.caption(f"전체 {len(inv)}건 중 **{len(display)}건** 표시 · 재고액 = 재고수량 × {_vlabel}")
 
 # 표 — 핵심 컬럼만
 display_show = display[[

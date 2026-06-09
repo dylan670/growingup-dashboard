@@ -12,7 +12,7 @@ import pandas as pd
 import streamlit as st
 
 from utils.ui import setup_page, BRAND_COLORS
-from api.easyadmin_csv import load_inventory
+from api.easyadmin_csv import load_inventory, value_basis
 
 
 setup_page(
@@ -218,10 +218,11 @@ st.markdown("---")
 # ============================================================
 if not inv.empty:
     st.markdown("### 📦 재고 베스트 10")
-    st.caption("재고액 (재고수량 × 판매가) 기준 상위 10 · 회수·할인 후보")
+    _vc18, _vl18 = value_basis(inv)
+    st.caption(f"재고액 (재고수량 × {_vl18}) 기준 상위 10 · 회수·할인 후보")
 
     inv_top = inv.copy()
-    inv_top["value"] = inv_top["stock"] * inv_top["price"]
+    inv_top["value"] = inv_top["stock"] * inv_top[_vc18]
     inv_top = inv_top.sort_values("value", ascending=False).head(10)
 
     n_cols = 5

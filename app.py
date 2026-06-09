@@ -471,7 +471,9 @@ if not _has_inv:
 else:
     # ── 재고 베스트 10 (이미지 카드 · 재고액 상위 · 옵션 포함) ──
     try:
-        from api.easyadmin_csv import load_inventory as _load_inv_full
+        from api.easyadmin_csv import (
+            load_inventory as _load_inv_full, value_basis as _vbasis,
+        )
         from utils.product_images import (
             load_image_cache as _lic, find_image as _fi,
         )
@@ -481,14 +483,15 @@ else:
 
     if not _invf.empty and {"stock", "price", "product"}.issubset(_invf.columns):
         _icache = _lic()
+        _vc, _vl = _vbasis(_invf)
         _itop = _invf.copy()
-        _itop["value"] = _itop["stock"] * _itop["price"]
+        _itop["value"] = _itop["stock"] * _itop[_vc]
         _itop = _itop.sort_values("value", ascending=False).head(10)
         st.markdown(
             "<div style='font-size:0.92rem; font-weight:700; color:#0f172a; "
             "margin-bottom:8px;'>🏆 재고 베스트 10 "
             "<span style='font-size:0.74rem; color:#94a3b8; font-weight:400;'>"
-            "· 재고액(재고×판매가) 상위 · 회수·할인 후보</span></div>",
+            f"· 재고액(재고×{_vl}) 상위 · 회수·할인 후보</span></div>",
             unsafe_allow_html=True,
         )
         for _ri in range(0, len(_itop), 5):

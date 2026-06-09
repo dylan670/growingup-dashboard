@@ -48,6 +48,9 @@ COLUMN_ALIASES: dict[str, list[str]] = {
     "category":      ["카테고리", "분류", "Category", "복종"],
     "brand":         ["브랜드", "Brand"],
     "price":         ["판매가", "가격", "단가", "Price"],
+    "cost":          ["원가", "공급가", "매입원가", "사입원가", "매입가",
+                      "사입가", "입고단가", "구매단가", "원가단가", "도매가",
+                      "Cost", "CostPrice", "SupplyPrice"],
     "warehouse":     ["창고", "창고명", "로케이션", "Warehouse"],
     "last_in_date":  ["마지막입고일", "최근입고일", "LastInDate"],
     "last_out_date": ["마지막출고일", "최근출고일", "LastOutDate"],
@@ -237,7 +240,7 @@ def parse_inventory_dataframe(raw: pd.DataFrame) -> pd.DataFrame:
 
     반환 컬럼:
         sku, product, option, stock, safety_stock, incoming,
-        sold_30d, sold_7d, category, brand, price, warehouse,
+        sold_30d, sold_7d, category, brand, price, cost, warehouse,
         last_in_date, last_out_date, days_left
     """
     if raw.empty:
@@ -288,6 +291,10 @@ def parse_inventory_dataframe(raw: pd.DataFrame) -> pd.DataFrame:
     out["price"] = (
         raw[detected["price"]].apply(_to_int)
         if detected["price"] else 0
+    )
+    out["cost"] = (
+        raw[detected["cost"]].apply(_to_int)
+        if detected["cost"] else 0
     )
     out["warehouse"] = (
         raw[detected["warehouse"]].astype(str).str.strip()
@@ -344,6 +351,19 @@ def load_inventory() -> pd.DataFrame:
         return pd.read_parquet(INVENTORY_FILE)
     except Exception:
         return pd.DataFrame()
+
+
+def value_basis(df: pd.DataFrame) -> tuple[str, str]:
+    """재고액 산출 기준 컬럼 결정 → (컬럼명, 라벨).
+
+    원가(cost) 데이터가 들어와 있으면 '원가' 기준, 없으면 '판매가'(price) fallback.
+    → 이지어드민 export 에 원가 컬럼 포함해 재업로드하면 자동으로 원가 기준 전환.
+    """
+    if "cost" in df.columns:
+        c = pd.to_numeric(df["cost"], errors="coerce").fillna(0)
+        if c.sum() > 0:
+            return "cost", "원가"
+    return "price", "판매가"
 
 
 def save_uploaded_file(uploaded, target_dir: Path | None = None) -> Path:
