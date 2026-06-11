@@ -475,7 +475,7 @@ else:
             load_inventory as _load_inv_full, value_basis as _vbasis,
         )
         from utils.product_images import (
-            load_image_cache as _lic, find_image as _fi,
+            load_image_cache as _lic, find_image_by_brand as _fib,
         )
         _invf = _load_inv_full()
     except Exception:
@@ -505,7 +505,7 @@ else:
                 _sft = _bcc.get("bg_soft", "#f8fafc")
                 _tx = _bcc.get("text", "#0f172a")
                 try:
-                    _u = _fi(_pdname, _icache, min_ratio=0.4) or ""
+                    _u = _fib(_pdname, _br, _icache, min_ratio=0.5) or ""
                 except Exception:
                     _u = ""
                 _im = (

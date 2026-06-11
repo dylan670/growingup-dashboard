@@ -159,7 +159,7 @@ if not inv.empty:
     st.markdown("### 📦 재고 베스트 10")
     st.caption(f"재고액 (재고수량 × {_vlabel}) 기준 상위 10 · 회수·할인 후보")
 
-    from utils.product_images import load_image_cache, find_image
+    from utils.product_images import load_image_cache, find_image_by_brand
     _img_cache = load_image_cache()
 
     def _flat14(h: str) -> str:
@@ -183,7 +183,8 @@ if not inv.empty:
             _soft = _bc.get("bg_soft", "#f8fafc")
             _txtc = _bc.get("text", "#0f172a")
             try:
-                _url = find_image(_prod, _img_cache, min_ratio=0.4) or ""
+                _url = find_image_by_brand(
+                    _prod, _brand, _img_cache, min_ratio=0.5) or ""
             except Exception:
                 _url = ""
             _img = (

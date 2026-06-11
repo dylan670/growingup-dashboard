@@ -219,6 +219,7 @@ st.markdown("---")
 if not inv.empty:
     st.markdown("### 📦 재고 베스트 10")
     _vc18, _vl18 = value_basis(inv)
+    from utils.product_images import find_image_by_brand
     st.caption(f"재고액 (재고수량 × {_vl18}) 기준 상위 10 · 회수·할인 후보")
 
     inv_top = inv.copy()
@@ -238,7 +239,7 @@ if not inv.empty:
             primary = bc.get("primary", "#64748b")
             soft = bc.get("bg_soft", "#f8fafc")
             text_c = bc.get("text", "#0f172a")
-            url = _find_image(product, img_map)
+            url = find_image_by_brand(product, brand, img_map, min_ratio=0.5) or ""
             img_html = (
                 f'<img src="{url}" style="width:100%; height:110px; '
                 f'object-fit:cover; border-radius:8px;" />'

@@ -370,3 +370,26 @@ def build_store_scoped_lookup(
                 store_hint=store,
             )
     return lookup
+
+
+def find_image_by_brand(
+    product_name: str,
+    brand: str | None,
+    cache_df: pd.DataFrame,
+    min_ratio: float = 0.5,
+) -> str | None:
+    """재고(이지어드민) 상품 이미지 매칭 — 브랜드로 캐시를 좁혀 오매칭 방지.
+
+    재고 데이터엔 store 가 없으므로 brand 로 캐시 store(브랜드명 포함)를 스코프.
+    예: brand='똑똑연구소' → store ∈ {'똑똑연구소','자사몰_똑똑연구소'} 만 검색.
+    제품 분석의 store-scoped 매칭과 동일 원리 (cross-brand false positive 차단).
+    매칭 후보가 한 브랜드로 좁혀지므로 전체 캐시 대비 오매칭이 크게 줄어듦.
+    """
+    if cache_df is None or cache_df.empty or not product_name:
+        return None
+    scoped = cache_df
+    if brand and "store" in cache_df.columns:
+        m = cache_df["store"].astype(str).str.contains(str(brand), na=False)
+        if m.any():
+            scoped = cache_df[m]
+    return find_image(str(product_name), scoped, min_ratio=min_ratio)
