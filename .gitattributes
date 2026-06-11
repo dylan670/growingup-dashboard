@@ -1,0 +1,7 @@
+# 바이너리 파일 — 줄바꿈 정규화 금지 (손상 방지)
+*.parquet binary
+*.xls binary
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
