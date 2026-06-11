@@ -215,7 +215,8 @@ _STRONG_SKU_TOKENS = [
     "모양김", "미니", "도시락",
     # 롤라루 SKU 핵심 식별자 (모델명)
     "인딥", "플렉스", "이지프레스", "큐보이드", "스파클링",
-    "오프너", "스마트", "트래블", "모노폴",
+    "오프너", "스마트", "트래블", "모노폴", "모먼트", "플라이더",
+    "전면오픈", "퀘스트",
     # 루티니스트 SKU 핵심 식별자 (러닝용품 — 캐시명이 짧아 유사도만으론
     # 매칭 안 됨 → 강한 토큰으로 보강)
     "러닝조끼", "조끼", "볼캡", "다이어리", "장갑",
@@ -262,40 +263,45 @@ def find_image(order_product_name: str,
 
     # 핵심 브랜드 키워드 보너스
     KEYWORDS = ["김똑똑", "똑똑떡뻥", "떡뻥", "롤라루", "캐리어", "백팩"]
-    target_keywords = {k for k in KEYWORDS if k in order_product_name}
+    target_keywords = {k for k in KEYWORDS if k in normalized_target}
 
-    # SKU 구별 키워드 — 주문 상품에 포함된 것
-    target_strong = {k for k in _STRONG_SKU_TOKENS if k in order_product_name}
-    target_weak = {k for k in _WEAK_SKU_TOKENS if k in order_product_name}
+    # SKU 구별 키워드 — 주문 상품에 포함된 것 (정규화로 공백/기호 차이 흡수)
+    target_strong = {k for k in _STRONG_SKU_TOKENS if k in normalized_target}
+    target_weak = {k for k in _WEAK_SKU_TOKENS if k in normalized_target}
 
     for _, row in cache_df.iterrows():
         cache_name = str(row.get("name", ""))
         if not cache_name:
             continue
 
-        ratio = _similarity(_normalize(cache_name), normalized_target)
+        normalized_cache = _normalize(cache_name)
+        ratio = _similarity(normalized_cache, normalized_target)
 
         # 공통 브랜드 키워드 보너스 +0.15
         if target_keywords:
-            shared = target_keywords & {k for k in KEYWORDS if k in cache_name}
+            shared = target_keywords & {k for k in KEYWORDS if k in normalized_cache}
             if shared:
                 ratio += 0.15
 
-        # 강한 SKU 키워드 — 공통되면 큰 보너스, 차이나면 양방향 감점
-        cache_strong = {k for k in _STRONG_SKU_TOKENS if k in cache_name}
+        # 강한 SKU(모델명) 키워드 — 모델 일치는 결정적 식별자
+        cache_strong = {k for k in _STRONG_SKU_TOKENS if k in normalized_cache}
         shared_strong = target_strong & cache_strong
         missing_strong = target_strong - cache_strong       # 주문엔 있는데 캐시엔 없음
         extra_strong = cache_strong - target_strong          # 캐시엔 있는데 주문엔 없음
         if shared_strong:
-            ratio += 0.30 * len(shared_strong)
-        if missing_strong:
-            ratio -= 0.25 * len(missing_strong)
-        if extra_strong:
-            ratio -= 0.15 * len(extra_strong)    # 캐시 SKU 가 더 구체적 → false positive
-
-        # 약한 SKU 키워드 — 강한 공통 매치 없을 때만 경미한 감점
-        if not shared_strong:
-            cache_weak = {k for k in _WEAK_SKU_TOKENS if k in cache_name}
+            # 같은 모델명 공유 → 큰 보너스: 짧은 모델명 캐시("스파클링")가
+            # 단어만 많이 겹치는 다른 모델("모먼트 캐리어 20인치…")에 지지 않게.
+            ratio += 0.55 * len(shared_strong)
+            if extra_strong:
+                ratio -= 0.10 * len(extra_strong)
+        else:
+            # 공유 모델 없음 → 주문의 모델이 캐시에 없으면 '다른 모델' → 강하게 감점
+            if missing_strong:
+                ratio -= 0.35 * len(missing_strong)
+            if extra_strong:
+                ratio -= 0.20 * len(extra_strong)
+            # 약한 키워드 감점 (강한 공통 매치 없을 때만)
+            cache_weak = {k for k in _WEAK_SKU_TOKENS if k in normalized_cache}
             missing_weak = target_weak - cache_weak
             if missing_weak:
                 ratio -= 0.05 * len(missing_weak)
