@@ -191,19 +191,26 @@ def _cached_meta_campaigns(
     try:
         daily = load_precomputed_parquet(f"meta_campaigns_{brand}_daily.parquet")
         if not daily.empty:
-            return _aggregate_daily_campaigns(daily, since_iso, until_iso)
+            agg = _aggregate_daily_campaigns(daily, since_iso, until_iso)
+            if not agg.empty:
+                return agg
+            # parquet 에 데이터는 있으나 선택 기간을 못 덮음(예: parquet 이
+            # 며칠 stale) → 아래 라이브 조회로 최신 기간 보강 시도
     except Exception:
         pass
 
-    # 2) Fallback: live API (Korean IP 필요 — Streamlit Cloud 에선 실패 가능)
+    # 2) Fallback: live API (토큰 있으면 최신 기간 직접 조회 — parquet 미커버 구간 보강)
     from datetime import date as _date
     client = load_meta_client(brand)
     if client is None:
         return None
-    return client.fetch_campaigns_df(
-        _date.fromisoformat(since_iso),
-        _date.fromisoformat(until_iso),
-    )
+    try:
+        return client.fetch_campaigns_df(
+            _date.fromisoformat(since_iso),
+            _date.fromisoformat(until_iso),
+        )
+    except Exception:
+        return None
 
 
 @st.cache_data(ttl=600, show_spinner="🔍 네이버 캠페인 로드 중...")
