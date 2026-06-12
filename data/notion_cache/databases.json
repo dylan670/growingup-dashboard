@@ -1,10 +1,10 @@
 {
-  "saved_at": "2026-06-02T01:02:19.958379Z",
+  "saved_at": "2026-06-12T01:01:51.551994Z",
   "data": [
     {
       "id": "b49aa564-03d5-418f-8f6c-b950ce5ef7dc",
       "title": "회의록 DB",
-      "url": "https://www.notion.so/b49aa56403d5418f8f6cb950ce5ef7dc",
+      "url": "https://app.notion.com/p/b49aa56403d5418f8f6cb950ce5ef7dc",
       "properties_schema": {
         "생성자": {
           "id": "Y~hb",
@@ -180,7 +180,7 @@
     {
       "id": "310c081d-6cc9-8053-b868-e6db557854ad",
       "title": "그로잉업팀 캘린더",
-      "url": "https://www.notion.so/310c081d6cc98053b868e6db557854ad",
+      "url": "https://app.notion.com/p/310c081d6cc98053b868e6db557854ad",
       "properties_schema": {
         "자동보정": {
           "id": "CinA",
